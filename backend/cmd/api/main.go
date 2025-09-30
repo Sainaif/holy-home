@@ -98,15 +98,13 @@ func main() {
 	loanHandler := handlers.NewLoanHandler(loanService)
 	choreHandler := handlers.NewChoreHandler(choreService)
 	predictionHandler := handlers.NewPredictionHandler(predictionService)
-	eventHandler := handlers.NewEventHandler(eventService)
+	// eventHandler := handlers.NewEventHandler(eventService) // Disabled due to crashes
 	exportHandler := handlers.NewExportHandler(exportService)
 
 	// Authentication routes
 	auth := app.Group("/auth")
 	auth.Post("/login", middleware.RateLimitMiddleware(5, 15*time.Minute), authHandler.Login)
 	auth.Post("/refresh", middleware.RateLimitMiddleware(10, 15*time.Minute), authHandler.Refresh)
-	auth.Post("/enable-2fa", middleware.AuthMiddleware(cfg), authHandler.Enable2FA)
-	auth.Post("/disable-2fa", middleware.AuthMiddleware(cfg), authHandler.Disable2FA)
 
 	// User routes
 	users := app.Group("/users")
@@ -114,8 +112,9 @@ func main() {
 	users.Post("/", middleware.AuthMiddleware(cfg), middleware.RequireRole("ADMIN"), userHandler.CreateUser)
 	users.Get("/me", middleware.AuthMiddleware(cfg), userHandler.GetMe)
 	users.Get("/:id", middleware.AuthMiddleware(cfg), userHandler.GetUser)
-	users.Patch("/:id", middleware.AuthMiddleware(cfg), middleware.RequireRole("ADMIN"), userHandler.UpdateUser)
+	users.Patch("/:id", middleware.AuthMiddleware(cfg), userHandler.UpdateUser)
 	users.Post("/change-password", middleware.AuthMiddleware(cfg), userHandler.ChangePassword)
+	users.Post("/:id/force-password-change", middleware.AuthMiddleware(cfg), middleware.RequireRole("ADMIN"), userHandler.ForcePasswordChange)
 
 	// Group routes
 	groups := app.Group("/groups")
@@ -146,6 +145,7 @@ func main() {
 	// Loan routes
 	loans := app.Group("/loans")
 	loans.Post("/", middleware.AuthMiddleware(cfg), loanHandler.CreateLoan)
+	loans.Get("/", middleware.AuthMiddleware(cfg), loanHandler.GetLoans)
 	loans.Get("/balances", middleware.AuthMiddleware(cfg), loanHandler.GetBalances)
 	loans.Get("/balances/me", middleware.AuthMiddleware(cfg), loanHandler.GetMyBalance)
 	loans.Get("/balances/user/:id", middleware.AuthMiddleware(cfg), middleware.RequireRole("ADMIN"), loanHandler.GetUserBalance)
@@ -174,9 +174,9 @@ func main() {
 	predictions.Post("/recompute", middleware.AuthMiddleware(cfg), middleware.RequireRole("ADMIN"), predictionHandler.RecomputePrediction)
 	predictions.Get("/", middleware.AuthMiddleware(cfg), predictionHandler.GetPredictions)
 
-	// Events/SSE route
-	events := app.Group("/events")
-	events.Get("/stream", middleware.AuthMiddleware(cfg), eventHandler.StreamEvents)
+	// Events/SSE route - temporarily disabled due to crashes
+	// events := app.Group("/events")
+	// events.Get("/stream", middleware.AuthMiddleware(cfg), eventHandler.StreamEvents)
 
 	// Export routes
 	exports := app.Group("/exports")

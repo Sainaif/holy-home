@@ -238,6 +238,22 @@ func (s *LoanService) GetBalances(ctx context.Context) ([]PairwiseBalance, error
 	return result, nil
 }
 
+// GetLoans retrieves all loans
+func (s *LoanService) GetLoans(ctx context.Context) ([]models.Loan, error) {
+	cursor, err := s.db.Collection("loans").Find(ctx, bson.M{})
+	if err != nil {
+		return nil, fmt.Errorf("database error: %w", err)
+	}
+	defer cursor.Close(ctx)
+
+	var loans []models.Loan
+	if err := cursor.All(ctx, &loans); err != nil {
+		return nil, fmt.Errorf("failed to decode loans: %w", err)
+	}
+
+	return loans, nil
+}
+
 // GetUserBalance calculates balance for a specific user
 func (s *LoanService) GetUserBalance(ctx context.Context, userID primitive.ObjectID) (*Balance, error) {
 	balances, err := s.GetBalances(ctx)

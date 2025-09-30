@@ -116,9 +116,10 @@ docker-compose up -d
 ```
 
 Services will be available at:
-- API: http://localhost:8080
-- Frontend: http://localhost:5173
-- Health check: http://localhost:8080/healthz
+- API: http://localhost:16162
+- Frontend: http://localhost:16161
+- ML: http://localhost:16163
+- Health check: http://localhost:16162/healthz
 
 ### Local Development
 

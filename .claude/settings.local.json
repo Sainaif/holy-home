@@ -33,7 +33,14 @@
       "Bash(npm run build:*)",
       "Bash(docker ps:*)",
       "Bash(./api:*)",
-      "Bash(docker inspect:*)"
+      "Bash(docker inspect:*)",
+      "Bash(netstat:*)",
+      "Bash(ss:*)",
+      "Bash(docker port:*)",
+      "Bash(sudo lsof:*)",
+      "Bash(docker stop:*)",
+      "Bash(docker rm:*)",
+      "Bash(docker history:*)"
     ],
     "deny": [],
     "ask": []

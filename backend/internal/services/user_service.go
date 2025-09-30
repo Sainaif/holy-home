@@ -31,6 +31,7 @@ type CreateUserRequest struct {
 
 type UpdateUserRequest struct {
 	Email    *string             `json:"email,omitempty"`
+	Name     *string             `json:"name,omitempty"`
 	Role     *string             `json:"role,omitempty"`
 	GroupID  *primitive.ObjectID `json:"groupId,omitempty"`
 	IsActive *bool               `json:"isActive,omitempty"`
@@ -63,13 +64,15 @@ func (s *UserService) CreateUser(ctx context.Context, req CreateUserRequest) (*m
 	}
 
 	user := models.User{
-		ID:           primitive.NewObjectID(),
-		Email:        req.Email,
-		PasswordHash: passwordHash,
-		Role:         req.Role,
-		GroupID:      req.GroupID,
-		IsActive:     true,
-		CreatedAt:    time.Now(),
+		ID:                primitive.NewObjectID(),
+		Email:             req.Email,
+		Name:              req.Email, // Default name to email
+		PasswordHash:      passwordHash,
+		Role:              req.Role,
+		GroupID:           req.GroupID,
+		IsActive:          true,
+		MustChangePassword: true, // Force password change on first login
+		CreatedAt:         time.Now(),
 	}
 
 	_, err = s.db.Collection("users").InsertOne(ctx, user)
@@ -128,6 +131,10 @@ func (s *UserService) UpdateUser(ctx context.Context, userID primitive.ObjectID,
 		update["email"] = *req.Email
 	}
 
+	if req.Name != nil {
+		update["name"] = *req.Name
+	}
+
 	if req.Role != nil {
 		if *req.Role != "ADMIN" && *req.Role != "RESIDENT" {
 			return errors.New("invalid role")
@@ -183,15 +190,31 @@ func (s *UserService) ChangePassword(ctx context.Context, userID primitive.Objec
 		return fmt.Errorf("failed to hash new password: %w", err)
 	}
 
-	// Update password
+	// Update password and clear must_change_password flag
 	_, err = s.db.Collection("users").UpdateOne(
 		ctx,
 		bson.M{"_id": userID},
-		bson.M{"$set": bson.M{"password_hash": newHash}},
+		bson.M{"$set": bson.M{
+			"password_hash": newHash,
+			"must_change_password": false,
+		}},
 	)
 	if err != nil {
 		return fmt.Errorf("failed to update password: %w", err)
 	}
 
+	return nil
+}
+
+// ForcePasswordChange marks a user as needing to change their password
+func (s *UserService) ForcePasswordChange(ctx context.Context, userID primitive.ObjectID) error {
+	_, err := s.db.Collection("users").UpdateOne(
+		ctx,
+		bson.M{"_id": userID},
+		bson.M{"$set": bson.M{"must_change_password": true}},
+	)
+	if err != nil {
+		return fmt.Errorf("failed to set password change flag: %w", err)
+	}
 	return nil
 }

@@ -134,14 +134,14 @@ const { updateChart, showLoading, hideLoading } = useChart(chartContainer)
 
 // Update chart when data changes
 watch([chartData, selectedTarget], () => {
-  if (chartData.value.values.length > 0) {
+  if (chartData.value.values.length > 0 && chartContainer.value) {
     const options = getPredictionChartOptions(
       chartData.value,
       formatTargetName(selectedTarget.value)
     )
     updateChart(options)
   }
-}, { immediate: true })
+}, { immediate: false })
 
 // Initialize on mount
 onMounted(() => {

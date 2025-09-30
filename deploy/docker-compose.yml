@@ -12,7 +12,7 @@ services:
       ml:
         condition: service_healthy
     ports:
-      - "3000:3000"
+      - "16162:3000"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3000/healthz"]
@@ -26,6 +26,8 @@ services:
       dockerfile: Dockerfile
       args:
         - PYTHON_VERSION=3.13
+    ports:
+      - "16163:8000"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8000/healthz"]
@@ -41,7 +43,7 @@ services:
       api:
         condition: service_started
     ports:
-      - "5173:80"
+      - "16161:80"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost/"]

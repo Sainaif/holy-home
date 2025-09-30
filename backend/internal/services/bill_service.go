@@ -23,7 +23,8 @@ func NewBillService(db *mongo.Database) *BillService {
 }
 
 type CreateBillRequest struct {
-	Type           string    `json:"type"` // electricity, gas, internet, shared
+	Type           string    `json:"type"` // electricity, gas, internet, inne
+	CustomType     *string   `json:"customType,omitempty"` // required when type is "inne"
 	PeriodStart    time.Time `json:"periodStart"`
 	PeriodEnd      time.Time `json:"periodEnd"`
 	TotalAmountPLN float64   `json:"totalAmountPLN"`
@@ -39,9 +40,19 @@ type AllocateRequest struct {
 // CreateBill creates a new bill (ADMIN only)
 func (s *BillService) CreateBill(ctx context.Context, req CreateBillRequest) (*models.Bill, error) {
 	// Validate bill type
-	validTypes := map[string]bool{"electricity": true, "gas": true, "internet": true, "shared": true}
+	validTypes := map[string]bool{"electricity": true, "gas": true, "internet": true, "inne": true}
 	if !validTypes[req.Type] {
 		return nil, errors.New("invalid bill type")
+	}
+
+	// Validate customType is provided when type is "inne"
+	if req.Type == "inne" && (req.CustomType == nil || *req.CustomType == "") {
+		return nil, errors.New("customType is required when type is 'inne'")
+	}
+
+	// Validate customType is not provided for other types
+	if req.Type != "inne" && req.CustomType != nil {
+		return nil, errors.New("customType should only be provided when type is 'inne'")
 	}
 
 	if req.PeriodEnd.Before(req.PeriodStart) {
@@ -56,6 +67,7 @@ func (s *BillService) CreateBill(ctx context.Context, req CreateBillRequest) (*m
 	bill := models.Bill{
 		ID:             primitive.NewObjectID(),
 		Type:           req.Type,
+		CustomType:     req.CustomType,
 		PeriodStart:    req.PeriodStart,
 		PeriodEnd:      req.PeriodEnd,
 		TotalAmountPLN: amountDec,
@@ -152,8 +164,8 @@ func (s *BillService) AllocateBill(ctx context.Context, billID primitive.ObjectI
 		return s.allocateGas(ctx, bill, req)
 	case "internet":
 		return s.allocateInternet(ctx, bill)
-	case "shared":
-		return s.allocateShared(ctx, bill)
+	case "inne":
+		return s.allocateInne(ctx, bill, req)
 	default:
 		return errors.New("unsupported bill type")
 	}
@@ -301,9 +313,13 @@ func (s *BillService) allocateInternet(ctx context.Context, bill *models.Bill) e
 	return s.allocateGas(ctx, bill, AllocateRequest{Strategy: "equal"})
 }
 
-// allocateShared implements shared budget allocation (equal split)
-func (s *BillService) allocateShared(ctx context.Context, bill *models.Bill) error {
-	return s.allocateGas(ctx, bill, AllocateRequest{Strategy: "equal"})
+// allocateInne implements "inne" (other) allocation (equal split by default)
+func (s *BillService) allocateInne(ctx context.Context, bill *models.Bill, req AllocateRequest) error {
+	// For "inne" type, use equal split if no strategy specified
+	if req.Strategy == "" {
+		req.Strategy = "equal"
+	}
+	return s.allocateGas(ctx, bill, req)
 }
 
 // PostBill changes bill status to posted (freezes allocations)

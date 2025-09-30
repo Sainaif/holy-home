@@ -87,9 +87,14 @@ func (s *ConsumptionService) CreateConsumption(ctx context.Context, req CreateCo
 	return &consumption, nil
 }
 
-// GetConsumptions retrieves consumptions for a bill
-func (s *ConsumptionService) GetConsumptions(ctx context.Context, billID primitive.ObjectID) ([]models.Consumption, error) {
-	cursor, err := s.db.Collection("consumptions").Find(ctx, bson.M{"bill_id": billID})
+// GetConsumptions retrieves consumptions for a bill, or all consumptions if billID is nil
+func (s *ConsumptionService) GetConsumptions(ctx context.Context, billID *primitive.ObjectID) ([]models.Consumption, error) {
+	filter := bson.M{}
+	if billID != nil {
+		filter["bill_id"] = *billID
+	}
+
+	cursor, err := s.db.Collection("consumptions").Find(ctx, filter, nil)
 	if err != nil {
 		return nil, fmt.Errorf("database error: %w", err)
 	}

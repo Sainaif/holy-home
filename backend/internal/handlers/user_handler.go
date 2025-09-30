@@ -66,13 +66,35 @@ func (h *UserHandler) GetUser(c *fiber.Ctx) error {
 	return c.JSON(user)
 }
 
-// UpdateUser updates a user (ADMIN only)
+// UpdateUser updates a user
 func (h *UserHandler) UpdateUser(c *fiber.Ctx) error {
 	id := c.Params("id")
 	userID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "Invalid user ID",
+		})
+	}
+
+	// Get current user
+	currentUserID, err := middleware.GetUserID(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
+
+	currentUserRole, err := middleware.GetUserRole(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
+
+	// Allow users to update themselves or admins to update anyone
+	if currentUserID != userID && currentUserRole != "ADMIN" {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+			"error": "You can only update your own profile",
 		})
 	}
 
@@ -142,4 +164,25 @@ func (h *UserHandler) GetMe(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(user)
+}
+
+// ForcePasswordChange forces a user to change their password on next login (ADMIN only)
+func (h *UserHandler) ForcePasswordChange(c *fiber.Ctx) error {
+	id := c.Params("id")
+	userID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid user ID",
+		})
+	}
+
+	if err := h.userService.ForcePasswordChange(c.Context(), userID); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"message": "User will be required to change password on next login",
+	})
 }

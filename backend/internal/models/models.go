@@ -8,14 +8,15 @@ import (
 
 // User represents a system user
 type User struct {
-	ID           primitive.ObjectID  `bson:"_id,omitempty" json:"id"`
-	Email        string              `bson:"email" json:"email"`
-	PasswordHash string              `bson:"password_hash" json:"-"`
-	Role         string              `bson:"role" json:"role"` // ADMIN, RESIDENT
-	GroupID      *primitive.ObjectID `bson:"group_id,omitempty" json:"groupId,omitempty"`
-	TOTPSecret   *string             `bson:"totp_secret,omitempty" json:"-"`
-	IsActive     bool                `bson:"is_active" json:"isActive"`
-	CreatedAt    time.Time           `bson:"created_at" json:"createdAt"`
+	ID                primitive.ObjectID  `bson:"_id,omitempty" json:"id"`
+	Email             string              `bson:"email" json:"email"`
+	Name              string              `bson:"name" json:"name"`
+	PasswordHash      string              `bson:"password_hash" json:"-"`
+	Role              string              `bson:"role" json:"role"` // ADMIN, RESIDENT
+	GroupID           *primitive.ObjectID `bson:"group_id,omitempty" json:"groupId,omitempty"`
+	IsActive          bool                `bson:"is_active" json:"isActive"`
+	MustChangePassword bool               `bson:"must_change_password" json:"mustChangePassword"`
+	CreatedAt         time.Time           `bson:"created_at" json:"createdAt"`
 }
 
 // Group represents a household group (e.g., couples)
@@ -29,7 +30,8 @@ type Group struct {
 // Bill represents a utility bill or shared expense
 type Bill struct {
 	ID             primitive.ObjectID `bson:"_id,omitempty" json:"id"`
-	Type           string             `bson:"type" json:"type"` // electricity, gas, internet, shared
+	Type           string             `bson:"type" json:"type"` // electricity, gas, internet, inne
+	CustomType     *string            `bson:"custom_type,omitempty" json:"customType,omitempty"` // used when Type is "inne"
 	PeriodStart    time.Time          `bson:"period_start" json:"periodStart"`
 	PeriodEnd      time.Time          `bson:"period_end" json:"periodEnd"`
 	TotalAmountPLN primitive.Decimal128 `bson:"total_amount_pln" json:"totalAmountPLN"`

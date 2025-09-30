@@ -191,20 +191,19 @@ func (h *BillHandler) CreateConsumption(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(consumption)
 }
 
-// GetConsumptions retrieves consumptions for a bill
+// GetConsumptions retrieves consumptions for a bill (or all consumptions if no billId)
 func (h *BillHandler) GetConsumptions(c *fiber.Ctx) error {
 	billIDStr := c.Query("billId")
-	if billIDStr == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "billId query parameter is required",
-		})
-	}
 
-	billID, err := primitive.ObjectIDFromHex(billIDStr)
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "Invalid bill ID",
-		})
+	var billID *primitive.ObjectID
+	if billIDStr != "" {
+		id, err := primitive.ObjectIDFromHex(billIDStr)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": "Invalid bill ID",
+			})
+		}
+		billID = &id
 	}
 
 	consumptions, err := h.consumptionService.GetConsumptions(c.Context(), billID)

@@ -28,14 +28,14 @@ func NewAuthService(db *mongo.Database, cfg *config.Config) *AuthService {
 }
 
 type LoginRequest struct {
-	Email    string  `json:"email"`
-	Password string  `json:"password"`
-	TOTP     *string `json:"totp,omitempty"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
 
 type TokenResponse struct {
-	Access  string `json:"access"`
-	Refresh string `json:"refresh"`
+	Access            string `json:"access"`
+	Refresh           string `json:"refresh"`
+	MustChangePassword bool  `json:"mustChangePassword"`
 }
 
 // Login authenticates a user and returns JWT tokens
@@ -63,13 +63,6 @@ func (s *AuthService) Login(ctx context.Context, req LoginRequest) (*TokenRespon
 		return nil, errors.New("invalid credentials")
 	}
 
-	// Check 2FA if enabled
-	if s.cfg.Auth.TwoFAEnabled && user.TOTPSecret != nil {
-		if req.TOTP == nil || !utils.ValidateTOTP(*req.TOTP, *user.TOTPSecret) {
-			return nil, errors.New("invalid 2FA code")
-		}
-	}
-
 	// Generate tokens
 	accessToken, err := utils.GenerateAccessToken(
 		user.ID,
@@ -92,8 +85,9 @@ func (s *AuthService) Login(ctx context.Context, req LoginRequest) (*TokenRespon
 	}
 
 	return &TokenResponse{
-		Access:  accessToken,
-		Refresh: refreshToken,
+		Access:            accessToken,
+		Refresh:           refreshToken,
+		MustChangePassword: user.MustChangePassword,
 	}, nil
 }
 

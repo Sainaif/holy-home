@@ -28,8 +28,13 @@
               <option value="electricity">Prąd</option>
               <option value="gas">Gaz</option>
               <option value="internet">Internet</option>
-              <option value="shared">Wspólny</option>
+              <option value="inne">Inne</option>
             </select>
+          </div>
+
+          <div v-if="newBill.type === 'inne'">
+            <label class="block text-sm font-medium mb-2">Nazwa typu</label>
+            <input v-model="newBill.customType" type="text" required class="input" placeholder="np. Czynsz, Woda..." />
           </div>
 
           <div>
@@ -106,14 +111,16 @@
                          'bg-yellow-600/20': bill.type === 'electricity',
                          'bg-orange-600/20': bill.type === 'gas',
                          'bg-blue-600/20': bill.type === 'internet',
-                         'bg-gray-600/20': bill.type === 'shared'
+                         'bg-purple-600/20': bill.type === 'inne'
                        }">
                     <Zap v-if="bill.type === 'electricity'" class="w-5 h-5 text-yellow-400" />
                     <Flame v-else-if="bill.type === 'gas'" class="w-5 h-5 text-orange-400" />
                     <Wifi v-else-if="bill.type === 'internet'" class="w-5 h-5 text-blue-400" />
-                    <Users v-else class="w-5 h-5 text-gray-400" />
+                    <FileX v-else class="w-5 h-5 text-purple-400" />
                   </div>
-                  <span class="font-medium">{{ $t(`bills.${bill.type}`) }}</span>
+                  <div>
+                    <span class="font-medium">{{ bill.type === 'inne' && bill.customType ? bill.customType : $t(`bills.${bill.type}`) }}</span>
+                  </div>
                 </div>
               </td>
               <td>
@@ -178,6 +185,7 @@ const createError = ref('')
 
 const newBill = ref({
   type: 'electricity',
+  customType: '',
   totalAmountPLN: '',
   totalUnits: '',
   periodStart: '',
@@ -191,9 +199,11 @@ async function loadBills() {
   loading.value = true
   try {
     const response = await api.get('/bills')
+    console.log('Bills response:', response.data)
     bills.value = response.data || []
   } catch (err) {
     console.error('Failed to load bills:', err)
+    console.error('Error response:', err.response)
     bills.value = []
   } finally {
     loading.value = false
@@ -205,19 +215,28 @@ async function createBill() {
   createError.value = ''
 
   try {
-    await api.post('/bills', {
+    const payload = {
       type: newBill.value.type,
-      total_amount_pln: newBill.value.totalAmountPLN,
-      total_units: newBill.value.totalUnits || undefined,
-      period_start: new Date(newBill.value.periodStart).toISOString(),
-      period_end: new Date(newBill.value.periodEnd).toISOString(),
+      totalAmountPLN: newBill.value.totalAmountPLN,
+      totalUnits: newBill.value.totalUnits || undefined,
+      periodStart: new Date(newBill.value.periodStart).toISOString(),
+      periodEnd: new Date(newBill.value.periodEnd).toISOString(),
       notes: newBill.value.notes || undefined
-    })
+    }
+
+    if (newBill.value.type === 'inne' && newBill.value.customType) {
+      payload.customType = newBill.value.customType
+    }
+
+    console.log('Creating bill with payload:', payload)
+    const response = await api.post('/bills', payload)
+    console.log('Bill created:', response.data)
 
     showCreateModal.value = false
     await loadBills()
     newBill.value = {
       type: 'electricity',
+      customType: '',
       totalAmountPLN: '',
       totalUnits: '',
       periodStart: '',

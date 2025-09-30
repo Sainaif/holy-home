@@ -53,6 +53,18 @@ func (h *LoanHandler) CreateLoanPayment(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(payment)
 }
 
+// GetLoans retrieves all loans
+func (h *LoanHandler) GetLoans(c *fiber.Ctx) error {
+	loans, err := h.loanService.GetLoans(c.Context())
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
+	return c.JSON(loans)
+}
+
 // GetBalances retrieves pairwise balances
 func (h *LoanHandler) GetBalances(c *fiber.Ctx) error {
 	balances, err := h.loanService.GetBalances(c.Context())

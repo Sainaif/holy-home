@@ -39,7 +39,7 @@
             </router-link>
           </div>
 
-          <button @click="authStore.logout()" class="btn btn-secondary btn-sm flex items-center gap-2">
+          <button @click="handleLogout" class="btn btn-secondary btn-sm flex items-center gap-2">
             <LogOut class="w-4 h-4" />
             {{ $t('nav.logout') }}
           </button>
@@ -54,8 +54,15 @@
 </template>
 
 <script setup>
+import { useRouter } from 'vue-router'
 import { useAuthStore } from './stores/auth'
 import { Home, LayoutDashboard, Receipt, Gauge, Wallet, CheckSquare, TrendingUp, Settings, LogOut } from 'lucide-vue-next'
 
+const router = useRouter()
 const authStore = useAuthStore()
+
+function handleLogout() {
+  authStore.logout()
+  router.push('/login')
+}
 </script>

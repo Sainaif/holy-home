@@ -42,17 +42,17 @@ docker-compose up -d
 
 ```bash
 # Check health
-curl http://localhost:8080/healthz
+curl http://localhost:16162/healthz
 # Should return: {"status":"ok","time":"..."}
 
-curl http://localhost:8000/healthz
+curl http://localhost:16163/healthz
 # Should return: {"status":"ok","service":"ml","time":"..."}
 ```
 
 ### 4. Test Login
 
 ```bash
-curl -X POST http://localhost:8080/auth/login \
+curl -X POST http://localhost:16162/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"admin@example.pl","password":"ChangeMe123!"}'
 ```
@@ -85,7 +85,7 @@ go build ./cmd/api
 ./api
 ```
 
-API will be available at: http://localhost:8080
+API will be available at: http://localhost:3000 (local dev) or http://localhost:16162 (Docker)
 
 ### ML Sidecar (Python)
 
@@ -103,7 +103,7 @@ pip install -r requirements.txt
 python -m app.main
 ```
 
-ML service will be available at: http://localhost:8000
+ML service will be available at: http://localhost:8000 (local dev) or http://localhost:16163 (Docker)
 
 ### Frontend (Vue 3) - TODO
 
@@ -118,7 +118,7 @@ npm run dev
 ### 1. Login
 
 ```bash
-curl -X POST http://localhost:8080/auth/login \
+curl -X POST http://localhost:16162/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "email": "admin@example.pl",
@@ -133,7 +133,7 @@ Save the returned `access` token for subsequent requests.
 ```bash
 TOKEN="your-access-token-here"
 
-curl -X POST http://localhost:8080/users \
+curl -X POST http://localhost:16162/users \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
   -d '{
@@ -146,7 +146,7 @@ curl -X POST http://localhost:8080/users \
 ### 3. Create a Group
 
 ```bash
-curl -X POST http://localhost:8080/groups \
+curl -X POST http://localhost:16162/groups \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
   -d '{
@@ -158,7 +158,7 @@ curl -X POST http://localhost:8080/groups \
 ### 4. Create a Bill
 
 ```bash
-curl -X POST http://localhost:8080/bills \
+curl -X POST http://localhost:16162/bills \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
   -d '{
@@ -177,7 +177,7 @@ curl -X POST http://localhost:8080/bills \
 BILL_ID="bill-id-from-previous-response"
 USER_ID="user-id-from-user-creation"
 
-curl -X POST http://localhost:8080/consumptions \
+curl -X POST http://localhost:16162/consumptions \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
   -d '{
@@ -192,7 +192,7 @@ curl -X POST http://localhost:8080/consumptions \
 ### 6. Allocate Bill Costs
 
 ```bash
-curl -X POST http://localhost:8080/bills/$BILL_ID/allocate \
+curl -X POST http://localhost:16162/bills/$BILL_ID/allocate \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
   -d '{
@@ -203,7 +203,7 @@ curl -X POST http://localhost:8080/bills/$BILL_ID/allocate \
 ### 7. Generate Forecast (ML Sidecar)
 
 ```bash
-curl -X POST http://localhost:8000/forecast \
+curl -X POST http://localhost:16163/forecast \
   -H "Content-Type: application/json" \
   -d '{
     "target": "electricity",
@@ -337,7 +337,7 @@ python -c "import requests; print(requests.post('http://localhost:8000/forecast'
 - Check admin was created: `docker-compose logs api | grep "Admin bootstrap"`
 
 ### "ML service not responding"
-- Check ML service health: `curl http://localhost:8000/healthz`
+- Check ML service health: `curl http://localhost:16163/healthz`
 - View logs: `docker-compose logs ml`
 - Verify Python dependencies installed correctly
 

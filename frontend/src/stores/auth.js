@@ -1,0 +1,75 @@
+import { defineStore } from 'pinia'
+import { ref, computed } from 'vue'
+import api from '../api/client'
+
+export const useAuthStore = defineStore('auth', () => {
+  const accessToken = ref(localStorage.getItem('accessToken'))
+  const refreshToken = ref(localStorage.getItem('refreshToken'))
+  const user = ref(JSON.parse(localStorage.getItem('user') || 'null'))
+
+  const isAuthenticated = computed(() => !!accessToken.value)
+  const isAdmin = computed(() => user.value?.role === 'ADMIN')
+
+  async function login(email, password, totpCode) {
+    const response = await api.post('/auth/login', {
+      email,
+      password,
+      totp_code: totpCode || undefined
+    })
+
+    accessToken.value = response.data.access
+    refreshToken.value = response.data.refresh
+
+    // Fetch user data
+    const userResponse = await api.get('/users/me', {
+      headers: { Authorization: `Bearer ${accessToken.value}` }
+    })
+    user.value = userResponse.data
+
+    localStorage.setItem('accessToken', accessToken.value)
+    localStorage.setItem('refreshToken', refreshToken.value)
+    localStorage.setItem('user', JSON.stringify(user.value))
+
+    return response.data
+  }
+
+  async function refresh() {
+    try {
+      const response = await api.post('/auth/refresh', {
+        refresh_token: refreshToken.value
+      })
+
+      accessToken.value = response.data.access
+      refreshToken.value = response.data.refresh
+
+      localStorage.setItem('accessToken', accessToken.value)
+      localStorage.setItem('refreshToken', refreshToken.value)
+
+      return true
+    } catch (error) {
+      logout()
+      return false
+    }
+  }
+
+  function logout() {
+    accessToken.value = null
+    refreshToken.value = null
+    user.value = null
+
+    localStorage.removeItem('accessToken')
+    localStorage.removeItem('refreshToken')
+    localStorage.removeItem('user')
+  }
+
+  return {
+    accessToken,
+    refreshToken,
+    user,
+    isAuthenticated,
+    isAdmin,
+    login,
+    refresh,
+    logout
+  }
+})

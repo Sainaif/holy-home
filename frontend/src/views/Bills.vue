@@ -1,0 +1,267 @@
+<template>
+  <div>
+    <div class="flex justify-between items-center mb-8">
+      <div>
+        <h1 class="text-4xl font-bold gradient-text mb-2">{{ $t('bills.title') }}</h1>
+        <p class="text-gray-400">Historia rachunków i alokacji kosztów</p>
+      </div>
+      <button v-if="authStore.isAdmin" @click="showCreateModal = true" class="btn btn-primary flex items-center gap-2">
+        <Plus class="w-5 h-5" />
+        {{ $t('bills.createNew') }}
+      </button>
+    </div>
+
+    <!-- Create Bill Modal -->
+    <div v-if="showCreateModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50" @click.self="showCreateModal = false">
+      <div class="card max-w-lg w-full mx-4">
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-2xl font-bold gradient-text">Nowy Rachunek</h2>
+          <button @click="showCreateModal = false" class="text-gray-400 hover:text-white">
+            <X class="w-6 h-6" />
+          </button>
+        </div>
+
+        <form @submit.prevent="createBill" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium mb-2">Typ</label>
+            <select v-model="newBill.type" required class="input">
+              <option value="electricity">Prąd</option>
+              <option value="gas">Gaz</option>
+              <option value="internet">Internet</option>
+              <option value="shared">Wspólny</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium mb-2">Kwota (PLN)</label>
+            <input v-model.number="newBill.totalAmountPLN" type="number" step="0.01" required class="input" placeholder="150.00" />
+          </div>
+
+          <div v-if="newBill.type === 'electricity' || newBill.type === 'gas'">
+            <label class="block text-sm font-medium mb-2">Jednostki</label>
+            <input v-model.number="newBill.totalUnits" type="number" step="0.001" class="input" placeholder="100.000" />
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium mb-2">Okres od</label>
+              <input v-model="newBill.periodStart" type="date" required class="input" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-2">Okres do</label>
+              <input v-model="newBill.periodEnd" type="date" required class="input" />
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium mb-2">Notatki</label>
+            <textarea v-model="newBill.notes" class="input" rows="3" placeholder="Opcjonalne uwagi..."></textarea>
+          </div>
+
+          <div v-if="createError" class="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
+            <AlertCircle class="w-4 h-4" />
+            {{ createError }}
+          </div>
+
+          <div class="flex gap-3">
+            <button type="submit" :disabled="creating" class="btn btn-primary flex-1 flex items-center justify-center gap-2">
+              <div v-if="creating" class="loading-spinner"></div>
+              <Plus v-else class="w-5 h-5" />
+              {{ creating ? 'Tworzenie...' : 'Utwórz rachunek' }}
+            </button>
+            <button type="button" @click="showCreateModal = false" class="btn btn-outline">
+              Anuluj
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="card">
+      <div v-if="loading" class="flex justify-center py-12">
+        <div class="loading-spinner"></div>
+      </div>
+      <div v-else-if="bills.length === 0" class="text-center py-12 text-gray-500">
+        <FileX class="w-16 h-16 mx-auto mb-4 opacity-50" />
+        <p class="text-lg">Brak rachunków</p>
+      </div>
+      <div v-else class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>{{ $t('bills.type') }}</th>
+              <th>{{ $t('bills.period') }}</th>
+              <th>{{ $t('bills.amount') }}</th>
+              <th>{{ $t('bills.totalUnits') }}</th>
+              <th>{{ $t('bills.status') }}</th>
+              <th v-if="authStore.isAdmin">{{ $t('common.actions') }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="bill in bills" :key="bill.id">
+              <td>
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-lg flex items-center justify-center"
+                       :class="{
+                         'bg-yellow-600/20': bill.type === 'electricity',
+                         'bg-orange-600/20': bill.type === 'gas',
+                         'bg-blue-600/20': bill.type === 'internet',
+                         'bg-gray-600/20': bill.type === 'shared'
+                       }">
+                    <Zap v-if="bill.type === 'electricity'" class="w-5 h-5 text-yellow-400" />
+                    <Flame v-else-if="bill.type === 'gas'" class="w-5 h-5 text-orange-400" />
+                    <Wifi v-else-if="bill.type === 'internet'" class="w-5 h-5 text-blue-400" />
+                    <Users v-else class="w-5 h-5 text-gray-400" />
+                  </div>
+                  <span class="font-medium">{{ $t(`bills.${bill.type}`) }}</span>
+                </div>
+              </td>
+              <td>
+                <div class="flex items-center gap-2">
+                  <Calendar class="w-4 h-4 text-gray-500" />
+                  <span>{{ formatDate(bill.periodStart) }} - {{ formatDate(bill.periodEnd) }}</span>
+                </div>
+              </td>
+              <td>
+                <span class="font-bold text-purple-400">{{ formatMoney(bill.totalAmountPLN) }} PLN</span>
+              </td>
+              <td>
+                <span class="text-gray-300">{{ bill.totalUnits ? formatUnits(bill.totalUnits) : '-' }}</span>
+              </td>
+              <td>
+                <span :class="`badge badge-${bill.status}`">
+                  {{ $t(`bills.${bill.status}`) }}
+                </span>
+              </td>
+              <td v-if="authStore.isAdmin">
+                <div class="flex items-center gap-2">
+                  <button v-if="bill.status === 'draft'" @click="allocateBill(bill.id)"
+                          class="btn btn-sm btn-outline flex items-center gap-1">
+                    <PieChart class="w-3 h-3" />
+                    {{ $t('bills.allocate') }}
+                  </button>
+                  <button v-if="bill.status === 'draft'" @click="postBill(bill.id)"
+                          class="btn btn-sm btn-primary flex items-center gap-1">
+                    <Send class="w-3 h-3" />
+                    {{ $t('bills.post') }}
+                  </button>
+                  <button v-if="bill.status === 'posted'" @click="closeBill(bill.id)"
+                          class="btn btn-sm btn-secondary flex items-center gap-1">
+                    <Check class="w-3 h-3" />
+                    {{ $t('bills.close') }}
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, onMounted } from 'vue'
+import { useAuthStore } from '../stores/auth'
+import api from '../api/client'
+import {
+  Plus, FileX, Zap, Flame, Wifi, Users, Calendar,
+  PieChart, Send, Check, X, AlertCircle
+} from 'lucide-vue-next'
+
+const authStore = useAuthStore()
+const bills = ref([])
+const loading = ref(false)
+const showCreateModal = ref(false)
+const creating = ref(false)
+const createError = ref('')
+
+const newBill = ref({
+  type: 'electricity',
+  totalAmountPLN: '',
+  totalUnits: '',
+  periodStart: '',
+  periodEnd: '',
+  notes: ''
+})
+
+onMounted(loadBills)
+
+async function loadBills() {
+  loading.value = true
+  try {
+    const response = await api.get('/bills')
+    bills.value = response.data || []
+  } catch (err) {
+    console.error('Failed to load bills:', err)
+    bills.value = []
+  } finally {
+    loading.value = false
+  }
+}
+
+async function createBill() {
+  creating.value = true
+  createError.value = ''
+
+  try {
+    await api.post('/bills', {
+      type: newBill.value.type,
+      total_amount_pln: newBill.value.totalAmountPLN,
+      total_units: newBill.value.totalUnits || undefined,
+      period_start: new Date(newBill.value.periodStart).toISOString(),
+      period_end: new Date(newBill.value.periodEnd).toISOString(),
+      notes: newBill.value.notes || undefined
+    })
+
+    showCreateModal.value = false
+    await loadBills()
+    newBill.value = {
+      type: 'electricity',
+      totalAmountPLN: '',
+      totalUnits: '',
+      periodStart: '',
+      periodEnd: '',
+      notes: ''
+    }
+  } catch (err) {
+    createError.value = err.response?.data?.error || 'Nie udało się utworzyć rachunku'
+  } finally {
+    creating.value = false
+  }
+}
+
+async function postBill(billId) {
+  try {
+    await api.post(`/bills/${billId}/post`)
+    await loadBills()
+  } catch (err) {
+    console.error('Failed to post bill:', err)
+  }
+}
+
+async function closeBill(billId) {
+  try {
+    await api.post(`/bills/${billId}/close`)
+    await loadBills()
+  } catch (err) {
+    console.error('Failed to close bill:', err)
+  }
+}
+
+function allocateBill(billId) {
+  console.log('Allocate bill:', billId)
+}
+
+function formatMoney(decimal128) {
+  return parseFloat(decimal128.$numberDecimal || 0).toFixed(2)
+}
+
+function formatUnits(decimal128) {
+  return parseFloat(decimal128.$numberDecimal || 0).toFixed(3)
+}
+
+function formatDate(date) {
+  return new Date(date).toLocaleDateString('pl-PL', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+</script>

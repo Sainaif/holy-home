@@ -1,0 +1,41 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(tree:*)",
+      "Bash(go mod init:*)",
+      "Bash(go mod:*)",
+      "Bash(go get:*)",
+      "Bash(go build:*)",
+      "Bash(python3:*)",
+      "Bash(npm create:*)",
+      "Bash(npm install)",
+      "Bash(npm install:*)",
+      "Bash(npx tailwindcss init:*)",
+      "Bash(./node_modules/.bin/tailwindcss:*)",
+      "Bash(docker-compose up:*)",
+      "Bash(docker-compose:*)",
+      "Bash(docker run:*)",
+      "Bash(/tmp/holy-home-api)",
+      "Bash(npm uninstall:*)",
+      "Bash(npm run dev:*)",
+      "Bash(curl:*)",
+      "Read(//tmp/**)",
+      "Bash(cat:*)",
+      "Bash(lsof:*)",
+      "Bash(docker exec:*)",
+      "Bash(pkill:*)",
+      "Bash(find:*)",
+      "Bash(test:*)",
+      "Bash(ln:*)",
+      "Bash(docker network:*)",
+      "Bash(docker logs:*)",
+      "Bash(docker system prune:*)",
+      "Bash(npm run build:*)",
+      "Bash(docker ps:*)",
+      "Bash(./api:*)",
+      "Bash(docker inspect:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

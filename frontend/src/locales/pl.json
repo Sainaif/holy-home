@@ -1,0 +1,110 @@
+{
+  "nav": {
+    "dashboard": "Panel główny",
+    "bills": "Rachunki",
+    "readings": "Odczyty",
+    "balance": "Bilans",
+    "chores": "Obowiązki",
+    "predictions": "Prognozy",
+    "settings": "Ustawienia",
+    "logout": "Wyloguj"
+  },
+  "auth": {
+    "login": "Zaloguj się",
+    "email": "Email",
+    "password": "Hasło",
+    "totpCode": "Kod 2FA (opcjonalnie)",
+    "loginButton": "Zaloguj",
+    "loginError": "Błąd logowania"
+  },
+  "dashboard": {
+    "title": "Panel główny",
+    "welcome": "Witaj, {name}!",
+    "recentBills": "Ostatnie rachunki",
+    "upcomingChores": "Nadchodzące obowiązki",
+    "currentBalance": "Aktualny bilans"
+  },
+  "bills": {
+    "title": "Rachunki",
+    "createNew": "Nowy rachunek",
+    "type": "Typ",
+    "amount": "Kwota",
+    "period": "Okres",
+    "status": "Status",
+    "draft": "Szkic",
+    "posted": "Zamieszczony",
+    "closed": "Zamknięty",
+    "electricity": "Prąd",
+    "gas": "Gaz",
+    "internet": "Internet",
+    "shared": "Wspólny",
+    "allocate": "Alokuj",
+    "post": "Zamieść",
+    "close": "Zamknij",
+    "totalAmount": "Suma",
+    "totalUnits": "Jednostki ogółem"
+  },
+  "readings": {
+    "title": "Odczyty licznika",
+    "addReading": "Dodaj odczyt",
+    "meterReading": "Wartość licznika",
+    "date": "Data",
+    "bill": "Rachunek",
+    "submit": "Zapisz"
+  },
+  "balance": {
+    "title": "Bilans finansowy",
+    "youOwe": "Jesteś winien",
+    "owesYou": "Jest Ci winien",
+    "settled": "Rozliczony",
+    "recordPayment": "Zapisz płatność",
+    "amount": "Kwota"
+  },
+  "chores": {
+    "title": "Obowiązki domowe",
+    "assigned": "Przypisany",
+    "dueDate": "Termin",
+    "status": "Status",
+    "pending": "Oczekujący",
+    "done": "Wykonany",
+    "markDone": "Oznacz jako wykonane",
+    "rotate": "Rotuj"
+  },
+  "predictions": {
+    "title": "Prognozy zużycia",
+    "forecast": "Prognoza",
+    "historical": "Dane historyczne",
+    "predicted": "Przewidywane",
+    "confidence": "Przedział ufności",
+    "recompute": "Przelicz"
+  },
+  "settings": {
+    "title": "Ustawienia",
+    "profile": "Profil",
+    "name": "Imię",
+    "email": "Email",
+    "changePassword": "Zmień hasło",
+    "currentPassword": "Aktualne hasło",
+    "newPassword": "Nowe hasło",
+    "save": "Zapisz",
+    "enable2FA": "Włącz 2FA"
+  },
+  "common": {
+    "loading": "Ładowanie...",
+    "error": "Błąd",
+    "success": "Sukces",
+    "cancel": "Anuluj",
+    "confirm": "Potwierdź",
+    "delete": "Usuń",
+    "edit": "Edytuj",
+    "save": "Zapisz",
+    "close": "Zamknij",
+    "search": "Szukaj",
+    "filter": "Filtruj",
+    "from": "Od",
+    "to": "Do",
+    "date": "Data",
+    "user": "Użytkownik",
+    "actions": "Akcje"
+  }
+}

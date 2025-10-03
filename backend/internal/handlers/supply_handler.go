@@ -118,6 +118,9 @@ func (h *SupplyHandler) CreateItem(c *fiber.Ctx) error {
 		})
 	}
 
+	userEmail := c.Locals("userEmail").(string)
+	userName := c.Locals("userName").(string)
+
 	var req struct {
 		Name            string  `json:"name"`
 		Category        string  `json:"category"`
@@ -146,16 +149,27 @@ func (h *SupplyHandler) CreateItem(c *fiber.Ctx) error {
 
 	item, err := h.supplyService.CreateItem(c.Context(), userID, req.Name, req.Category, req.CurrentQuantity, req.MinQuantity, req.Unit, req.Priority, req.Notes)
 	if err != nil {
+		h.auditService.LogAction(c.Context(), userID, userEmail, userName, "create_supply_item", "supply", nil,
+			map[string]interface{}{"name": req.Name, "error": err.Error()},
+			c.IP(), c.Get("User-Agent"), "failure")
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": err.Error(),
 		})
 	}
+
+	h.auditService.LogAction(c.Context(), userID, userEmail, userName, "create_supply_item", "supply", &item.ID,
+		map[string]interface{}{"name": req.Name, "category": req.Category, "quantity": req.CurrentQuantity},
+		c.IP(), c.Get("User-Agent"), "success")
 
 	return c.Status(fiber.StatusCreated).JSON(item)
 }
 
 // UpdateItem updates item details
 func (h *SupplyHandler) UpdateItem(c *fiber.Ctx) error {
+	userID, _ := middleware.GetUserID(c)
+	userEmail := c.Locals("userEmail").(string)
+	userName := c.Locals("userName").(string)
+
 	id := c.Params("id")
 	itemID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
@@ -180,10 +194,17 @@ func (h *SupplyHandler) UpdateItem(c *fiber.Ctx) error {
 	}
 
 	if err := h.supplyService.UpdateItem(c.Context(), itemID, req.Name, req.Category, req.MinQuantity, req.Unit, req.Priority, req.Notes); err != nil {
+		h.auditService.LogAction(c.Context(), userID, userEmail, userName, "update_supply_item", "supply", &itemID,
+			map[string]interface{}{"error": err.Error()},
+			c.IP(), c.Get("User-Agent"), "failure")
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": err.Error(),
 		})
 	}
+
+	h.auditService.LogAction(c.Context(), userID, userEmail, userName, "update_supply_item", "supply", &itemID,
+		map[string]interface{}{"changes": req},
+		c.IP(), c.Get("User-Agent"), "success")
 
 	return c.JSON(fiber.Map{
 		"message": "Item updated successfully",
@@ -207,6 +228,9 @@ func (h *SupplyHandler) RestockItem(c *fiber.Ctx) error {
 		})
 	}
 
+	userEmail := c.Locals("userEmail").(string)
+	userName := c.Locals("userName").(string)
+
 	var req struct {
 		QuantityToAdd int      `json:"quantityToAdd"`
 		AmountPLN     *float64 `json:"amountPLN"`
@@ -220,10 +244,17 @@ func (h *SupplyHandler) RestockItem(c *fiber.Ctx) error {
 	}
 
 	if err := h.supplyService.RestockItem(c.Context(), itemID, userID, req.QuantityToAdd, req.AmountPLN, req.NeedsRefund); err != nil {
+		h.auditService.LogAction(c.Context(), userID, userEmail, userName, "restock_supply_item", "supply", &itemID,
+			map[string]interface{}{"quantity": req.QuantityToAdd, "error": err.Error()},
+			c.IP(), c.Get("User-Agent"), "failure")
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": err.Error(),
 		})
 	}
+
+	h.auditService.LogAction(c.Context(), userID, userEmail, userName, "restock_supply_item", "supply", &itemID,
+		map[string]interface{}{"quantity": req.QuantityToAdd, "amount": req.AmountPLN, "needs_refund": req.NeedsRefund},
+		c.IP(), c.Get("User-Agent"), "success")
 
 	return c.JSON(fiber.Map{
 		"message": "Item restocked successfully",
@@ -315,6 +346,10 @@ func (h *SupplyHandler) MarkAsRefunded(c *fiber.Ctx) error {
 
 // DeleteItem deletes an item
 func (h *SupplyHandler) DeleteItem(c *fiber.Ctx) error {
+	userID, _ := middleware.GetUserID(c)
+	userEmail := c.Locals("userEmail").(string)
+	userName := c.Locals("userName").(string)
+
 	id := c.Params("id")
 	itemID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
@@ -324,10 +359,17 @@ func (h *SupplyHandler) DeleteItem(c *fiber.Ctx) error {
 	}
 
 	if err := h.supplyService.DeleteItem(c.Context(), itemID); err != nil {
+		h.auditService.LogAction(c.Context(), userID, userEmail, userName, "delete_supply_item", "supply", &itemID,
+			map[string]interface{}{"error": err.Error()},
+			c.IP(), c.Get("User-Agent"), "failure")
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": err.Error(),
 		})
 	}
+
+	h.auditService.LogAction(c.Context(), userID, userEmail, userName, "delete_supply_item", "supply", &itemID,
+		map[string]interface{}{},
+		c.IP(), c.Get("User-Agent"), "success")
 
 	return c.JSON(fiber.Map{
 		"message": "Item deleted successfully",

@@ -12,17 +12,23 @@ import (
 type LoanHandler struct {
 	loanService  *services.LoanService
 	eventService *services.EventService
+	auditService *services.AuditService
 }
 
-func NewLoanHandler(loanService *services.LoanService, eventService *services.EventService) *LoanHandler {
+func NewLoanHandler(loanService *services.LoanService, eventService *services.EventService, auditService *services.AuditService) *LoanHandler {
 	return &LoanHandler{
 		loanService:  loanService,
 		eventService: eventService,
+		auditService: auditService,
 	}
 }
 
 // CreateLoan creates a new loan
 func (h *LoanHandler) CreateLoan(c *fiber.Ctx) error {
+	userID, _ := middleware.GetUserID(c)
+	userEmail := c.Locals("userEmail").(string)
+	userName := c.Locals("userName").(string)
+
 	var req services.CreateLoanRequest
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -32,10 +38,17 @@ func (h *LoanHandler) CreateLoan(c *fiber.Ctx) error {
 
 	loan, err := h.loanService.CreateLoan(c.Context(), req)
 	if err != nil {
+		h.auditService.LogAction(c.Context(), userID, userEmail, userName, "create_loan", "loan", nil,
+			map[string]interface{}{"error": err.Error()},
+			c.IP(), c.Get("User-Agent"), "failure")
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": err.Error(),
 		})
 	}
+
+	h.auditService.LogAction(c.Context(), userID, userEmail, userName, "create_loan", "loan", &loan.ID,
+		map[string]interface{}{"lender_id": req.LenderID, "borrower_id": req.BorrowerID, "amount": req.AmountPLN},
+		c.IP(), c.Get("User-Agent"), "success")
 
 	// Broadcast loan created event
 	h.eventService.Broadcast(services.EventLoanCreated, map[string]interface{}{
@@ -52,6 +65,10 @@ func (h *LoanHandler) CreateLoan(c *fiber.Ctx) error {
 
 // CreateLoanPayment records a loan repayment
 func (h *LoanHandler) CreateLoanPayment(c *fiber.Ctx) error {
+	userID, _ := middleware.GetUserID(c)
+	userEmail := c.Locals("userEmail").(string)
+	userName := c.Locals("userName").(string)
+
 	var req services.CreateLoanPaymentRequest
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -61,10 +78,17 @@ func (h *LoanHandler) CreateLoanPayment(c *fiber.Ctx) error {
 
 	payment, err := h.loanService.CreateLoanPayment(c.Context(), req)
 	if err != nil {
+		h.auditService.LogAction(c.Context(), userID, userEmail, userName, "create_loan_payment", "loan", nil,
+			map[string]interface{}{"error": err.Error()},
+			c.IP(), c.Get("User-Agent"), "failure")
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": err.Error(),
 		})
 	}
+
+	h.auditService.LogAction(c.Context(), userID, userEmail, userName, "create_loan_payment", "loan", &payment.ID,
+		map[string]interface{}{"loan_id": req.LoanID, "amount": req.AmountPLN},
+		c.IP(), c.Get("User-Agent"), "success")
 
 	// Broadcast loan payment created event
 	h.eventService.Broadcast(services.EventLoanPaymentCreated, map[string]interface{}{
@@ -145,6 +169,10 @@ func (h *LoanHandler) GetUserBalance(c *fiber.Ctx) error {
 
 // DeleteLoan deletes a loan (ADMIN only)
 func (h *LoanHandler) DeleteLoan(c *fiber.Ctx) error {
+	userID, _ := middleware.GetUserID(c)
+	userEmail := c.Locals("userEmail").(string)
+	userName := c.Locals("userName").(string)
+
 	id := c.Params("id")
 	loanID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
@@ -155,10 +183,17 @@ func (h *LoanHandler) DeleteLoan(c *fiber.Ctx) error {
 
 	err = h.loanService.DeleteLoan(c.Context(), loanID)
 	if err != nil {
+		h.auditService.LogAction(c.Context(), userID, userEmail, userName, "delete_loan", "loan", &loanID,
+			map[string]interface{}{"error": err.Error()},
+			c.IP(), c.Get("User-Agent"), "failure")
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": err.Error(),
 		})
 	}
+
+	h.auditService.LogAction(c.Context(), userID, userEmail, userName, "delete_loan", "loan", &loanID,
+		map[string]interface{}{},
+		c.IP(), c.Get("User-Agent"), "success")
 
 	// Broadcast loan deleted event
 	h.eventService.Broadcast(services.EventLoanDeleted, map[string]interface{}{

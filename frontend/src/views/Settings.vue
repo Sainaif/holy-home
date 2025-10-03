@@ -351,32 +351,113 @@
           </button>
         </div>
 
-        <!-- Filters -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
-          <select v-model="auditFilters.userEmail" @change="loadAuditLogs" class="input">
-            <option value="">Wszyscy użytkownicy</option>
-            <option v-for="user in users" :key="user.id" :value="user.email">{{ user.name }} ({{ user.email }})</option>
-          </select>
-          <select v-model="auditFilters.action" @change="loadAuditLogs" class="input">
-            <option value="">Wszystkie akcje</option>
-            <option value="role.create">Tworzenie roli</option>
-            <option value="role.update">Aktualizacja roli</option>
-            <option value="role.delete">Usunięcie roli</option>
-            <option value="user.update">Aktualizacja użytkownika</option>
-            <option value="chore.delete">Usunięcie obowiązku</option>
-          </select>
-          <select v-model="auditFilters.status" @change="loadAuditLogs" class="input">
-            <option value="">Wszystkie statusy</option>
-            <option value="success">Sukces</option>
-            <option value="failure">Błąd</option>
-          </select>
-          <select v-model="auditLimit" @change="loadAuditLogs" class="input">
-            <option :value="10">10 wpisów</option>
-            <option :value="25">25 wpisów</option>
-            <option :value="50">50 wpisów</option>
-            <option :value="100">100 wpisów</option>
-            <option :value="200">200 wpisów</option>
-          </select>
+        <!-- Comprehensive Filters -->
+        <div class="space-y-3 mb-4">
+          <!-- Search Bar -->
+          <div class="relative">
+            <input
+              v-model="auditFilters.search"
+              @input="debouncedLoadAuditLogs"
+              type="text"
+              placeholder="Szukaj w logach (użytkownik, akcja, zasób...)..."
+              class="input pl-10" />
+            <Search class="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+          </div>
+
+          <!-- Row 1: User, Action, Resource Type, Status -->
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <select v-model="auditFilters.userEmail" @change="loadAuditLogs" class="input">
+              <option value="">Wszyscy użytkownicy</option>
+              <option v-for="user in users" :key="user.id" :value="user.email">{{ user.name }} ({{ user.email }})</option>
+            </select>
+
+            <select v-model="auditFilters.action" @change="loadAuditLogs" class="input">
+              <option value="">Wszystkie akcje</option>
+              <optgroup label="Rachunki">
+                <option value="create_bill">Tworzenie rachunku</option>
+                <option value="post_bill">Publikacja rachunku</option>
+                <option value="close_bill">Zamknięcie rachunku</option>
+                <option value="delete_bill">Usunięcie rachunku</option>
+              </optgroup>
+              <optgroup label="Odczyty">
+                <option value="create_reading">Dodanie odczytu</option>
+                <option value="delete_consumption">Usunięcie odczytu</option>
+              </optgroup>
+              <optgroup label="Zakupy">
+                <option value="create_supply">Dodanie artykułu</option>
+                <option value="update_supply">Aktualizacja artykułu</option>
+                <option value="delete_supply">Usunięcie artykułu</option>
+                <option value="purchase_supply">Zakup artykułu</option>
+              </optgroup>
+              <optgroup label="Pożyczki">
+                <option value="create_loan">Tworzenie pożyczki</option>
+                <option value="payment_loan">Spłata pożyczki</option>
+              </optgroup>
+              <optgroup label="Obowiązki">
+                <option value="create_chore">Tworzenie obowiązku</option>
+                <option value="update_chore">Aktualizacja obowiązku</option>
+                <option value="delete_chore">Usunięcie obowiązku</option>
+                <option value="complete_chore">Wykonanie obowiązku</option>
+              </optgroup>
+              <optgroup label="Użytkownicy i role">
+                <option value="user.create">Tworzenie użytkownika</option>
+                <option value="user.update">Aktualizacja użytkownika</option>
+                <option value="user.delete">Usunięcie użytkownika</option>
+                <option value="role.create">Tworzenie roli</option>
+                <option value="role.update">Aktualizacja roli</option>
+                <option value="role.delete">Usunięcie roli</option>
+              </optgroup>
+            </select>
+
+            <select v-model="auditFilters.resourceType" @change="loadAuditLogs" class="input">
+              <option value="">Wszystkie zasoby</option>
+              <option value="bill">Rachunek</option>
+              <option value="consumption">Odczyt</option>
+              <option value="supply">Zakup</option>
+              <option value="loan">Pożyczka</option>
+              <option value="chore">Obowiązek</option>
+              <option value="user">Użytkownik</option>
+              <option value="role">Rola</option>
+            </select>
+
+            <select v-model="auditFilters.status" @change="loadAuditLogs" class="input">
+              <option value="">Wszystkie statusy</option>
+              <option value="success">✓ Sukces</option>
+              <option value="failure">✗ Błąd</option>
+            </select>
+          </div>
+
+          <!-- Row 2: Date Range, Limit -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <input
+              v-model="auditFilters.dateFrom"
+              @change="loadAuditLogs"
+              type="date"
+              placeholder="Data od"
+              class="input" />
+
+            <input
+              v-model="auditFilters.dateTo"
+              @change="loadAuditLogs"
+              type="date"
+              placeholder="Data do"
+              class="input" />
+
+            <select v-model="auditLimit" @change="loadAuditLogs" class="input">
+              <option :value="10">10 wpisów</option>
+              <option :value="25">25 wpisów</option>
+              <option :value="50">50 wpisów</option>
+              <option :value="100">100 wpisów</option>
+              <option :value="200">200 wpisów</option>
+            </select>
+          </div>
+
+          <!-- Clear Filters Button -->
+          <div class="flex justify-end">
+            <button @click="clearAuditFilters" class="btn btn-outline btn-sm">
+              Wyczyść filtry
+            </button>
+          </div>
         </div>
 
         <div v-if="loadingAuditLogs" class="text-center py-8">Ładowanie...</div>
@@ -389,6 +470,7 @@
                   <th class="px-4 py-3 text-sm font-medium text-gray-400">Data</th>
                   <th class="px-4 py-3 text-sm font-medium text-gray-400">Użytkownik</th>
                   <th class="px-4 py-3 text-sm font-medium text-gray-400">Akcja</th>
+                  <th class="px-4 py-3 text-sm font-medium text-gray-400">Zasób</th>
                   <th class="px-4 py-3 text-sm font-medium text-gray-400">Status</th>
                 </tr>
               </thead>
@@ -397,6 +479,7 @@
                   <td class="px-4 py-3 text-sm">{{ formatDate(log.createdAt) }}</td>
                   <td class="px-4 py-3 text-sm">{{ log.userName || log.userEmail }}</td>
                   <td class="px-4 py-3 text-sm">{{ translateAction(log.action) }}</td>
+                  <td class="px-4 py-3 text-sm text-gray-400">{{ log.resourceType || '-' }}</td>
                   <td class="px-4 py-3">
                     <span :class="log.status === 'success' ? 'text-green-400' : 'text-red-400'" class="text-sm">
                       {{ log.status === 'success' ? 'Sukces' : 'Błąd' }}
@@ -791,7 +874,7 @@ import { useAuthStore } from '../stores/auth'
 import { usePasskey } from '../composables/usePasskey'
 import { useDataEvents, DATA_EVENTS } from '../composables/useDataEvents'
 import api from '../api/client'
-import { UserPlus, Users, Edit, Trash, X, Key, Shield, ShieldOff, Download, Upload, RefreshCw, CheckSquare, Gauge, ShoppingCart } from 'lucide-vue-next'
+import { UserPlus, Users, Edit, Trash, X, Key, Shield, ShieldOff, Download, Upload, RefreshCw, CheckSquare, Gauge, ShoppingCart, Search } from 'lucide-vue-next'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -892,7 +975,11 @@ const loadingAuditLogs = ref(false)
 const auditFilters = ref({
   userEmail: '',
   action: '',
-  status: ''
+  status: '',
+  search: '',
+  dateFrom: '',
+  dateTo: '',
+  resourceType: ''
 })
 const auditLimit = ref(50)
 
@@ -1570,6 +1657,15 @@ function translateAction(action) {
 }
 
 // Audit logs functions
+let auditDebounceTimer = null
+
+function debouncedLoadAuditLogs() {
+  if (auditDebounceTimer) clearTimeout(auditDebounceTimer)
+  auditDebounceTimer = setTimeout(() => {
+    loadAuditLogs()
+  }, 400)
+}
+
 async function loadAuditLogs() {
   loadingAuditLogs.value = true
   try {
@@ -1577,6 +1673,10 @@ async function loadAuditLogs() {
     if (auditFilters.value.userEmail) params.append('userEmail', auditFilters.value.userEmail)
     if (auditFilters.value.action) params.append('action', auditFilters.value.action)
     if (auditFilters.value.status) params.append('status', auditFilters.value.status)
+    if (auditFilters.value.search) params.append('search', auditFilters.value.search)
+    if (auditFilters.value.dateFrom) params.append('dateFrom', auditFilters.value.dateFrom)
+    if (auditFilters.value.dateTo) params.append('dateTo', auditFilters.value.dateTo)
+    if (auditFilters.value.resourceType) params.append('resourceType', auditFilters.value.resourceType)
 
     const response = await api.get(`/audit/logs?${params.toString()}`)
     auditLogs.value = response.data.logs || []
@@ -1585,6 +1685,19 @@ async function loadAuditLogs() {
   } finally {
     loadingAuditLogs.value = false
   }
+}
+
+function clearAuditFilters() {
+  auditFilters.value = {
+    userEmail: '',
+    action: '',
+    status: '',
+    search: '',
+    dateFrom: '',
+    dateTo: '',
+    resourceType: ''
+  }
+  loadAuditLogs()
 }
 
 // Role management functions

@@ -137,40 +137,6 @@ func (s *ConsumptionService) GetUserConsumptions(ctx context.Context, userID pri
 	return consumptions, nil
 }
 
-// GetAllocations retrieves allocations for a bill
-func (s *ConsumptionService) GetAllocations(ctx context.Context, billID primitive.ObjectID) ([]models.Allocation, error) {
-	cursor, err := s.db.Collection("allocations").Find(ctx, bson.M{"bill_id": billID})
-	if err != nil {
-		return nil, fmt.Errorf("database error: %w", err)
-	}
-	defer cursor.Close(ctx)
-
-	var allocations []models.Allocation
-	if err := cursor.All(ctx, &allocations); err != nil {
-		return nil, fmt.Errorf("failed to decode allocations: %w", err)
-	}
-
-	return allocations, nil
-}
-
-// GetUserAllocations retrieves all allocations for a user
-func (s *ConsumptionService) GetUserAllocations(ctx context.Context, userID primitive.ObjectID) ([]models.Allocation, error) {
-	cursor, err := s.db.Collection("allocations").Find(ctx, bson.M{
-		"subject_type": "user",
-		"subject_id":   userID,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("database error: %w", err)
-	}
-	defer cursor.Close(ctx)
-
-	var allocations []models.Allocation
-	if err := cursor.All(ctx, &allocations); err != nil {
-		return nil, fmt.Errorf("failed to decode allocations: %w", err)
-	}
-
-	return allocations, nil
-}
 // DeleteConsumption deletes a consumption/reading
 func (s *ConsumptionService) DeleteConsumption(ctx context.Context, consumptionID primitive.ObjectID) error {
 	result, err := s.db.Collection("consumptions").DeleteOne(ctx, bson.M{"_id": consumptionID})

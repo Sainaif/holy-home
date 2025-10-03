@@ -71,17 +71,6 @@ type Consumption struct {
 	Source     string                `bson:"source" json:"source"` // user, admin
 }
 
-// Allocation represents cost allocation to users/groups
-type Allocation struct {
-	ID          primitive.ObjectID   `bson:"_id,omitempty" json:"id"`
-	BillID      primitive.ObjectID   `bson:"bill_id" json:"billId"`
-	SubjectType string               `bson:"subject_type" json:"subjectType"` // user, group
-	SubjectID   primitive.ObjectID   `bson:"subject_id" json:"subjectId"`
-	AmountPLN   primitive.Decimal128 `bson:"amount_pln" json:"amountPLN"`
-	Units       primitive.Decimal128 `bson:"units" json:"units"`
-	Method      string               `bson:"method" json:"method"` // proportional, equal, weight, override
-}
-
 // Payment represents a payment towards a bill
 type Payment struct {
 	ID          primitive.ObjectID   `bson:"_id,omitempty" json:"id"`

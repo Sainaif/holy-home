@@ -3,11 +3,29 @@
     <div class="page-header">
       <div>
         <h1 class="text-4xl font-bold gradient-text mb-2">{{ $t('bills.title') }}</h1>
-        <p class="text-gray-400">Historia rachunków i alokacji kosztów</p>
+        <p class="text-gray-400">Historia rachunków i odczyty liczników</p>
       </div>
-      <button v-if="authStore.isAdmin" @click="showCreateModal = true" class="btn btn-primary flex items-center gap-2">
+      <button v-if="authStore.isAdmin && activeTab === 'bills'" @click="showCreateModal = true" class="btn btn-primary flex items-center gap-2">
         <Plus class="w-5 h-5" />
         {{ $t('bills.createNew') }}
+      </button>
+    </div>
+
+    <!-- Tabs -->
+    <div class="flex gap-2 mb-6">
+      <button
+        @click="activeTab = 'bills'"
+        :class="['btn', activeTab === 'bills' ? 'btn-primary' : 'btn-outline']"
+        class="flex items-center gap-2">
+        <Receipt class="w-4 h-4" />
+        Rachunki
+      </button>
+      <button
+        @click="activeTab = 'readings'"
+        :class="['btn', activeTab === 'readings' ? 'btn-primary' : 'btn-outline']"
+        class="flex items-center gap-2">
+        <Gauge class="w-4 h-4" />
+        Odczyty
       </button>
     </div>
 
@@ -82,128 +100,213 @@
       </div>
     </div>
 
-    <!-- Filters -->
-    <div class="card mb-6">
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div>
-          <label class="block text-sm font-medium mb-2">Typ</label>
-          <select v-model="filters.type" class="input">
-            <option value="">Wszystkie</option>
-            <option value="electricity">Prąd</option>
-            <option value="gas">Gaz</option>
-            <option value="internet">Internet</option>
-            <option value="inne">Inne</option>
-          </select>
+    <!-- Bills Tab -->
+    <div v-show="activeTab === 'bills'">
+      <!-- Filters -->
+      <div class="card mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div>
+            <label class="block text-sm font-medium mb-2">Typ</label>
+            <select v-model="filters.type" class="input">
+              <option value="">Wszystkie</option>
+              <option value="electricity">Prąd</option>
+              <option value="gas">Gaz</option>
+              <option value="internet">Internet</option>
+              <option value="inne">Inne</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-2">Data od</label>
+            <input v-model="filters.dateFrom" type="date" class="input" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-2">Data do</label>
+            <input v-model="filters.dateTo" type="date" class="input" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-2">Sortuj</label>
+            <select v-model="filters.sortBy" class="input">
+              <option value="date-desc">Data (najnowsze)</option>
+              <option value="date-asc">Data (najstarsze)</option>
+              <option value="amount-desc">Kwota (malejąco)</option>
+              <option value="amount-asc">Kwota (rosnąco)</option>
+            </select>
+          </div>
         </div>
-        <div>
-          <label class="block text-sm font-medium mb-2">Data od</label>
-          <input v-model="filters.dateFrom" type="date" class="input" />
+      </div>
+
+      <div class="card">
+        <div v-if="loading" class="flex justify-center py-12">
+          <div class="loading-spinner"></div>
         </div>
-        <div>
-          <label class="block text-sm font-medium mb-2">Data do</label>
-          <input v-model="filters.dateTo" type="date" class="input" />
+        <div v-else-if="filteredBills.length === 0" class="text-center py-12 text-gray-500">
+          <FileX class="w-16 h-16 mx-auto mb-4 opacity-50" />
+          <p class="text-lg">Brak rachunków</p>
         </div>
-        <div>
-          <label class="block text-sm font-medium mb-2">Sortuj</label>
-          <select v-model="filters.sortBy" class="input">
-            <option value="date-desc">Data (najnowsze)</option>
-            <option value="date-asc">Data (najstarsze)</option>
-            <option value="amount-desc">Kwota (malejąco)</option>
-            <option value="amount-asc">Kwota (rosnąco)</option>
-          </select>
+        <div v-else class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>{{ $t('bills.type') }}</th>
+                <th>{{ $t('bills.period') }}</th>
+                <th>{{ $t('bills.amount') }}</th>
+                <th>{{ $t('bills.totalUnits') }}</th>
+                <th>Opis</th>
+                <th>{{ $t('bills.status') }}</th>
+                <th v-if="authStore.isAdmin">{{ $t('common.actions') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="bill in filteredBills" :key="bill.id">
+                <td>
+                  <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-lg flex items-center justify-center"
+                         :class="{
+                           'bg-yellow-600/20': bill.type === 'electricity',
+                           'bg-orange-600/20': bill.type === 'gas',
+                           'bg-blue-600/20': bill.type === 'internet',
+                           'bg-purple-600/20': bill.type === 'inne'
+                         }">
+                      <Zap v-if="bill.type === 'electricity'" class="w-5 h-5 text-yellow-400" />
+                      <Flame v-else-if="bill.type === 'gas'" class="w-5 h-5 text-orange-400" />
+                      <Wifi v-else-if="bill.type === 'internet'" class="w-5 h-5 text-blue-400" />
+                      <FileX v-else class="w-5 h-5 text-purple-400" />
+                    </div>
+                    <div>
+                      <span class="font-medium">{{ bill.type === 'inne' && bill.customType ? bill.customType : $t(`bills.${bill.type}`) }}</span>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <div class="flex items-center gap-2">
+                    <Calendar class="w-4 h-4 text-gray-500" />
+                    <span>{{ formatDate(bill.periodStart) }} - {{ formatDate(bill.periodEnd) }}</span>
+                  </div>
+                </td>
+                <td>
+                  <span class="font-bold text-purple-400">{{ formatMoney(bill.totalAmountPLN) }} PLN</span>
+                </td>
+                <td>
+                  <span class="text-gray-300">{{ bill.totalUnits ? formatUnits(bill.totalUnits) + ' ' + getUnit(bill.type) : '-' }}</span>
+                </td>
+                <td>
+                  <span class="text-gray-400 text-sm">{{ bill.notes || '-' }}</span>
+                </td>
+                <td>
+                  <span :class="`badge badge-${bill.status}`">
+                    {{ $t(`bills.${bill.status}`) }}
+                  </span>
+                </td>
+                <td v-if="authStore.isAdmin">
+                  <div class="flex items-center gap-2">
+                    <button v-if="bill.status === 'draft'" @click="postBill(bill.id)"
+                            class="btn btn-sm btn-primary flex items-center gap-1">
+                      <Send class="w-3 h-3" />
+                      {{ $t('bills.post') }}
+                    </button>
+                    <button v-if="bill.status === 'posted'" @click="closeBill(bill.id)"
+                            class="btn btn-sm btn-secondary flex items-center gap-1">
+                      <Check class="w-3 h-3" />
+                      {{ $t('bills.close') }}
+                    </button>
+                    <button @click="deleteBill(bill.id)"
+                            class="btn btn-sm bg-red-600/20 hover:bg-red-600/30 text-red-400 flex items-center gap-1">
+                      <Trash2 class="w-3 h-3" />
+                      Usuń
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
 
-    <div class="card">
-      <div v-if="loading" class="flex justify-center py-12">
-        <div class="loading-spinner"></div>
+    <!-- Readings Tab -->
+    <div v-show="activeTab === 'readings'">
+      <!-- Add Reading Form -->
+      <div class="card mb-6">
+        <h2 class="text-xl font-semibold mb-4">{{ $t('readings.addReading') }}</h2>
+        <form @submit.prevent="submitReading" class="space-y-4">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label class="block text-sm font-medium mb-2">{{ $t('readings.bill') }}</label>
+              <select v-model="form.billId" required class="input">
+                <option value="">Wybierz rachunek</option>
+                <option v-for="bill in postedBills" :key="bill.id" :value="bill.id">
+                  {{ $t(`bills.${bill.type}`) }} - {{ formatDate(bill.periodStart) }}
+                </option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium mb-2">{{ $t('readings.meterReading') }}</label>
+              <input v-model.number="form.meterReading" type="number" step="0.001" required class="input" />
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium mb-2">{{ $t('readings.date') }}</label>
+              <input v-model="form.readingDate" type="datetime-local" required class="input" />
+            </div>
+          </div>
+
+          <button type="submit" :disabled="loadingReading" class="btn btn-primary">
+            {{ $t('readings.submit') }}
+          </button>
+        </form>
       </div>
-      <div v-else-if="filteredBills.length === 0" class="text-center py-12 text-gray-500">
-        <FileX class="w-16 h-16 mx-auto mb-4 opacity-50" />
-        <p class="text-lg">Brak rachunków</p>
+
+      <!-- Readings Filters -->
+      <div class="card mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-sm font-medium mb-2">Rachunek</label>
+            <select v-model="readingFilters.billId" class="input">
+              <option value="">Wszystkie rachunki</option>
+              <option v-for="bill in allBills" :key="bill.id" :value="bill.id">
+                {{ $t(`bills.${bill.type}`) }} - {{ formatDate(bill.periodStart) }}
+              </option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-2">Użytkownik</label>
+            <select v-model="readingFilters.userId" class="input">
+              <option value="">Wszyscy użytkownicy</option>
+              <option v-for="user in users" :key="user.id" :value="user.id">
+                {{ user.name }}
+              </option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-2">Sortuj</label>
+            <select v-model="readingFilters.sortBy" class="input">
+              <option value="date-desc">Data (najnowsze)</option>
+              <option value="date-asc">Data (najstarsze)</option>
+              <option value="value-desc">Wartość (malejąco)</option>
+              <option value="value-asc">Wartość (rosnąco)</option>
+            </select>
+          </div>
+        </div>
       </div>
-      <div v-else class="table-wrapper">
-        <table>
-          <thead>
-            <tr>
-              <th>{{ $t('bills.type') }}</th>
-              <th>{{ $t('bills.period') }}</th>
-              <th>{{ $t('bills.amount') }}</th>
-              <th>{{ $t('bills.totalUnits') }}</th>
-              <th>Opis</th>
-              <th>{{ $t('bills.status') }}</th>
-              <th v-if="authStore.isAdmin">{{ $t('common.actions') }}</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="bill in filteredBills" :key="bill.id">
-              <td>
-                <div class="flex items-center gap-3">
-                  <div class="w-10 h-10 rounded-lg flex items-center justify-center"
-                       :class="{
-                         'bg-yellow-600/20': bill.type === 'electricity',
-                         'bg-orange-600/20': bill.type === 'gas',
-                         'bg-blue-600/20': bill.type === 'internet',
-                         'bg-purple-600/20': bill.type === 'inne'
-                       }">
-                    <Zap v-if="bill.type === 'electricity'" class="w-5 h-5 text-yellow-400" />
-                    <Flame v-else-if="bill.type === 'gas'" class="w-5 h-5 text-orange-400" />
-                    <Wifi v-else-if="bill.type === 'internet'" class="w-5 h-5 text-blue-400" />
-                    <FileX v-else class="w-5 h-5 text-purple-400" />
-                  </div>
-                  <div>
-                    <span class="font-medium">{{ bill.type === 'inne' && bill.customType ? bill.customType : $t(`bills.${bill.type}`) }}</span>
-                  </div>
-                </div>
-              </td>
-              <td>
-                <div class="flex items-center gap-2">
-                  <Calendar class="w-4 h-4 text-gray-500" />
-                  <span>{{ formatDate(bill.periodStart) }} - {{ formatDate(bill.periodEnd) }}</span>
-                </div>
-              </td>
-              <td>
-                <span class="font-bold text-purple-400">{{ formatMoney(bill.totalAmountPLN) }} PLN</span>
-              </td>
-              <td>
-                <span class="text-gray-300">{{ bill.totalUnits ? formatUnits(bill.totalUnits) + ' ' + getUnit(bill.type) : '-' }}</span>
-              </td>
-              <td>
-                <span class="text-gray-400 text-sm">{{ bill.notes || '-' }}</span>
-              </td>
-              <td>
-                <span :class="`badge badge-${bill.status}`">
-                  {{ $t(`bills.${bill.status}`) }}
-                </span>
-              </td>
-              <td v-if="authStore.isAdmin">
-                <div class="flex items-center gap-2">
-                  <button v-if="bill.status === 'draft'" @click="allocateBill(bill.id)"
-                          class="btn btn-sm btn-outline flex items-center gap-1">
-                    <PieChart class="w-3 h-3" />
-                    {{ $t('bills.allocate') }}
-                  </button>
-                  <button v-if="bill.status === 'draft'" @click="postBill(bill.id)"
-                          class="btn btn-sm btn-primary flex items-center gap-1">
-                    <Send class="w-3 h-3" />
-                    {{ $t('bills.post') }}
-                  </button>
-                  <button v-if="bill.status === 'posted'" @click="closeBill(bill.id)"
-                          class="btn btn-sm btn-secondary flex items-center gap-1">
-                    <Check class="w-3 h-3" />
-                    {{ $t('bills.close') }}
-                  </button>
-                  <button @click="deleteBill(bill.id)"
-                          class="btn btn-sm bg-red-600/20 hover:bg-red-600/30 text-red-400 flex items-center gap-1">
-                    <Trash2 class="w-3 h-3" />
-                    Usuń
-                  </button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+
+      <!-- Readings List -->
+      <div class="card">
+        <h2 class="text-xl font-semibold mb-4">Ostatnie odczyty</h2>
+        <div v-if="loadingReadings" class="text-center py-8">{{ $t('common.loading') }}</div>
+        <div v-else-if="filteredReadings.length === 0" class="text-center py-8 text-gray-400">Brak odczytów</div>
+        <div v-else class="space-y-3">
+          <div v-for="reading in filteredReadings" :key="reading.id" class="flex justify-between items-center p-3 bg-gray-700 rounded hover:bg-gray-600 cursor-pointer transition-colors" @click="viewBill(reading.billId)">
+            <div>
+              <span class="font-medium">{{ formatMeterValue(reading.meterValue) }} {{ getUnitForBill(reading.billId) }}</span>
+              <span class="text-gray-400 text-sm ml-4">{{ formatDateTime(reading.recordedAt) }}</span>
+              <span v-if="getBillInfo(reading.billId)" class="text-blue-400 text-sm ml-4">
+                {{ getBillInfo(reading.billId) }} →
+              </span>
+            </div>
+            <span class="text-sm text-gray-400">{{ getUserName(reading.userId) }}</span>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -211,14 +314,19 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import api from '../api/client'
 import {
-  Plus, FileX, Zap, Flame, Wifi, Users, Calendar,
-  PieChart, Send, Check, X, AlertCircle, Trash2
+  Plus, FileX, Zap, Flame, Wifi, Calendar, Receipt, Gauge,
+  Send, Check, X, AlertCircle, Trash2
 } from 'lucide-vue-next'
 
+const router = useRouter()
 const authStore = useAuthStore()
+const activeTab = ref('bills')
+
+// Bills state
 const bills = ref([])
 const loading = ref(false)
 const showCreateModal = ref(false)
@@ -232,15 +340,33 @@ const filters = ref({
   sortBy: 'date-desc'
 })
 
+// Readings state
+const allBills = ref([])
+const postedBills = ref([])
+const readings = ref([])
+const users = ref([])
+const loadingReadings = ref(false)
+const loadingReading = ref(false)
+
+const readingFilters = ref({
+  billId: '',
+  userId: '',
+  sortBy: 'date-desc'
+})
+
+const form = ref({
+  billId: '',
+  meterReading: '',
+  readingDate: new Date().toISOString().slice(0, 16)
+})
+
 const filteredBills = computed(() => {
   let result = [...bills.value]
 
-  // Filter by type
   if (filters.value.type) {
     result = result.filter(b => b.type === filters.value.type)
   }
 
-  // Filter by date range
   if (filters.value.dateFrom) {
     const fromDate = new Date(filters.value.dateFrom)
     result = result.filter(b => new Date(b.periodEnd) >= fromDate)
@@ -250,7 +376,6 @@ const filteredBills = computed(() => {
     result = result.filter(b => new Date(b.periodStart) <= toDate)
   }
 
-  // Sort
   result.sort((a, b) => {
     switch (filters.value.sortBy) {
       case 'date-desc':
@@ -269,6 +394,35 @@ const filteredBills = computed(() => {
   return result
 })
 
+const filteredReadings = computed(() => {
+  let result = [...readings.value]
+
+  if (readingFilters.value.billId) {
+    result = result.filter(r => r.billId === readingFilters.value.billId)
+  }
+
+  if (readingFilters.value.userId) {
+    result = result.filter(r => r.userId === readingFilters.value.userId)
+  }
+
+  result.sort((a, b) => {
+    switch (readingFilters.value.sortBy) {
+      case 'date-desc':
+        return new Date(b.recordedAt) - new Date(a.recordedAt)
+      case 'date-asc':
+        return new Date(a.recordedAt) - new Date(b.recordedAt)
+      case 'value-desc':
+        return b.meterValue - a.meterValue
+      case 'value-asc':
+        return a.meterValue - b.meterValue
+      default:
+        return 0
+    }
+  })
+
+  return result
+})
+
 const newBill = ref({
   type: 'electricity',
   customType: '',
@@ -279,20 +433,46 @@ const newBill = ref({
   notes: ''
 })
 
-onMounted(loadBills)
+onMounted(async () => {
+  await loadBills()
+  await loadReadingsData()
+})
 
 async function loadBills() {
   loading.value = true
   try {
     const response = await api.get('/bills')
-    console.log('Bills response:', response.data)
     bills.value = response.data || []
   } catch (err) {
     console.error('Failed to load bills:', err)
-    console.error('Error response:', err.response)
     bills.value = []
   } finally {
     loading.value = false
+  }
+}
+
+async function loadReadingsData() {
+  loadingReadings.value = true
+  try {
+    const billsRes = await api.get('/bills?status=posted')
+    postedBills.value = (billsRes.data || []).filter(b => b.type === 'electricity' || b.type === 'gas')
+
+    const allBillsRes = await api.get('/bills')
+    allBills.value = allBillsRes.data || []
+
+    const readingsRes = await api.get('/consumptions')
+    readings.value = readingsRes.data || []
+
+    const usersRes = await api.get('/users')
+    users.value = usersRes.data || []
+  } catch (err) {
+    console.error('Failed to load readings data:', err)
+    postedBills.value = []
+    allBills.value = []
+    readings.value = []
+    users.value = []
+  } finally {
+    loadingReadings.value = false
   }
 }
 
@@ -314,12 +494,10 @@ async function createBill() {
       payload.customType = newBill.value.customType
     }
 
-    console.log('Creating bill with payload:', payload)
-    const response = await api.post('/bills', payload)
-    console.log('Bill created:', response.data)
-
+    await api.post('/bills', payload)
     showCreateModal.value = false
     await loadBills()
+    await loadReadingsData()
     newBill.value = {
       type: 'electricity',
       customType: '',
@@ -340,6 +518,7 @@ async function postBill(billId) {
   try {
     await api.post(`/bills/${billId}/post`)
     await loadBills()
+    await loadReadingsData()
   } catch (err) {
     console.error('Failed to post bill:', err)
   }
@@ -354,17 +533,6 @@ async function closeBill(billId) {
   }
 }
 
-async function allocateBill(billId) {
-  try {
-    await api.post(`/bills/${billId}/allocate`)
-    await loadBills()
-    alert('Rachunek zaalokowany pomyślnie')
-  } catch (err) {
-    console.error('Failed to allocate bill:', err)
-    alert('Błąd podczas alokacji: ' + (err.response?.data?.error || err.message))
-  }
-}
-
 async function deleteBill(billId) {
   if (!confirm('Czy na pewno chcesz usunąć ten rachunek? To usunie również wszystkie powiązane odczyty.')) {
     return
@@ -373,10 +541,29 @@ async function deleteBill(billId) {
   try {
     await api.delete(`/bills/${billId}`)
     await loadBills()
-    alert('Rachunek usunięty')
+    await loadReadingsData()
   } catch (err) {
     console.error('Failed to delete bill:', err)
     alert('Błąd podczas usuwania: ' + (err.response?.data?.error || err.message))
+  }
+}
+
+async function submitReading() {
+  loadingReading.value = true
+  try {
+    await api.post('/consumptions', {
+      billId: form.value.billId,
+      meterValue: parseFloat(form.value.meterReading),
+      units: 0,
+      recordedAt: new Date(form.value.readingDate).toISOString()
+    })
+
+    form.value.meterReading = ''
+    await loadReadingsData()
+  } catch (err) {
+    console.error('Failed to submit reading:', err)
+  } finally {
+    loadingReading.value = false
   }
 }
 
@@ -392,13 +579,50 @@ function formatUnits(decimal128) {
   return parseFloat(decimal128.$numberDecimal || decimal128 || 0).toFixed(3)
 }
 
+function formatMeterValue(value) {
+  if (!value) return '0.000'
+  const numValue = parseFloat(value.$numberDecimal || value || 0)
+  return numValue.toFixed(3)
+}
+
 function formatDate(date) {
+  if (!date) return '-'
   return new Date(date).toLocaleDateString('pl-PL', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+function formatDateTime(date) {
+  if (!date) return '-'
+  return new Date(date).toLocaleString('pl-PL')
 }
 
 function getUnit(type) {
   if (type === 'electricity') return 'kWh'
   if (type === 'gas') return 'm³'
   return ''
+}
+
+function getUnitForBill(billId) {
+  const bill = allBills.value.find(b => b.id === billId)
+  if (!bill) return 'jednostek'
+  return getUnit(bill.type) || 'jednostek'
+}
+
+function getUserName(userId) {
+  const user = users.value.find(u => u.id === userId)
+  return user ? user.name : 'Nieznany'
+}
+
+function getBillInfo(billId) {
+  const bill = allBills.value.find(b => b.id === billId)
+  if (!bill) return ''
+
+  const typeLabel = bill.type === 'electricity' ? 'Prąd' :
+                    bill.type === 'gas' ? 'Gaz' : bill.type
+  const dateRange = `${formatDate(bill.periodStart)} - ${formatDate(bill.periodEnd)}`
+  return `${typeLabel}: ${dateRange}`
+}
+
+function viewBill(billId) {
+  router.push(`/bills/${billId}`)
 }
 </script>

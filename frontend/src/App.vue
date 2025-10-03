@@ -14,38 +14,36 @@
           <div class="flex items-center space-x-1">
             <router-link to="/" class="nav-link">
               <LayoutDashboard class="w-4 h-4" />
-              {{ $t('nav.dashboard') }}
+              Home
             </router-link>
             <router-link to="/bills" class="nav-link">
               <Receipt class="w-4 h-4" />
-              {{ $t('nav.bills') }}
-            </router-link>
-            <router-link to="/readings" class="nav-link">
-              <Gauge class="w-4 h-4" />
-              {{ $t('nav.readings') }}
+              Rachunki
             </router-link>
             <router-link to="/balance" class="nav-link">
               <Wallet class="w-4 h-4" />
-              {{ $t('nav.balance') }}
+              Bilans
             </router-link>
             <router-link to="/chores" class="nav-link">
               <CheckSquare class="w-4 h-4" />
-              {{ $t('nav.chores') }}
+              Obowiązki
             </router-link>
             <router-link to="/supplies" class="nav-link">
               <ShoppingCart class="w-4 h-4" />
-              {{ $t('nav.supplies') }}
-            </router-link>
-            <router-link to="/settings" class="nav-link">
-              <Settings class="w-4 h-4" />
-              {{ $t('nav.settings') }}
+              Zakupy
             </router-link>
           </div>
 
-          <button @click="handleLogout" class="btn btn-secondary btn-sm flex items-center gap-2">
-            <LogOut class="w-4 h-4" />
-            {{ $t('nav.logout') }}
-          </button>
+          <div class="flex items-center gap-2">
+            <router-link to="/settings" class="btn btn-outline btn-sm flex items-center gap-2">
+              <Settings class="w-4 h-4" />
+              {{ $t('nav.settings') }}
+            </router-link>
+            <button @click="handleLogout" class="btn btn-secondary btn-sm flex items-center gap-2">
+              <LogOut class="w-4 h-4" />
+              {{ $t('nav.logout') }}
+            </button>
+          </div>
         </div>
       </div>
     </nav>
@@ -60,9 +58,14 @@
             </div>
             <span class="text-lg font-bold gradient-text">Holy Home</span>
           </router-link>
-          <button @click="handleLogout" class="p-2.5 rounded-lg bg-gray-800/50 hover:bg-gray-700/50 active:scale-95 transition-all">
-            <LogOut class="w-5 h-5 text-gray-300" />
-          </button>
+          <div class="flex items-center gap-2">
+            <router-link to="/settings" class="p-2.5 rounded-lg bg-gray-800/50 hover:bg-gray-700/50 active:scale-95 transition-all">
+              <Settings class="w-5 h-5 text-gray-300" />
+            </router-link>
+            <button @click="handleLogout" class="p-2.5 rounded-lg bg-gray-800/50 hover:bg-gray-700/50 active:scale-95 transition-all">
+              <LogOut class="w-5 h-5 text-gray-300" />
+            </button>
+          </div>
         </div>
       </div>
     </header>
@@ -86,17 +89,17 @@
           <Receipt class="w-6 h-6" aria-hidden="true" />
           <span>Rachunki</span>
         </router-link>
-        <router-link to="/readings" class="mobile-nav-link" aria-label="Meter readings">
-          <Gauge class="w-6 h-6" aria-hidden="true" />
-          <span>Odczyty</span>
-        </router-link>
         <router-link to="/balance" class="mobile-nav-link" aria-label="Balance overview">
           <Wallet class="w-6 h-6" aria-hidden="true" />
           <span>Bilans</span>
         </router-link>
-        <router-link to="/settings" class="mobile-nav-link" aria-label="Settings and more">
-          <Settings class="w-6 h-6" aria-hidden="true" />
-          <span>Więcej</span>
+        <router-link to="/chores" class="mobile-nav-link" aria-label="Chores">
+          <CheckSquare class="w-6 h-6" aria-hidden="true" />
+          <span>Obowiązki</span>
+        </router-link>
+        <router-link to="/supplies" class="mobile-nav-link" aria-label="Supplies">
+          <ShoppingCart class="w-6 h-6" aria-hidden="true" />
+          <span>Zakupy</span>
         </router-link>
       </div>
     </nav>
@@ -108,7 +111,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from './stores/auth'
 import { useVersionCheck } from './composables/useVersionCheck'
 import UpdateBanner from './components/UpdateBanner.vue'
-import { Home, LayoutDashboard, Receipt, Gauge, Wallet, CheckSquare, ShoppingCart, Settings, LogOut } from 'lucide-vue-next'
+import { Home, LayoutDashboard, Receipt, Wallet, CheckSquare, ShoppingCart, Settings, LogOut } from 'lucide-vue-next'
 
 const router = useRouter()
 const authStore = useAuthStore()

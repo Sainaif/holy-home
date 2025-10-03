@@ -50,27 +50,6 @@ func (h *ExportHandler) ExportBills(c *fiber.Ctx) error {
 	return c.Send(csv)
 }
 
-// ExportAllocations exports allocations for a bill to CSV
-func (h *ExportHandler) ExportAllocations(c *fiber.Ctx) error {
-	ctx := c.Context()
-
-	// Parse bill ID
-	billID, err := primitive.ObjectIDFromHex(c.Params("id"))
-	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "Invalid bill ID")
-	}
-
-	// Export CSV
-	csv, err := h.exportService.ExportAllocationsCSV(ctx, billID)
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
-	}
-
-	c.Set("Content-Type", "text/csv")
-	c.Set("Content-Disposition", "attachment; filename=allocations.csv")
-	return c.Send(csv)
-}
-
 // ExportBalances exports loan balances to CSV
 func (h *ExportHandler) ExportBalances(c *fiber.Ctx) error {
 	ctx := c.Context()

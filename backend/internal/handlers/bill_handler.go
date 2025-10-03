@@ -95,34 +95,6 @@ func (h *BillHandler) GetBill(c *fiber.Ctx) error {
 	return c.JSON(bill)
 }
 
-// AllocateBill performs cost allocation (ADMIN only)
-func (h *BillHandler) AllocateBill(c *fiber.Ctx) error {
-	id := c.Params("id")
-	billID, err := primitive.ObjectIDFromHex(id)
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "Invalid bill ID",
-		})
-	}
-
-	var req services.AllocateRequest
-	if err := c.BodyParser(&req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "Invalid request body",
-		})
-	}
-
-	if err := h.billService.AllocateBill(c.Context(), billID, req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": err.Error(),
-		})
-	}
-
-	return c.JSON(fiber.Map{
-		"message": "Bill allocated successfully",
-	})
-}
-
 // PostBill changes status to posted (ADMIN only)
 func (h *BillHandler) PostBill(c *fiber.Ctx) error {
 	id := c.Params("id")
@@ -265,32 +237,6 @@ func (h *BillHandler) GetConsumptions(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(consumptions)
-}
-
-// GetAllocations retrieves allocations for a bill
-func (h *BillHandler) GetAllocations(c *fiber.Ctx) error {
-	billIDStr := c.Query("billId")
-	if billIDStr == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "billId query parameter is required",
-		})
-	}
-
-	billID, err := primitive.ObjectIDFromHex(billIDStr)
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "Invalid bill ID",
-		})
-	}
-
-	allocations, err := h.consumptionService.GetAllocations(c.Context(), billID)
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": err.Error(),
-		})
-	}
-
-	return c.JSON(allocations)
 }
 
 // DeleteBill deletes a bill (ADMIN only)

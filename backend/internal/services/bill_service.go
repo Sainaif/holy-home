@@ -32,11 +32,6 @@ type CreateBillRequest struct {
 	Notes          *string   `json:"notes,omitempty"`
 }
 
-type AllocateRequest struct {
-	Strategy string             `json:"strategy"` // equal, proportional, weights, override
-	Weights  map[string]float64 `json:"weights,omitempty"`
-}
-
 // CreateBill creates a new bill (ADMIN only)
 func (s *BillService) CreateBill(ctx context.Context, req CreateBillRequest) (*models.Bill, error) {
 	// Validate bill type
@@ -138,191 +133,7 @@ func (s *BillService) GetBill(ctx context.Context, billID primitive.ObjectID) (*
 	return &bill, nil
 }
 
-// AllocateBill performs cost allocation based on strategy (ADMIN only)
-func (s *BillService) AllocateBill(ctx context.Context, billID primitive.ObjectID, req AllocateRequest) error {
-	// Get bill
-	bill, err := s.GetBill(ctx, billID)
-	if err != nil {
-		return err
-	}
-
-	if bill.Status == "closed" {
-		return errors.New("cannot allocate closed bill")
-	}
-
-	// Delete existing allocations
-	_, err = s.db.Collection("allocations").DeleteMany(ctx, bson.M{"bill_id": billID})
-	if err != nil {
-		return fmt.Errorf("failed to clear allocations: %w", err)
-	}
-
-	// Perform allocation based on type and strategy
-	switch bill.Type {
-	case "electricity":
-		return s.allocateElectricity(ctx, bill, req)
-	case "gas":
-		return s.allocateGas(ctx, bill, req)
-	case "internet":
-		return s.allocateInternet(ctx, bill)
-	case "inne":
-		return s.allocateInne(ctx, bill, req)
-	default:
-		return errors.New("unsupported bill type")
-	}
-}
-
-// allocateElectricity implements the complex electricity allocation logic
-func (s *BillService) allocateElectricity(ctx context.Context, bill *models.Bill, req AllocateRequest) error {
-	// Get all consumptions for this bill
-	cursor, err := s.db.Collection("consumptions").Find(ctx, bson.M{"bill_id": bill.ID})
-	if err != nil {
-		return fmt.Errorf("failed to get consumptions: %w", err)
-	}
-	defer cursor.Close(ctx)
-
-	var consumptions []models.Consumption
-	if err := cursor.All(ctx, &consumptions); err != nil {
-		return fmt.Errorf("failed to decode consumptions: %w", err)
-	}
-
-	// Calculate total individual units
-	totalIndividualUnits := 0.0
-	userUnits := make(map[primitive.ObjectID]float64)
-	for _, c := range consumptions {
-		units, _ := utils.DecimalToFloat(c.Units)
-		userUnits[c.UserID] = units
-		totalIndividualUnits += units
-	}
-
-	// Get total units and amount
-	totalUnits, _ := utils.DecimalToFloat(bill.TotalUnits)
-	totalAmount, _ := utils.DecimalToFloat(bill.TotalAmountPLN)
-
-	// Calculate common area units
-	commonUnits := totalUnits - totalIndividualUnits
-	if commonUnits < 0 {
-		return errors.New("individual consumption exceeds total units")
-	}
-
-	// Calculate cost per unit
-	costPerUnit := totalAmount / totalUnits
-
-	// Cost for individual usage
-	individualPoolCost := totalIndividualUnits * costPerUnit
-
-	// Cost for common area
-	commonPoolCost := commonUnits * costPerUnit
-
-	// Get all users and groups for weight calculation
-	users, err := s.getAllActiveUsers(ctx)
-	if err != nil {
-		return err
-	}
-
-	groups, err := s.getAllGroups(ctx)
-	if err != nil {
-		return err
-	}
-
-	// Calculate weights
-	weights := s.calculateWeights(users, groups, req.Weights)
-	totalWeight := 0.0
-	for _, w := range weights {
-		totalWeight += w
-	}
-
-	// Create allocations for each user
-	allocations := []interface{}{}
-	for userID, units := range userUnits {
-		// Personal usage cost
-		personalCost := (units / totalIndividualUnits) * individualPoolCost
-
-		// Common area share
-		weight := weights[userID]
-		commonShare := (weight / totalWeight) * commonPoolCost
-
-		totalCost := utils.RoundPLN(personalCost + commonShare)
-		roundedUnits := utils.RoundUnits(units)
-
-		costDec, _ := utils.DecimalFromFloat(totalCost)
-		unitsDec, _ := utils.DecimalFromFloat(roundedUnits)
-
-		allocation := models.Allocation{
-			ID:          primitive.NewObjectID(),
-			BillID:      bill.ID,
-			SubjectType: "user",
-			SubjectID:   userID,
-			AmountPLN:   costDec,
-			Units:       unitsDec,
-			Method:      req.Strategy,
-		}
-		allocations = append(allocations, allocation)
-	}
-
-	if len(allocations) > 0 {
-		_, err = s.db.Collection("allocations").InsertMany(ctx, allocations)
-		if err != nil {
-			return fmt.Errorf("failed to create allocations: %w", err)
-		}
-	}
-
-	return nil
-}
-
-// allocateGas implements gas allocation (equal split by default)
-func (s *BillService) allocateGas(ctx context.Context, bill *models.Bill, req AllocateRequest) error {
-	users, err := s.getAllActiveUsers(ctx)
-	if err != nil {
-		return err
-	}
-
-	if len(users) == 0 {
-		return errors.New("no active users to allocate to")
-	}
-
-	totalAmount, _ := utils.DecimalToFloat(bill.TotalAmountPLN)
-	perUser := utils.RoundPLN(totalAmount / float64(len(users)))
-
-	allocations := []interface{}{}
-	for _, user := range users {
-		costDec, _ := utils.DecimalFromFloat(perUser)
-		unitsDec, _ := utils.DecimalFromFloat(0)
-
-		allocation := models.Allocation{
-			ID:          primitive.NewObjectID(),
-			BillID:      bill.ID,
-			SubjectType: "user",
-			SubjectID:   user.ID,
-			AmountPLN:   costDec,
-			Units:       unitsDec,
-			Method:      "equal",
-		}
-		allocations = append(allocations, allocation)
-	}
-
-	_, err = s.db.Collection("allocations").InsertMany(ctx, allocations)
-	if err != nil {
-		return fmt.Errorf("failed to create allocations: %w", err)
-	}
-
-	return nil
-}
-
-// allocateInternet implements internet allocation (equal split)
-func (s *BillService) allocateInternet(ctx context.Context, bill *models.Bill) error {
-	return s.allocateGas(ctx, bill, AllocateRequest{Strategy: "equal"})
-}
-
-// allocateInne implements "inne" (other) allocation (equal split by default)
-func (s *BillService) allocateInne(ctx context.Context, bill *models.Bill, req AllocateRequest) error {
-	// For "inne" type, use equal split if no strategy specified
-	if req.Strategy == "" {
-		req.Strategy = "equal"
-	}
-	return s.allocateGas(ctx, bill, req)
-}
-
-// PostBill changes bill status to posted (freezes allocations)
+// PostBill changes bill status to posted
 func (s *BillService) PostBill(ctx context.Context, billID primitive.ObjectID) error {
 	return s.updateBillStatus(ctx, billID, "draft", "posted")
 }
@@ -368,14 +179,6 @@ func (s *BillService) ReopenBill(ctx context.Context, billID primitive.ObjectID,
 			"reopen_reason": reason,
 			"reopened_by":   userID,
 		},
-	}
-
-	// If reopening to draft from posted/closed, clear allocations
-	if targetStatus == "draft" {
-		_, err := s.db.Collection("allocations").DeleteMany(ctx, bson.M{"bill_id": billID})
-		if err != nil {
-			return fmt.Errorf("failed to clear allocations: %w", err)
-		}
 	}
 
 	result, err := s.db.Collection("bills").UpdateOne(
@@ -476,12 +279,6 @@ func (s *BillService) DeleteBill(ctx context.Context, billID primitive.ObjectID)
 	_, err := s.db.Collection("consumptions").DeleteMany(ctx, bson.M{"bill_id": billID})
 	if err != nil {
 		return fmt.Errorf("failed to delete consumptions: %w", err)
-	}
-
-	// Delete all allocations
-	_, err = s.db.Collection("allocations").DeleteMany(ctx, bson.M{"bill_id": billID})
-	if err != nil {
-		return fmt.Errorf("failed to delete allocations: %w", err)
 	}
 
 	// Delete all payments

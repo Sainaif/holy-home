@@ -185,7 +185,6 @@ func main() {
 	bills.Post("/", middleware.AuthMiddleware(cfg), middleware.RequireRole("ADMIN"), billHandler.CreateBill)
 	bills.Get("/", middleware.AuthMiddleware(cfg), billHandler.GetBills)
 	bills.Get("/:id", middleware.AuthMiddleware(cfg), billHandler.GetBill)
-	bills.Post("/:id/allocate", middleware.AuthMiddleware(cfg), middleware.RequireRole("ADMIN"), billHandler.AllocateBill)
 	bills.Post("/:id/post", middleware.AuthMiddleware(cfg), middleware.RequireRole("ADMIN"), billHandler.PostBill)
 	bills.Post("/:id/close", middleware.AuthMiddleware(cfg), middleware.RequireRole("ADMIN"), billHandler.CloseBill)
 	bills.Post("/:id/reopen", middleware.AuthMiddleware(cfg), middleware.RequireRole("ADMIN"), billHandler.ReopenBill)
@@ -197,10 +196,6 @@ func main() {
 	consumptions.Get("/", middleware.AuthMiddleware(cfg), billHandler.GetConsumptions)
 	consumptions.Delete("/:id", middleware.AuthMiddleware(cfg), middleware.RequireRole("ADMIN"), billHandler.DeleteConsumption)
 	consumptions.Post("/:id/mark-invalid", middleware.AuthMiddleware(cfg), billHandler.MarkConsumptionInvalid)
-
-	// Allocation routes
-	allocations := app.Group("/allocations")
-	allocations.Get("/", middleware.AuthMiddleware(cfg), billHandler.GetAllocations)
 
 	// Loan routes
 	loans := app.Group("/loans")
@@ -267,7 +262,6 @@ func main() {
 	// Export routes
 	exports := app.Group("/exports")
 	exports.Get("/bills", middleware.AuthMiddleware(cfg), exportHandler.ExportBills)
-	exports.Get("/bills/:id/allocations", middleware.AuthMiddleware(cfg), exportHandler.ExportAllocations)
 
 	// Audit log routes (ADMIN ONLY)
 	audit := app.Group("/audit")

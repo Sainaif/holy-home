@@ -28,7 +28,6 @@ type BackupData struct {
 	Groups           []models.Group           `json:"groups"`
 	Bills            []models.Bill            `json:"bills"`
 	Consumptions     []models.Consumption     `json:"consumptions"`
-	Allocations      []models.Allocation      `json:"allocations"`
 	Payments         []models.Payment         `json:"payments"`
 	Loans            []models.Loan            `json:"loans"`
 	LoanPayments     []models.LoanPayment     `json:"loanPayments"`
@@ -94,18 +93,6 @@ func (s *BackupService) ExportAll(ctx context.Context) (*BackupData, error) {
 		return nil, fmt.Errorf("failed to decode consumptions: %w", err)
 	}
 	backup.Consumptions = consumptions
-	cursor.Close(ctx)
-
-	// Export allocations
-	var allocations []models.Allocation
-	cursor, err = s.db.Collection("allocations").Find(ctx, bson.M{})
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch allocations: %w", err)
-	}
-	if err := cursor.All(ctx, &allocations); err != nil {
-		return nil, fmt.Errorf("failed to decode allocations: %w", err)
-	}
-	backup.Allocations = allocations
 	cursor.Close(ctx)
 
 	// Export payments
@@ -227,7 +214,7 @@ func (s *BackupService) ImportAll(ctx context.Context, backup *BackupData) error
 
 	// Clear all collections first
 	collections := []string{
-		"users", "groups", "bills", "consumptions", "allocations",
+		"users", "groups", "bills", "consumptions",
 		"payments", "loans", "loan_payments", "chores", "chore_assignments",
 		"chore_settings", "notifications", "supply_settings", "supply_items",
 		"supply_contributions",
@@ -280,17 +267,6 @@ func (s *BackupService) ImportAll(ctx context.Context, backup *BackupData) error
 		}
 		if _, err := s.db.Collection("consumptions").InsertMany(ctx, docs); err != nil {
 			return fmt.Errorf("failed to import consumptions: %w", err)
-		}
-	}
-
-	// Import allocations
-	if len(backup.Allocations) > 0 {
-		docs := make([]interface{}, len(backup.Allocations))
-		for i, a := range backup.Allocations {
-			docs[i] = a
-		}
-		if _, err := s.db.Collection("allocations").InsertMany(ctx, docs); err != nil {
-			return fmt.Errorf("failed to import allocations: %w", err)
 		}
 	}
 

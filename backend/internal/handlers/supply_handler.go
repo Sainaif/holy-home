@@ -11,11 +11,13 @@ import (
 
 type SupplyHandler struct {
 	supplyService *services.SupplyService
+	auditService  *services.AuditService
 }
 
-func NewSupplyHandler(supplyService *services.SupplyService) *SupplyHandler {
+func NewSupplyHandler(supplyService *services.SupplyService, auditService *services.AuditService) *SupplyHandler {
 	return &SupplyHandler{
 		supplyService: supplyService,
+		auditService:  auditService,
 	}
 }
 

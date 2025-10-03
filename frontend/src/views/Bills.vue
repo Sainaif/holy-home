@@ -143,8 +143,63 @@
           <FileX class="w-16 h-16 mx-auto mb-4 opacity-50" />
           <p class="text-lg">Brak rachunków</p>
         </div>
-        <div v-else class="table-wrapper">
-          <table>
+        <template v-else>
+          <!-- Mobile card layout -->
+          <div class="md:hidden space-y-3">
+            <div v-for="bill in filteredBills" :key="bill.id"
+               @click="$router.push(`/bills/${bill.id}`)"
+               class="p-4 bg-gray-700/50 rounded-lg border border-gray-600/50 hover:bg-gray-700 transition-colors cursor-pointer">
+            <div class="flex items-start justify-between mb-3">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+                     :class="{
+                       'bg-yellow-600/20': bill.type === 'electricity',
+                       'bg-orange-600/20': bill.type === 'gas',
+                       'bg-blue-600/20': bill.type === 'internet',
+                       'bg-purple-600/20': bill.type === 'inne'
+                     }">
+                  <Zap v-if="bill.type === 'electricity'" class="w-5 h-5 text-yellow-400" />
+                  <Flame v-else-if="bill.type === 'gas'" class="w-5 h-5 text-orange-400" />
+                  <Wifi v-else-if="bill.type === 'internet'" class="w-5 h-5 text-blue-400" />
+                  <FileX v-else class="w-5 h-5 text-purple-400" />
+                </div>
+                <div>
+                  <div class="font-medium text-sm">{{ bill.type === 'inne' && bill.customType ? bill.customType : $t(`bills.${bill.type}`) }}</div>
+                  <div class="text-xs text-gray-400">{{ formatDate(bill.periodStart) }} - {{ formatDate(bill.periodEnd) }}</div>
+                </div>
+              </div>
+              <span :class="`badge badge-${bill.status} text-xs`">
+                {{ $t(`bills.${bill.status}`) }}
+              </span>
+            </div>
+
+            <div class="flex items-center justify-between">
+              <span class="text-lg font-bold text-purple-400">{{ formatMoney(bill.totalAmountPLN) }} PLN</span>
+              <span v-if="bill.totalUnits" class="text-sm text-gray-300">{{ formatUnits(bill.totalUnits) }} {{ getUnit(bill.type) }}</span>
+            </div>
+
+            <div v-if="authStore.isAdmin" class="flex items-center gap-2 mt-3 pt-3 border-t border-gray-600/50" @click.stop>
+              <button v-if="bill.status === 'draft'" @click="postBill(bill.id)"
+                      class="btn btn-sm btn-primary flex items-center gap-1 flex-1">
+                <Send class="w-3 h-3" />
+                Opublikuj
+              </button>
+              <button v-if="bill.status === 'posted'" @click="closeBill(bill.id)"
+                      class="btn btn-sm btn-secondary flex items-center gap-1 flex-1">
+                <Check class="w-3 h-3" />
+                Zamknij
+              </button>
+              <button @click="deleteBill(bill.id)"
+                      class="btn btn-sm bg-red-600/20 hover:bg-red-600/30 text-red-400 flex items-center gap-1">
+                <Trash2 class="w-3 h-3" />
+              </button>
+            </div>
+            </div>
+          </div>
+
+          <!-- Desktop table layout -->
+          <div class="table-wrapper hidden md:block">
+            <table>
             <thead>
               <tr>
                 <th>{{ $t('bills.type') }}</th>
@@ -157,7 +212,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="bill in filteredBills" :key="bill.id">
+              <tr v-for="bill in filteredBills" :key="bill.id" @click="$router.push(`/bills/${bill.id}`)" class="cursor-pointer">
                 <td>
                   <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-lg flex items-center justify-center"
@@ -197,7 +252,7 @@
                     {{ $t(`bills.${bill.status}`) }}
                   </span>
                 </td>
-                <td v-if="authStore.isAdmin">
+                <td v-if="authStore.isAdmin" @click.stop>
                   <div class="flex items-center gap-2">
                     <button v-if="bill.status === 'draft'" @click="postBill(bill.id)"
                             class="btn btn-sm btn-primary flex items-center gap-1">
@@ -218,8 +273,9 @@
                 </td>
               </tr>
             </tbody>
-          </table>
-        </div>
+            </table>
+          </div>
+        </template>
       </div>
     </div>
 

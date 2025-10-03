@@ -195,6 +195,20 @@ type SupplyContribution struct {
 	CreatedAt   time.Time            `bson:"created_at" json:"createdAt"`
 }
 
+// SupplyItemHistory tracks changes to supply items (purchases, usage, etc.)
+type SupplyItemHistory struct {
+	ID            primitive.ObjectID    `bson:"_id,omitempty" json:"id"`
+	SupplyItemID  primitive.ObjectID    `bson:"supply_item_id" json:"supplyItemId"`
+	UserID        primitive.ObjectID    `bson:"user_id" json:"userId"`
+	Action        string                `bson:"action" json:"action"` // add, remove, restock, purchase, adjust
+	QuantityDelta int                   `bson:"quantity_delta" json:"quantityDelta"` // +/- amount changed
+	OldQuantity   int                   `bson:"old_quantity" json:"oldQuantity"`
+	NewQuantity   int                   `bson:"new_quantity" json:"newQuantity"`
+	CostPLN       *primitive.Decimal128 `bson:"cost_pln,omitempty" json:"costPLN,omitempty"` // for purchases
+	Notes         *string               `bson:"notes,omitempty" json:"notes,omitempty"`
+	CreatedAt     time.Time             `bson:"created_at" json:"createdAt"`
+}
+
 // Session represents an active user session with a refresh token
 type Session struct {
 	ID           primitive.ObjectID `bson:"_id,omitempty" json:"id"`

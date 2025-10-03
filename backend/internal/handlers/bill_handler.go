@@ -12,17 +12,23 @@ import (
 type BillHandler struct {
 	billService        *services.BillService
 	consumptionService *services.ConsumptionService
+	auditService       *services.AuditService
 }
 
-func NewBillHandler(billService *services.BillService, consumptionService *services.ConsumptionService) *BillHandler {
+func NewBillHandler(billService *services.BillService, consumptionService *services.ConsumptionService, auditService *services.AuditService) *BillHandler {
 	return &BillHandler{
 		billService:        billService,
 		consumptionService: consumptionService,
+		auditService:       auditService,
 	}
 }
 
 // CreateBill creates a new bill (ADMIN only)
 func (h *BillHandler) CreateBill(c *fiber.Ctx) error {
+	userID := c.Locals("userID").(primitive.ObjectID)
+	userEmail := c.Locals("userEmail").(string)
+	userName := c.Locals("userName").(string)
+
 	var req services.CreateBillRequest
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -32,10 +38,17 @@ func (h *BillHandler) CreateBill(c *fiber.Ctx) error {
 
 	bill, err := h.billService.CreateBill(c.Context(), req)
 	if err != nil {
+		h.auditService.LogAction(c.Context(), userID, userEmail, userName, "create_bill", "bill", nil,
+			map[string]interface{}{"type": req.Type, "amount": req.TotalAmountPLN},
+			c.IP(), c.Get("User-Agent"), "failure")
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": err.Error(),
 		})
 	}
+
+	h.auditService.LogAction(c.Context(), userID, userEmail, userName, "create_bill", "bill", &bill.ID,
+		map[string]interface{}{"type": bill.Type, "amount": req.TotalAmountPLN, "period_start": req.PeriodStart, "period_end": req.PeriodEnd},
+		c.IP(), c.Get("User-Agent"), "success")
 
 	return c.Status(fiber.StatusCreated).JSON(bill)
 }

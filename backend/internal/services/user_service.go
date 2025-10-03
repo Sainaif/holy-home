@@ -24,6 +24,7 @@ func NewUserService(db *mongo.Database) *UserService {
 }
 
 type CreateUserRequest struct {
+	Name         string              `json:"name"`
 	Email        string              `json:"email"`
 	Role         string              `json:"role"` // ADMIN, RESIDENT
 	GroupID      *primitive.ObjectID `json:"groupId,omitempty"`
@@ -64,10 +65,16 @@ func (s *UserService) CreateUser(ctx context.Context, req CreateUserRequest) (*m
 		return nil, fmt.Errorf("failed to hash password: %w", err)
 	}
 
+	// Use provided name, or fallback to email if empty
+	name := req.Name
+	if name == "" {
+		name = req.Email
+	}
+
 	user := models.User{
 		ID:                primitive.NewObjectID(),
 		Email:             req.Email,
-		Name:              req.Email, // Default name to email
+		Name:              name,
 		PasswordHash:      passwordHash,
 		Role:              req.Role,
 		GroupID:           req.GroupID,

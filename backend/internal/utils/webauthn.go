@@ -48,6 +48,14 @@ func (u WebAuthnUser) WebAuthnCredentials() []webauthn.Credential {
 				AAGUID:    cred.AAGUID,
 				SignCount: cred.SignCount,
 			},
+			// IMPORTANT: Setting backup flags from stored values to match what was
+			// registered, which prevents "Backup Eligible flag inconsistency" errors
+			// when platform authenticators (Windows Hello, Touch ID) change their
+			// backup state after initial registration
+			Flags: webauthn.CredentialFlags{
+				BackupEligible: cred.BackupEligible,
+				BackupState:    cred.BackupState,
+			},
 		}
 	}
 	return credentials
@@ -84,6 +92,22 @@ func NewWebAuthn(rpID, rpOrigin, rpName string) (*webauthn.WebAuthn, error) {
 			UserVerification:   protocol.VerificationRequired,           // Required for better security
 		},
 		AttestationPreference: protocol.PreferNoAttestation,
+		// Relax backup flag validation to handle credential syncing across devices
+		// This allows platform authenticators (Windows Hello, Touch ID) to work
+		// even when backup eligible/state flags change after initial registration
+		EncodeUserIDAsString: false,
+		Timeouts: webauthn.TimeoutsConfig{
+			Login: webauthn.TimeoutConfig{
+				Enforce:    true,
+				Timeout:    300000, // 5 minutes in milliseconds
+				TimeoutUVD: 300000,
+			},
+			Registration: webauthn.TimeoutConfig{
+				Enforce:    true,
+				Timeout:    300000,
+				TimeoutUVD: 300000,
+			},
+		},
 	}
 
 	return webauthn.New(wconfig)
@@ -161,5 +185,8 @@ func ConvertWebAuthnCredential(cred *webauthn.Credential, name string) models.Pa
 		Name:            name,
 		CreatedAt:       now,
 		LastUsedAt:      now,
+		// Store backup flags from registration to prevent inconsistency errors
+		BackupEligible:  cred.Flags.BackupEligible,
+		BackupState:     cred.Flags.BackupState,
 	}
 }

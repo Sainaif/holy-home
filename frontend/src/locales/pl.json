@@ -5,6 +5,7 @@
     "readings": "Odczyty",
     "balance": "Bilans",
     "chores": "Obowiązki",
+    "supplies": "Zakupy",
     "settings": "Ustawienia",
     "logout": "Wyloguj"
   },
@@ -78,7 +79,15 @@
     "currentPassword": "Aktualne hasło",
     "newPassword": "Nowe hasło",
     "save": "Zapisz",
-    "enable2FA": "Włącz 2FA"
+    "enable2FA": "Włącz 2FA",
+    "sessions": "Aktywne sesje",
+    "currentSession": "Bieżąca sesja",
+    "createdAt": "Utworzona",
+    "lastUsed": "Ostatnio użyta",
+    "renameSession": "Zmień nazwę sesji",
+    "deleteSession": "Usuń sesję",
+    "sessionName": "Nazwa sesji",
+    "noSessions": "Brak aktywnych sesji"
   },
   "common": {
     "loading": "Ładowanie...",
@@ -89,6 +98,7 @@
     "delete": "Usuń",
     "edit": "Edytuj",
     "save": "Zapisz",
+    "saving": "Zapisywanie...",
     "close": "Zamknij",
     "search": "Szukaj",
     "filter": "Filtruj",
@@ -96,6 +106,92 @@
     "to": "Do",
     "date": "Data",
     "user": "Użytkownik",
-    "actions": "Akcje"
+    "actions": "Akcje",
+    "optional": "opcjonalnie"
+  },
+  "roles": {
+    "ADMIN": "Administrator",
+    "RESIDENT": "Mieszkaniec"
+  },
+  "supplies": {
+    "title": "Zakupy Domowe",
+    "settings": "Ustawienia",
+    "currentBudget": "Aktualny budżet",
+    "weeklyContribution": "Tygodniowa składka",
+    "perPerson": "os.",
+    "inventory": "Magazyn",
+    "refunds": "Zwroty",
+    "stats": "Statystyki",
+    "addItem": "Dodaj przedmiot",
+    "itemName": "Nazwa przedmiotu",
+    "category": "Kategoria",
+    "currentQty": "Aktualna ilość",
+    "minQty": "Min. ilość",
+    "unit": "Jednostka",
+    "add": "Dodaj",
+    "search": "Szukaj...",
+    "noItems": "Brak przedmiotów",
+    "min": "Min",
+    "lastRestock": "Ostatnie uzupełnienie",
+    "restock": "Uzupełnij",
+    "consume": "Zużyto",
+    "restockItem": "Uzupełnij zapasy",
+    "quantityToAdd": "Ilość do dodania",
+    "amountSpent": "Wydana kwota",
+    "needsRefundCheck": "Wymaga zwrotu z budżetu",
+    "editItem": "Edytuj przedmiot",
+    "lowStockWarning": "Niski stan magazynowy!",
+    "needsRefund": "Wymaga zwrotu",
+    "noRefunds": "Brak oczekujących zwrotów",
+    "restockedBy": "Uzupełnione przez",
+    "markRefunded": "Oznacz jako zwrócone",
+    "totalPending": "Łącznie do zwrotu",
+    "categories": {
+      "groceries": "Spożywcze",
+      "cleaning": "Czystości",
+      "toiletries": "Higiena",
+      "other": "Inne"
+    },
+    "units": {
+      "pcs": "szt.",
+      "kg": "kg",
+      "L": "L",
+      "bottles": "butelek",
+      "boxes": "pudełek",
+      "rolls": "rolek",
+      "bags": "toreb",
+      "jars": "słoików",
+      "cans": "puszek"
+    },
+    "filters": {
+      "all": "Wszystkie",
+      "lowStock": "Niski stan",
+      "needsRefund": "Wymaga zwrotu"
+    },
+    "sorting": {
+      "default": "Domyślne (priorytet)",
+      "name": "Nazwa A-Z",
+      "quantityLow": "Ilość: od najmniejszej",
+      "recentlyRestocked": "Ostatnio uzupełnione"
+    },
+    "spendingByCategory": "Wydatki według kategorii",
+    "spendingByUser": "Wydatki według użytkownika",
+    "recentContributions": "Ostatnie wpłaty",
+    "noData": "Brak danych",
+    "settingsTitle": "Ustawienia budżetu domowego",
+    "weeklyContributionPerPerson": "Tygodniowa składka na osobę (PLN)",
+    "contributionDay": "Dzień wpłaty",
+    "manualAdjustment": "Ręczna korekta budżetu (PLN)",
+    "adjust": "Dostosuj",
+    "adjustmentHint": "Użyj wartości ujemnej, aby zmniejszyć budżet",
+    "days": {
+      "monday": "Poniedziałek",
+      "tuesday": "Wtorek",
+      "wednesday": "Środa",
+      "thursday": "Czwartek",
+      "friday": "Piątek",
+      "saturday": "Sobota",
+      "sunday": "Niedziela"
+    }
   }
 }

@@ -18,13 +18,14 @@ import (
 )
 
 type AuthService struct {
-	db       *mongo.Database
-	cfg      *config.Config
-	webAuthn *webauthn.WebAuthn
-	sessions map[string]*webauthn.SessionData // In-memory session storage (use Redis in production)
+	db             *mongo.Database
+	cfg            *config.Config
+	webAuthn       *webauthn.WebAuthn
+	sessions       map[string]*webauthn.SessionData // In-memory session storage (use Redis in production)
+	sessionService *SessionService
 }
 
-func NewAuthService(db *mongo.Database, cfg *config.Config) *AuthService {
+func NewAuthService(db *mongo.Database, cfg *config.Config, sessionService *SessionService) *AuthService {
 	// Initialize WebAuthn with configuration
 	wa, err := utils.NewWebAuthn(
 		cfg.App.Domain,
@@ -37,10 +38,11 @@ func NewAuthService(db *mongo.Database, cfg *config.Config) *AuthService {
 	}
 
 	return &AuthService{
-		db:       db,
-		cfg:      cfg,
-		webAuthn: wa,
-		sessions: make(map[string]*webauthn.SessionData),
+		db:             db,
+		cfg:            cfg,
+		webAuthn:       wa,
+		sessions:       make(map[string]*webauthn.SessionData),
+		sessionService: sessionService,
 	}
 }
 
@@ -99,6 +101,12 @@ func (s *AuthService) Login(ctx context.Context, req LoginRequest) (*TokenRespon
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate refresh token: %w", err)
+	}
+
+	// Create session record (best effort - don't fail login if session creation fails)
+	if s.sessionService != nil {
+		expiresAt := time.Now().Add(s.cfg.JWT.RefreshTTL)
+		_ = s.sessionService.CreateSession(ctx, user.ID, refreshToken, "Web Browser", "", "", expiresAt)
 	}
 
 	return &TokenResponse{
@@ -413,6 +421,12 @@ func (s *AuthService) FinishPasskeyLogin(ctx context.Context, email string, resp
 		return nil, fmt.Errorf("failed to generate refresh token: %w", err)
 	}
 
+	// Create session record (best effort - don't fail login if session creation fails)
+	if s.sessionService != nil {
+		expiresAt := time.Now().Add(s.cfg.JWT.RefreshTTL)
+		_ = s.sessionService.CreateSession(ctx, user.ID, refreshToken, "Passkey Login", "", "", expiresAt)
+	}
+
 	return &TokenResponse{
 		Access:             accessToken,
 		Refresh:            refreshToken,
@@ -520,6 +534,12 @@ func (s *AuthService) FinishPasskeyDiscoverableLogin(ctx context.Context, respon
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate refresh token: %w", err)
+	}
+
+	// Create session record (best effort - don't fail login if session creation fails)
+	if s.sessionService != nil {
+		expiresAt := time.Now().Add(s.cfg.JWT.RefreshTTL)
+		_ = s.sessionService.CreateSession(ctx, user.ID, refreshToken, "Passkey Login (Discoverable)", "", "", expiresAt)
 	}
 
 	return &TokenResponse{

@@ -17,12 +17,12 @@
 
         <div>
           <label class="block text-sm font-medium mb-2">Rola</label>
-          <input :value="authStore.user.role" disabled class="input bg-gray-700" />
+          <input :value="authStore.user?.role ? $t(`roles.${authStore.user.role}`) : ''" disabled class="input bg-gray-700" />
         </div>
 
-        <div v-if="authStore.user.groupId">
+        <div v-if="authStore.user?.groupId">
           <label class="block text-sm font-medium mb-2">Grupa</label>
-          <input :value="authStore.user.groupName || authStore.user.groupId" disabled class="input bg-gray-700" />
+          <input :value="authStore.user?.groupName || authStore.user?.groupId || ''" disabled class="input bg-gray-700" />
         </div>
 
         <div v-if="profileError" class="text-red-500 text-sm">{{ profileError }}</div>
@@ -143,6 +143,80 @@
       </div>
     </div>
 
+    <!-- Sessions Section -->
+    <div class="card mt-6">
+      <h2 class="text-xl font-semibold mb-4">{{ $t('settings.sessions') }}</h2>
+
+      <div v-if="loadingSessions" class="text-center py-8">
+        {{ $t('common.loading') }}
+      </div>
+
+      <div v-else-if="sessions.length === 0" class="text-center py-8 text-gray-400">
+        {{ $t('settings.noSessions') }}
+      </div>
+
+      <div v-else class="space-y-3">
+        <div v-for="session in sessions" :key="session.id" class="border border-gray-700 rounded-lg p-4">
+          <div class="flex items-start justify-between gap-4">
+            <div class="flex-1">
+              <div class="flex items-center gap-2 mb-2">
+                <h3 class="font-semibold">{{ session.name }}</h3>
+                <span v-if="isCurrentSession(session)" class="text-xs px-2 py-0.5 rounded-full bg-purple-600 text-white">
+                  {{ $t('settings.currentSession') }}
+                </span>
+              </div>
+              <div class="text-sm text-gray-400 space-y-1">
+                <p>{{ $t('settings.createdAt') }}: {{ formatDate(session.createdAt) }}</p>
+                <p>{{ $t('settings.lastUsed') }}: {{ formatDate(session.lastUsedAt) }}</p>
+                <p v-if="session.ipAddress">IP: {{ session.ipAddress }}</p>
+              </div>
+            </div>
+            <div class="flex gap-2">
+              <button @click="openRenameSessionModal(session)" class="btn btn-sm btn-outline" :title="$t('settings.renameSession')">
+                <Edit class="w-4 h-4" />
+              </button>
+              <button @click="deleteSession(session.id)" class="btn btn-sm btn-secondary" :title="$t('settings.deleteSession')">
+                <Trash class="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Rename Session Modal -->
+    <div v-if="showRenameSessionModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50" @click.self="showRenameSessionModal = false">
+      <div class="card max-w-md w-full mx-4">
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-xl font-bold">{{ $t('settings.renameSession') }}</h2>
+          <button @click="showRenameSessionModal = false" class="text-gray-400 hover:text-white">
+            <X class="w-6 h-6" />
+          </button>
+        </div>
+
+        <form @submit.prevent="confirmRenameSession" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium mb-2">{{ $t('settings.sessionName') }}</label>
+            <input
+              v-model="renameSessionForm.name"
+              type="text"
+              required
+              class="input"
+              placeholder="Chrome on Windows" />
+          </div>
+
+          <div class="flex gap-3">
+            <button type="submit" :disabled="renamingSession" class="btn btn-primary flex-1">
+              {{ renamingSession ? $t('common.saving') : $t('common.save') }}
+            </button>
+            <button type="button" @click="showRenameSessionModal = false" class="btn btn-outline">
+              {{ $t('common.cancel') }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <!-- Admin Section -->
     <div v-if="authStore.isAdmin" class="mt-8 space-y-6">
       <!-- Users Management -->
@@ -175,7 +249,7 @@
                 <td class="py-3">{{ user.email }}</td>
                 <td class="py-3">
                   <span :class="user.role === 'ADMIN' ? 'text-purple-400' : 'text-gray-400'">
-                    {{ user.role }}
+                    {{ $t(`roles.${user.role}`) }}
                   </span>
                 </td>
                 <td class="py-3">{{ user.groupName || '-' }}</td>
@@ -554,6 +628,16 @@ const passkeyName = ref('')
 const passkeyError = ref('')
 const passkeySuccess = ref('')
 
+// Session state
+const sessions = ref([])
+const loadingSessions = ref(false)
+const showRenameSessionModal = ref(false)
+const renamingSession = ref(false)
+const renameSessionForm = ref({
+  id: '',
+  name: ''
+})
+
 onMounted(async () => {
   // Initialize profile form with current user data
   profileForm.value = {
@@ -573,6 +657,9 @@ onMounted(async () => {
   if (passkeySupported.value) {
     await loadPasskeyList()
   }
+
+  // Load sessions
+  await loadSessions()
 })
 
 async function updateProfile() {
@@ -606,8 +693,8 @@ async function changePassword() {
 
   try {
     await api.post('/users/change-password', {
-      current_password: passwordForm.value.currentPassword,
-      new_password: passwordForm.value.newPassword
+      oldPassword: passwordForm.value.currentPassword,
+      newPassword: passwordForm.value.newPassword
     })
 
     success.value = 'Hasło zostało zmienione'
@@ -655,7 +742,7 @@ async function createUser() {
     await api.post('/users', {
       name: newUser.value.name,
       email: newUser.value.email,
-      password: newUser.value.password,
+      tempPassword: newUser.value.password,
       role: newUser.value.role,
       groupId: newUser.value.groupId || undefined
     })
@@ -984,5 +1071,77 @@ async function importBackup(file) {
   } finally {
     importingBackup.value = false
   }
+}
+
+// Session functions
+async function loadSessions() {
+  loadingSessions.value = true
+  try {
+    const response = await api.get('/sessions')
+    sessions.value = response.data || []
+  } catch (err) {
+    console.error('Failed to load sessions:', err)
+  } finally {
+    loadingSessions.value = false
+  }
+}
+
+function isCurrentSession(session) {
+  // Check if this is the current session by comparing last used time
+  // The most recently used session is likely the current one
+  if (sessions.value.length === 0) return false
+  const mostRecent = sessions.value.reduce((prev, current) =>
+    new Date(current.lastUsedAt) > new Date(prev.lastUsedAt) ? current : prev
+  )
+  return session.id === mostRecent.id
+}
+
+function openRenameSessionModal(session) {
+  renameSessionForm.value = {
+    id: session.id,
+    name: session.name
+  }
+  showRenameSessionModal.value = true
+}
+
+async function confirmRenameSession() {
+  renamingSession.value = true
+  try {
+    await api.patch(`/sessions/${renameSessionForm.value.id}`, {
+      name: renameSessionForm.value.name
+    })
+
+    showRenameSessionModal.value = false
+    await loadSessions()
+  } catch (err) {
+    console.error('Failed to rename session:', err)
+    alert('Nie udało się zmienić nazwy sesji')
+  } finally {
+    renamingSession.value = false
+  }
+}
+
+async function deleteSession(sessionId) {
+  if (!confirm('Czy na pewno chcesz usunąć tę sesję? Zostaniesz wylogowany z tego urządzenia.')) return
+
+  try {
+    await api.delete(`/sessions/${sessionId}`)
+    await loadSessions()
+  } catch (err) {
+    console.error('Failed to delete session:', err)
+    alert('Nie udało się usunąć sesji')
+  }
+}
+
+function formatDate(dateString) {
+  if (!dateString) return '-'
+  const date = new Date(dateString)
+  return date.toLocaleString('pl-PL', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
 }
 </script>

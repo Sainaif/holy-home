@@ -194,12 +194,14 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { useDataEvents, DATA_EVENTS } from '../composables/useDataEvents'
 import { RotateCcw, X, AlertCircle } from 'lucide-vue-next'
 import api from '../api/client'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
+const { on } = useDataEvents()
 const billId = route.params.id
 
 const bill = ref(null)
@@ -280,6 +282,12 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
+
+  // Listen for user updates
+  on(DATA_EVENTS.USER_UPDATED, async () => {
+    const usersRes = await api.get('/users')
+    users.value = usersRes.data || []
+  })
 })
 
 function getBillType(b) {

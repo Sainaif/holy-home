@@ -38,7 +38,7 @@ export function useEventStream() {
 
     try {
       // EventSource doesn't support custom headers, so we pass token as query param
-      const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+      const baseURL = import.meta.env.VITE_API_URL || '/api'
       const url = `${baseURL}/events/stream?token=${authStore.accessToken}`
 
       eventSource = new EventSource(url)

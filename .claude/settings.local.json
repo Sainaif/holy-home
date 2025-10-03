@@ -54,7 +54,11 @@
       "Bash(env ADMIN_EMAIL=admin@example.pl ./api_test.sh:*)",
       "Bash(bash -c 'export ADMIN_EMAIL=admin@example.pl && ./api_test.sh')",
       "Bash(./security_test.sh)",
-      "Bash(docker restart:*)"
+      "Bash(docker restart:*)",
+      "Bash(docker build:*)",
+      "Bash(docker manifest inspect:*)",
+      "Bash(openssl rand:*)",
+      "Bash(docker push:*)"
     ],
     "deny": [],
     "ask": []

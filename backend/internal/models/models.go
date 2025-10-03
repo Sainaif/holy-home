@@ -30,6 +30,9 @@ type PasskeyCredential struct {
 	Name            string    `bson:"name" json:"name"` // User-friendly name for the credential
 	CreatedAt       time.Time `bson:"created_at" json:"createdAt"`
 	LastUsedAt      time.Time `bson:"last_used_at" json:"lastUsedAt"`
+	// Store backup flags to handle platform authenticators that sync credentials
+	BackupEligible bool `bson:"backup_eligible" json:"backupEligible"`
+	BackupState    bool `bson:"backup_state" json:"backupState"`
 }
 
 // Group represents a household group (e.g., couples)
@@ -173,20 +176,22 @@ type SupplySettings struct {
 	UpdatedAt             time.Time            `bson:"updated_at" json:"updatedAt"`
 }
 
-// SupplyItem represents a shopping list item or purchased item
+// SupplyItem represents a household supply with inventory tracking
 type SupplyItem struct {
-	ID             primitive.ObjectID    `bson:"_id,omitempty" json:"id"`
-	Name           string                `bson:"name" json:"name"`
-	Category       string                `bson:"category" json:"category"` // groceries, cleaning, toiletries, other
-	Status         string                `bson:"status" json:"status"` // needed, bought, archived
-	Quantity       *string               `bson:"quantity,omitempty" json:"quantity,omitempty"` // "2x", "1 kg", etc
-	Priority       int                   `bson:"priority" json:"priority"` // 1-5 (1=low, 5=urgent)
-	AddedByUserID  primitive.ObjectID    `bson:"added_by_user_id" json:"addedByUserId"`
-	AddedAt        time.Time             `bson:"added_at" json:"addedAt"`
-	BoughtByUserID *primitive.ObjectID   `bson:"bought_by_user_id,omitempty" json:"boughtByUserId,omitempty"`
-	BoughtAt       *time.Time            `bson:"bought_at,omitempty" json:"boughtAt,omitempty"`
-	AmountPLN      *primitive.Decimal128 `bson:"amount_pln,omitempty" json:"amountPLN,omitempty"`
-	Notes          *string               `bson:"notes,omitempty" json:"notes,omitempty"`
+	ID                     primitive.ObjectID    `bson:"_id,omitempty" json:"id"`
+	Name                   string                `bson:"name" json:"name"`
+	Category               string                `bson:"category" json:"category"` // groceries, cleaning, toiletries, other
+	CurrentQuantity        int                   `bson:"current_quantity" json:"currentQuantity"` // How much is in stock now
+	MinQuantity            int                   `bson:"min_quantity" json:"minQuantity"` // Threshold for low stock warning
+	Unit                   string                `bson:"unit" json:"unit"` // pcs, kg, L, bottles, boxes, etc.
+	Priority               int                   `bson:"priority" json:"priority"` // 1-5 (1=low, 5=urgent)
+	AddedByUserID          primitive.ObjectID    `bson:"added_by_user_id" json:"addedByUserId"`
+	AddedAt                time.Time             `bson:"added_at" json:"addedAt"`
+	LastRestockedAt        *time.Time            `bson:"last_restocked_at,omitempty" json:"lastRestockedAt,omitempty"`
+	LastRestockedByUserID  *primitive.ObjectID   `bson:"last_restocked_by_user_id,omitempty" json:"lastRestockedByUserId,omitempty"`
+	LastRestockAmountPLN   *primitive.Decimal128 `bson:"last_restock_amount_pln,omitempty" json:"lastRestockAmountPLN,omitempty"`
+	NeedsRefund            bool                  `bson:"needs_refund" json:"needsRefund"` // If last restock awaits reimbursement
+	Notes                  *string               `bson:"notes,omitempty" json:"notes,omitempty"`
 }
 
 // SupplyContribution represents a budget contribution
@@ -199,4 +204,17 @@ type SupplyContribution struct {
 	Type        string               `bson:"type" json:"type"` // weekly_auto, manual, adjustment
 	Notes       *string              `bson:"notes,omitempty" json:"notes,omitempty"`
 	CreatedAt   time.Time            `bson:"created_at" json:"createdAt"`
+}
+
+// Session represents an active user session with a refresh token
+type Session struct {
+	ID           primitive.ObjectID `bson:"_id,omitempty" json:"id"`
+	UserID       primitive.ObjectID `bson:"user_id" json:"userId"`
+	RefreshToken string             `bson:"refresh_token" json:"-"` // Hashed token
+	Name         string             `bson:"name" json:"name"`        // User-friendly name (e.g., "Chrome on Windows")
+	IPAddress    string             `bson:"ip_address" json:"ipAddress"`
+	UserAgent    string             `bson:"user_agent" json:"userAgent"`
+	CreatedAt    time.Time          `bson:"created_at" json:"createdAt"`
+	LastUsedAt   time.Time          `bson:"last_used_at" json:"lastUsedAt"`
+	ExpiresAt    time.Time          `bson:"expires_at" json:"expiresAt"`
 }

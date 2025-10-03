@@ -41,8 +41,9 @@ func main() {
 		}
 	}()
 
-	// Bootstrap admin user
-	authService := services.NewAuthService(db.Database, cfg)
+	// Initialize services
+	sessionService := services.NewSessionService(db.Database)
+	authService := services.NewAuthService(db.Database, cfg, sessionService)
 	if err := authService.BootstrapAdmin(context.Background()); err != nil {
 		log.Fatalf("Failed to bootstrap admin: %v", err)
 	}
@@ -112,6 +113,7 @@ func main() {
 
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(authService)
+	sessionHandler := handlers.NewSessionHandler(sessionService)
 	userHandler := handlers.NewUserHandler(userService)
 	groupHandler := handlers.NewGroupHandler(groupService)
 	billHandler := handlers.NewBillHandler(billService, consumptionService)
@@ -136,6 +138,12 @@ func main() {
 	auth.Post("/passkey/login/finish", authHandler.FinishPasskeyLogin)
 	auth.Get("/passkeys", middleware.AuthMiddleware(cfg), authHandler.ListPasskeys)
 	auth.Delete("/passkeys", middleware.AuthMiddleware(cfg), authHandler.DeletePasskey)
+
+	// Session routes
+	sessions := app.Group("/sessions")
+	sessions.Get("/", middleware.AuthMiddleware(cfg), sessionHandler.GetSessions)
+	sessions.Patch("/:id", middleware.AuthMiddleware(cfg), sessionHandler.RenameSession)
+	sessions.Delete("/:id", middleware.AuthMiddleware(cfg), sessionHandler.DeleteSession)
 
 	// User routes
 	users := app.Group("/users")
@@ -222,7 +230,10 @@ func main() {
 	supplies.Get("/items", middleware.AuthMiddleware(cfg), supplyHandler.GetItems)
 	supplies.Post("/items", middleware.AuthMiddleware(cfg), supplyHandler.CreateItem)
 	supplies.Patch("/items/:id", middleware.AuthMiddleware(cfg), supplyHandler.UpdateItem)
-	supplies.Post("/items/:id/bought", middleware.AuthMiddleware(cfg), supplyHandler.MarkAsBought)
+	supplies.Post("/items/:id/restock", middleware.AuthMiddleware(cfg), supplyHandler.RestockItem)
+	supplies.Post("/items/:id/consume", middleware.AuthMiddleware(cfg), supplyHandler.ConsumeItem)
+	supplies.Patch("/items/:id/quantity", middleware.AuthMiddleware(cfg), supplyHandler.SetQuantity)
+	supplies.Post("/items/:id/refund", middleware.AuthMiddleware(cfg), middleware.RequireRole("ADMIN"), supplyHandler.MarkAsRefunded)
 	supplies.Delete("/items/:id", middleware.AuthMiddleware(cfg), supplyHandler.DeleteItem)
 
 	// Contributions

@@ -51,8 +51,11 @@ func main() {
 
 	// Initialize Fiber app
 	app := fiber.New(fiber.Config{
-		AppName:      cfg.App.Name,
-		ErrorHandler: customErrorHandler,
+		AppName:           cfg.App.Name,
+		ErrorHandler:      customErrorHandler,
+		EnableTrustedProxyCheck: true,
+		TrustedProxies:    []string{"172.20.0.0/16", "10.0.0.0/8", "127.0.0.1"},
+		ProxyHeader:       fiber.HeaderXForwardedFor,
 	})
 
 	// Global Middleware
@@ -201,6 +204,7 @@ func main() {
 	bills.Post("/:id/reopen", middleware.AuthMiddleware(cfg), middleware.RequirePermission("bills.update", getRoleService), billHandler.ReopenBill)
 	bills.Delete("/:id", middleware.AuthMiddleware(cfg), middleware.RequirePermission("bills.delete", getRoleService), billHandler.DeleteBill)
 	bills.Get("/:id/allocation", middleware.AuthMiddleware(cfg), billHandler.GetBillAllocation)
+	bills.Get("/:id/payment-status", middleware.AuthMiddleware(cfg), billHandler.GetBillPaymentStatus)
 
 	// Consumption routes
 	consumptions := app.Group("/consumptions")

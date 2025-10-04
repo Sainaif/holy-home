@@ -453,3 +453,22 @@ func (h *BillHandler) GetBillAllocation(c *fiber.Ctx) error {
 
 	return c.JSON(breakdown)
 }
+
+// GetBillPaymentStatus returns payment status showing who paid and who hasn't
+func (h *BillHandler) GetBillPaymentStatus(c *fiber.Ctx) error {
+	billID, err := primitive.ObjectIDFromHex(c.Params("billId"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid bill ID",
+		})
+	}
+
+	status, err := h.billService.GetBillPaymentStatus(c.Context(), billID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
+	return c.JSON(status)
+}

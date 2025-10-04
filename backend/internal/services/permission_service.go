@@ -332,6 +332,11 @@ func (s *RoleService) DeleteRole(ctx context.Context, roleID primitive.ObjectID)
 
 // HasPermission checks if a role has a specific permission
 func (s *RoleService) HasPermission(ctx context.Context, roleName, permission string) (bool, error) {
+	// ADMIN role always has all permissions
+	if roleName == "ADMIN" {
+		return true, nil
+	}
+
 	role, err := s.GetRole(ctx, roleName)
 	if err != nil {
 		return false, err

@@ -83,8 +83,17 @@ func (h *RoleHandler) CreateRole(c *fiber.Ctx) error {
 
 // UpdateRole updates a role's permissions (ADMIN only)
 func (h *RoleHandler) UpdateRole(c *fiber.Ctx) error {
-	userID := c.Locals(middleware.UserIDKey).(primitive.ObjectID)
-	userEmail := c.Locals(middleware.UserEmail).(string)
+	userIDVal := c.Locals("userId")
+	userEmailVal := c.Locals("userEmail")
+
+	if userIDVal == nil || userEmailVal == nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
+
+	userID := userIDVal.(primitive.ObjectID)
+	userEmail := userEmailVal.(string)
 
 	id := c.Params("id")
 	roleID, err := primitive.ObjectIDFromHex(id)

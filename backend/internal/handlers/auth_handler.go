@@ -37,7 +37,7 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 		})
 	}
 
-	tokens, err := h.authService.Login(c.Context(), req)
+	tokens, err := h.authService.Login(c.Context(), req, c.IP(), c.Get("User-Agent"))
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"error": err.Error(),
@@ -67,7 +67,7 @@ func (h *AuthHandler) Refresh(c *fiber.Ctx) error {
 		})
 	}
 
-	tokens, err := h.authService.RefreshTokens(c.Context(), req.RefreshToken)
+	tokens, err := h.authService.RefreshTokens(c.Context(), req.RefreshToken, c.IP(), c.Get("User-Agent"))
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"error": err.Error(),
@@ -279,7 +279,7 @@ func (h *AuthHandler) FinishPasskeyLogin(c *fiber.Ctx) error {
 
 	// If email is empty, use discoverable credentials
 	if req.Email == "" {
-		tokens, err := h.authService.FinishPasskeyDiscoverableLogin(c.Context(), credBytes)
+		tokens, err := h.authService.FinishPasskeyDiscoverableLogin(c.Context(), credBytes, c.IP(), c.Get("User-Agent"))
 		if err != nil {
 			fmt.Printf("[Passkey] Discoverable login failed: %v\n", err)
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
@@ -289,7 +289,7 @@ func (h *AuthHandler) FinishPasskeyLogin(c *fiber.Ctx) error {
 		return c.JSON(tokens)
 	}
 
-	tokens, err := h.authService.FinishPasskeyLogin(c.Context(), req.Email, credBytes)
+	tokens, err := h.authService.FinishPasskeyLogin(c.Context(), req.Email, credBytes, c.IP(), c.Get("User-Agent"))
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"error": err.Error(),

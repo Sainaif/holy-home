@@ -262,9 +262,59 @@ func (s *AllocationService) CalculateMeteredAllocation(ctx context.Context, bill
 
 // GetAllocationBreakdown returns allocation breakdown for a bill
 func (s *AllocationService) GetAllocationBreakdown(ctx context.Context, billID primitive.ObjectID) ([]AllocationBreakdown, error) {
+	// First, check if allocations already exist in the database
+	cursor, err := s.db.Collection("allocations").Find(ctx, bson.M{"bill_id": billID})
+	if err != nil {
+		return nil, fmt.Errorf("failed to query allocations: %w", err)
+	}
+	defer cursor.Close(ctx)
+
+	var storedAllocations []struct {
+		SubjectID    primitive.ObjectID   `bson:"subject_id"`
+		SubjectType  string               `bson:"subject_type"`
+		AllocatedPLN primitive.Decimal128 `bson:"allocated_pln"`
+	}
+	if err := cursor.All(ctx, &storedAllocations); err != nil {
+		return nil, fmt.Errorf("failed to decode allocations: %w", err)
+	}
+
+	// If allocations exist, return them
+	if len(storedAllocations) > 0 {
+		breakdown := make([]AllocationBreakdown, 0, len(storedAllocations))
+
+		for _, alloc := range storedAllocations {
+			amount, _ := utils.DecimalToFloat(alloc.AllocatedPLN)
+
+			// Get subject name
+			var subjectName string
+			if alloc.SubjectType == "user" {
+				var user models.User
+				if err := s.db.Collection("users").FindOne(ctx, bson.M{"_id": alloc.SubjectID}).Decode(&user); err == nil {
+					subjectName = user.Name
+				}
+			} else if alloc.SubjectType == "group" {
+				var group models.Group
+				if err := s.db.Collection("groups").FindOne(ctx, bson.M{"_id": alloc.SubjectID}).Decode(&group); err == nil {
+					subjectName = group.Name
+				}
+			}
+
+			breakdown = append(breakdown, AllocationBreakdown{
+				SubjectID:   alloc.SubjectID,
+				SubjectType: alloc.SubjectType,
+				SubjectName: subjectName,
+				Weight:      1.0, // Not applicable for stored allocations
+				Amount:      utils.RoundToTwoDecimals(amount),
+			})
+		}
+
+		return breakdown, nil
+	}
+
+	// If no allocations exist, calculate them on-the-fly (for draft bills)
 	// Get the bill
 	var bill models.Bill
-	err := s.db.Collection("bills").FindOne(ctx, bson.M{"_id": billID}).Decode(&bill)
+	err = s.db.Collection("bills").FindOne(ctx, bson.M{"_id": billID}).Decode(&bill)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return nil, errors.New("bill not found")

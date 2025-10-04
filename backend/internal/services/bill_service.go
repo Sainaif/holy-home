@@ -318,3 +318,139 @@ func (s *BillService) DeleteBill(ctx context.Context, billID primitive.ObjectID)
 
 	return nil
 }
+
+// PaymentStatusEntry represents payment status for a user/group
+type PaymentStatusEntry struct {
+	SubjectID      primitive.ObjectID    `json:"subjectId"`
+	SubjectType    string                `json:"subjectType"` // "user" or "group"
+	SubjectName    string                `json:"subjectName"`
+	AllocatedPLN   primitive.Decimal128  `json:"allocatedPLN"`
+	PaidPLN        primitive.Decimal128  `json:"paidPLN"`
+	RemainingPLN   primitive.Decimal128  `json:"remainingPLN"`
+	IsPaid         bool                  `json:"isPaid"`
+}
+
+// GetBillPaymentStatus returns detailed payment status showing who paid and who hasn't
+func (s *BillService) GetBillPaymentStatus(ctx context.Context, billID primitive.ObjectID) ([]PaymentStatusEntry, error) {
+	// Get all allocations for this bill
+	allocCursor, err := s.db.Collection("allocations").Find(ctx, bson.M{"bill_id": billID})
+	if err != nil {
+		return nil, err
+	}
+	defer allocCursor.Close(ctx)
+
+	var allocations []struct {
+		SubjectID    primitive.ObjectID   `bson:"subject_id"`
+		SubjectType  string               `bson:"subject_type"`
+		AllocatedPLN primitive.Decimal128 `bson:"allocated_pln"`
+	}
+	if err := allocCursor.All(ctx, &allocations); err != nil {
+		return nil, err
+	}
+
+	// Get all payments for this bill
+	paymentCursor, err := s.db.Collection("payments").Find(ctx, bson.M{"bill_id": billID})
+	if err != nil {
+		return nil, err
+	}
+	defer paymentCursor.Close(ctx)
+
+	var payments []struct {
+		PayerUserID primitive.ObjectID   `bson:"payer_user_id"`
+		AmountPLN   primitive.Decimal128 `bson:"amount_pln"`
+	}
+	if err := paymentCursor.All(ctx, &payments); err != nil {
+		return nil, err
+	}
+
+	// Build payment map
+	paymentMap := make(map[primitive.ObjectID]primitive.Decimal128)
+	for _, payment := range payments {
+		existing := paymentMap[payment.PayerUserID]
+		existingFloat, _ := utils.DecimalToFloat(existing)
+		paymentFloat, _ := utils.DecimalToFloat(payment.AmountPLN)
+		totalFloat := existingFloat + paymentFloat
+		totalDecimal, _ := utils.DecimalFromFloat(totalFloat)
+		paymentMap[payment.PayerUserID] = totalDecimal
+	}
+
+	// Build status entries
+	var statusEntries []PaymentStatusEntry
+	for _, alloc := range allocations {
+		var subjectName string
+
+		// Get subject name
+		if alloc.SubjectType == "user" {
+			var user models.User
+			err := s.db.Collection("users").FindOne(ctx, bson.M{"_id": alloc.SubjectID}).Decode(&user)
+			if err == nil {
+				subjectName = user.Name
+			} else {
+				subjectName = "Unknown User"
+			}
+
+			// Get paid amount for this user
+			paidPLN := paymentMap[alloc.SubjectID]
+			paidFloat, _ := utils.DecimalToFloat(paidPLN)
+			allocFloat, _ := utils.DecimalToFloat(alloc.AllocatedPLN)
+			remainingFloat := allocFloat - paidFloat
+			remainingPLN, _ := utils.DecimalFromFloat(remainingFloat)
+
+			statusEntries = append(statusEntries, PaymentStatusEntry{
+				SubjectID:    alloc.SubjectID,
+				SubjectType:  alloc.SubjectType,
+				SubjectName:  subjectName,
+				AllocatedPLN: alloc.AllocatedPLN,
+				PaidPLN:      paidPLN,
+				RemainingPLN: remainingPLN,
+				IsPaid:       paidFloat >= allocFloat,
+			})
+		} else if alloc.SubjectType == "group" {
+			var group models.Group
+			err := s.db.Collection("groups").FindOne(ctx, bson.M{"_id": alloc.SubjectID}).Decode(&group)
+			if err == nil {
+				subjectName = group.Name
+			} else {
+				subjectName = "Unknown Group"
+			}
+
+			// Get all users in this group
+			userCursor, err := s.db.Collection("users").Find(ctx, bson.M{"group_id": alloc.SubjectID})
+			if err != nil {
+				continue
+			}
+
+			var groupUsers []models.User
+			if err := userCursor.All(ctx, &groupUsers); err != nil {
+				userCursor.Close(ctx)
+				continue
+			}
+			userCursor.Close(ctx)
+
+			// Calculate total paid by all group members
+			totalPaidFloat := 0.0
+			for _, user := range groupUsers {
+				paidPLN := paymentMap[user.ID]
+				paidFloat, _ := utils.DecimalToFloat(paidPLN)
+				totalPaidFloat += paidFloat
+			}
+
+			totalPaidDecimal, _ := utils.DecimalFromFloat(totalPaidFloat)
+			allocFloat, _ := utils.DecimalToFloat(alloc.AllocatedPLN)
+			remainingFloat := allocFloat - totalPaidFloat
+			remainingPLN, _ := utils.DecimalFromFloat(remainingFloat)
+
+			statusEntries = append(statusEntries, PaymentStatusEntry{
+				SubjectID:    alloc.SubjectID,
+				SubjectType:  alloc.SubjectType,
+				SubjectName:  subjectName,
+				AllocatedPLN: alloc.AllocatedPLN,
+				PaidPLN:      totalPaidDecimal,
+				RemainingPLN: remainingPLN,
+				IsPaid:       totalPaidFloat >= allocFloat,
+			})
+		}
+	}
+
+	return statusEntries, nil
+}

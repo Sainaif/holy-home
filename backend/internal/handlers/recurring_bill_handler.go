@@ -144,6 +144,23 @@ func (h *RecurringBillHandler) UpdateRecurringBillTemplate(c *fiber.Ctx) error {
 		})
 	}
 
+	// Convert amount to Decimal128 if present
+	if amountStr, ok := updates["amount"].(string); ok {
+		amountFloat, err := strconv.ParseFloat(amountStr, 64)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": fmt.Sprintf("Invalid amount: %v", err),
+			})
+		}
+		amountDecimal, err := utils.DecimalFromFloat(amountFloat)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": fmt.Sprintf("Failed to convert amount: %v", err),
+			})
+		}
+		updates["amount"] = amountDecimal
+	}
+
 	if err := h.recurringBillService.UpdateTemplate(c.Context(), templateID, updates); err != nil {
 		h.auditService.LogAction(c.Context(), userID, userEmail, userEmail, "update_recurring_bill_template", "recurring_bill_template", &templateID,
 			map[string]interface{}{"updates": updates},

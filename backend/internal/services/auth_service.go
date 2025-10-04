@@ -58,7 +58,7 @@ type TokenResponse struct {
 }
 
 // Login authenticates a user and returns JWT tokens
-func (s *AuthService) Login(ctx context.Context, req LoginRequest) (*TokenResponse, error) {
+func (s *AuthService) Login(ctx context.Context, req LoginRequest, ipAddress, userAgent string) (*TokenResponse, error) {
 	// Find user by email
 	var user models.User
 	err := s.db.Collection("users").FindOne(ctx, bson.M{"email": req.Email}).Decode(&user)
@@ -106,7 +106,7 @@ func (s *AuthService) Login(ctx context.Context, req LoginRequest) (*TokenRespon
 	// Create session record (best effort - don't fail login if session creation fails)
 	if s.sessionService != nil {
 		expiresAt := time.Now().Add(s.cfg.JWT.RefreshTTL)
-		_ = s.sessionService.CreateSession(ctx, user.ID, refreshToken, "Web Browser", "", "", expiresAt)
+		_ = s.sessionService.CreateSession(ctx, user.ID, refreshToken, "Web Browser", ipAddress, userAgent, expiresAt)
 	}
 
 	return &TokenResponse{
@@ -117,11 +117,19 @@ func (s *AuthService) Login(ctx context.Context, req LoginRequest) (*TokenRespon
 }
 
 // RefreshTokens generates new tokens from a valid refresh token
-func (s *AuthService) RefreshTokens(ctx context.Context, refreshToken string) (*TokenResponse, error) {
+func (s *AuthService) RefreshTokens(ctx context.Context, refreshToken string, ipAddress, userAgent string) (*TokenResponse, error) {
 	// Validate refresh token
 	userID, err := utils.ValidateRefreshToken(refreshToken, s.cfg.JWT.RefreshSecret)
 	if err != nil {
 		return nil, errors.New("invalid refresh token")
+	}
+
+	// Validate session exists (if session service is available)
+	// Note: This is optional for backward compatibility - if session doesn't exist, we'll create one
+	var sessionExists bool
+	if s.sessionService != nil {
+		_, err := s.sessionService.ValidateSession(ctx, refreshToken)
+		sessionExists = (err == nil)
 	}
 
 	// Find user
@@ -157,6 +165,18 @@ func (s *AuthService) RefreshTokens(ctx context.Context, refreshToken string) (*
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate refresh token: %w", err)
+	}
+
+	// Update the session with new refresh token
+	if s.sessionService != nil {
+		if sessionExists {
+			// Revoke old session only if it existed
+			_ = s.sessionService.RevokeSession(ctx, refreshToken)
+		}
+
+		// Create new session with new refresh token
+		expiresAt := time.Now().Add(s.cfg.JWT.RefreshTTL)
+		_ = s.sessionService.CreateSession(ctx, user.ID, newRefreshToken, "Web Browser", ipAddress, userAgent, expiresAt)
 	}
 
 	return &TokenResponse{
@@ -348,7 +368,7 @@ func (s *AuthService) BeginPasskeyDiscoverableLogin(ctx context.Context) (*proto
 }
 
 // FinishPasskeyLogin completes the passkey authentication process
-func (s *AuthService) FinishPasskeyLogin(ctx context.Context, email string, response []byte) (*TokenResponse, error) {
+func (s *AuthService) FinishPasskeyLogin(ctx context.Context, email string, response []byte, ipAddress, userAgent string) (*TokenResponse, error) {
 	if s.webAuthn == nil {
 		return nil, errors.New("WebAuthn not initialized")
 	}
@@ -424,7 +444,7 @@ func (s *AuthService) FinishPasskeyLogin(ctx context.Context, email string, resp
 	// Create session record (best effort - don't fail login if session creation fails)
 	if s.sessionService != nil {
 		expiresAt := time.Now().Add(s.cfg.JWT.RefreshTTL)
-		_ = s.sessionService.CreateSession(ctx, user.ID, refreshToken, "Passkey Login", "", "", expiresAt)
+		_ = s.sessionService.CreateSession(ctx, user.ID, refreshToken, "Passkey Login", ipAddress, userAgent, expiresAt)
 	}
 
 	return &TokenResponse{
@@ -435,7 +455,7 @@ func (s *AuthService) FinishPasskeyLogin(ctx context.Context, email string, resp
 }
 
 // FinishPasskeyDiscoverableLogin completes discoverable credential authentication
-func (s *AuthService) FinishPasskeyDiscoverableLogin(ctx context.Context, response []byte) (*TokenResponse, error) {
+func (s *AuthService) FinishPasskeyDiscoverableLogin(ctx context.Context, response []byte, ipAddress, userAgent string) (*TokenResponse, error) {
 	if s.webAuthn == nil {
 		return nil, errors.New("WebAuthn not initialized")
 	}
@@ -539,7 +559,7 @@ func (s *AuthService) FinishPasskeyDiscoverableLogin(ctx context.Context, respon
 	// Create session record (best effort - don't fail login if session creation fails)
 	if s.sessionService != nil {
 		expiresAt := time.Now().Add(s.cfg.JWT.RefreshTTL)
-		_ = s.sessionService.CreateSession(ctx, user.ID, refreshToken, "Passkey Login (Discoverable)", "", "", expiresAt)
+		_ = s.sessionService.CreateSession(ctx, user.ID, refreshToken, "Passkey Login (Discoverable)", ipAddress, userAgent, expiresAt)
 	}
 
 	return &TokenResponse{

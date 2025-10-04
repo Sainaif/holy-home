@@ -87,9 +87,10 @@ func (s *RecurringBillService) GetTemplate(ctx context.Context, id primitive.Obj
 	return &template, nil
 }
 
-// ListTemplates retrieves all recurring bill templates
+// ListTemplates retrieves all active recurring bill templates
 func (s *RecurringBillService) ListTemplates(ctx context.Context) ([]models.RecurringBillTemplate, error) {
-	cursor, err := s.db.Collection("recurring_bill_templates").Find(ctx, bson.M{})
+	// Only return active templates (not soft-deleted)
+	cursor, err := s.db.Collection("recurring_bill_templates").Find(ctx, bson.M{"is_active": true})
 	if err != nil {
 		return nil, err
 	}
@@ -212,21 +213,28 @@ func (s *RecurringBillService) generateBillFromTemplate(ctx context.Context, tem
 	for _, allocTemplate := range template.Allocations {
 		var allocatedAmount primitive.Decimal128
 
+		// Debug logging to track allocation creation
+		fmt.Printf("[RecurringBill] Creating allocation - Type: %s, SubjectType: %s\n", allocTemplate.AllocationType, allocTemplate.SubjectType)
+
 		switch allocTemplate.AllocationType {
 		case "fixed":
 			allocatedAmount = *allocTemplate.FixedAmount
+			amountFloat, _ := utils.DecimalToFloat(allocatedAmount)
+			fmt.Printf("[RecurringBill] Fixed allocation: %.2f PLN\n", amountFloat)
 		case "percentage":
 			amountFloat, _ := utils.DecimalToFloat(template.Amount)
 			percentage := *allocTemplate.Percentage / 100.0
 			allocatedFloat := amountFloat * percentage
 			roundedAmount := utils.RoundPLN(allocatedFloat)
 			allocatedAmount, _ = utils.DecimalFromFloat(roundedAmount)
+			fmt.Printf("[RecurringBill] Percentage allocation: %.2f%% of %.2f = %.2f PLN\n", *allocTemplate.Percentage, amountFloat, roundedAmount)
 		case "fraction":
 			amountFloat, _ := utils.DecimalToFloat(template.Amount)
 			fraction := float64(*allocTemplate.FractionNum) / float64(*allocTemplate.FractionDenom)
 			allocatedFloat := amountFloat * fraction
 			roundedAmount := utils.RoundPLN(allocatedFloat)
 			allocatedAmount, _ = utils.DecimalFromFloat(roundedAmount)
+			fmt.Printf("[RecurringBill] Fraction allocation: %d/%d of %.2f = %.2f PLN\n", *allocTemplate.FractionNum, *allocTemplate.FractionDenom, amountFloat, roundedAmount)
 		}
 
 		allocation := bson.M{

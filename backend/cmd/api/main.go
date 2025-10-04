@@ -51,8 +51,11 @@ func main() {
 
 	// Initialize Fiber app
 	app := fiber.New(fiber.Config{
-		AppName:      cfg.App.Name,
-		ErrorHandler: customErrorHandler,
+		AppName:           cfg.App.Name,
+		ErrorHandler:      customErrorHandler,
+		EnableTrustedProxyCheck: true,
+		TrustedProxies:    []string{"172.20.0.0/16", "10.0.0.0/8", "127.0.0.1"},
+		ProxyHeader:       fiber.HeaderXForwardedFor,
 	})
 
 	// Global Middleware
@@ -201,6 +204,7 @@ func main() {
 	bills.Post("/:id/reopen", middleware.AuthMiddleware(cfg), middleware.RequirePermission("bills.update", getRoleService), billHandler.ReopenBill)
 	bills.Delete("/:id", middleware.AuthMiddleware(cfg), middleware.RequirePermission("bills.delete", getRoleService), billHandler.DeleteBill)
 	bills.Get("/:id/allocation", middleware.AuthMiddleware(cfg), billHandler.GetBillAllocation)
+	bills.Get("/:id/payment-status", middleware.AuthMiddleware(cfg), billHandler.GetBillPaymentStatus)
 
 	// Consumption routes
 	consumptions := app.Group("/consumptions")
@@ -227,16 +231,16 @@ func main() {
 
 	// Loan routes
 	loans := app.Group("/loans")
-	loans.Post("/", middleware.AuthMiddleware(cfg), loanHandler.CreateLoan)
-	loans.Get("/", middleware.AuthMiddleware(cfg), loanHandler.GetLoans)
-	loans.Get("/balances", middleware.AuthMiddleware(cfg), loanHandler.GetBalances)
-	loans.Get("/balances/me", middleware.AuthMiddleware(cfg), loanHandler.GetMyBalance)
+	loans.Post("/", middleware.AuthMiddleware(cfg), middleware.RequirePermission("loans.create", getRoleService), loanHandler.CreateLoan)
+	loans.Get("/", middleware.AuthMiddleware(cfg), middleware.RequirePermission("loans.read", getRoleService), loanHandler.GetLoans)
+	loans.Get("/balances", middleware.AuthMiddleware(cfg), middleware.RequirePermission("loans.read", getRoleService), loanHandler.GetBalances)
+	loans.Get("/balances/me", middleware.AuthMiddleware(cfg), middleware.RequirePermission("loans.read", getRoleService), loanHandler.GetMyBalance)
 	loans.Get("/balances/user/:id", middleware.AuthMiddleware(cfg), middleware.RequirePermission("loans.read", getRoleService), loanHandler.GetUserBalance)
 	loans.Delete("/:id", middleware.AuthMiddleware(cfg), middleware.RequirePermission("loans.delete", getRoleService), loanHandler.DeleteLoan)
 
 	// Loan payment routes
 	loanPayments := app.Group("/loan-payments")
-	loanPayments.Post("/", middleware.AuthMiddleware(cfg), loanHandler.CreateLoanPayment)
+	loanPayments.Post("/", middleware.AuthMiddleware(cfg), middleware.RequirePermission("loan-payments.create", getRoleService), loanHandler.CreateLoanPayment)
 
 	// Chore routes
 	chores := app.Group("/chores")

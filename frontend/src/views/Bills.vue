@@ -9,6 +9,10 @@
         <Plus class="w-5 h-5" />
         {{ $t('bills.createNew') }}
       </button>
+      <button v-if="authStore.hasPermission('bills.create') && activeTab === 'recurring'" @click="showRecurringModal = true" class="btn btn-primary flex items-center gap-2">
+        <Plus class="w-5 h-5" />
+        Nowy Rachunek Cykliczny
+      </button>
     </div>
 
     <!-- Tabs -->
@@ -27,6 +31,14 @@
         class="flex items-center gap-2">
         <Gauge class="w-4 h-4" />
         Odczyty
+      </button>
+      <button
+        v-if="authStore.hasPermission('bills.create')"
+        @click="activeTab = 'recurring'"
+        :class="['btn', activeTab === 'recurring' ? 'btn-primary' : 'btn-outline']"
+        class="flex items-center gap-2">
+        <Calendar class="w-4 h-4" />
+        Cykliczne
       </button>
     </div>
 
@@ -429,6 +441,191 @@
         </div>
       </div>
     </div>
+
+    <!-- Recurring Bills Tab -->
+    <div v-show="activeTab === 'recurring'">
+      <div class="card">
+        <h2 class="text-xl font-semibold mb-4">Cykliczne Rachunki</h2>
+        <div v-if="loadingRecurring" class="text-center py-8">{{ $t('common.loading') }}</div>
+        <div v-else-if="recurringTemplates.length === 0" class="text-center py-8 text-gray-400">
+          <FileX class="w-12 h-12 mx-auto mb-3 opacity-50" />
+          <p>Brak cyklicznych rachunków</p>
+          <p class="text-sm mt-2">Kliknij "Nowy Rachunek Cykliczny" aby dodać pierwszy</p>
+        </div>
+        <div v-else class="space-y-3">
+          <div v-for="template in recurringTemplates" :key="template.id" class="p-4 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors">
+            <div class="flex justify-between items-start">
+              <div class="flex-1">
+                <div class="flex items-center gap-3 mb-2">
+                  <h3 class="text-lg font-semibold">{{ template.customType }}</h3>
+                  <span :class="['px-2 py-1 rounded text-xs', template.isActive ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400']">
+                    {{ template.isActive ? 'Aktywny' : 'Nieaktywny' }}
+                  </span>
+                  <span class="px-2 py-1 rounded text-xs bg-purple-500/20 text-purple-400">
+                    {{ formatFrequency(template.frequency) }}
+                  </span>
+                </div>
+                <div class="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span class="text-gray-400">Kwota:</span>
+                    <span class="ml-2 font-medium">{{ formatAmount(template.amount) }} PLN</span>
+                  </div>
+                  <div>
+                    <span class="text-gray-400">Dzień miesiąca:</span>
+                    <span class="ml-2 font-medium">{{ template.dayOfMonth }}</span>
+                  </div>
+                  <div>
+                    <span class="text-gray-400">Następny termin:</span>
+                    <span class="ml-2 font-medium">{{ formatDate(template.nextDueDate) }}</span>
+                  </div>
+                  <div v-if="template.lastGeneratedAt">
+                    <span class="text-gray-400">Ostatnio wygenerowany:</span>
+                    <span class="ml-2 font-medium">{{ formatDate(template.lastGeneratedAt) }}</span>
+                  </div>
+                </div>
+                <div v-if="template.allocations && template.allocations.length > 0" class="mt-3">
+                  <span class="text-gray-400 text-sm">Podział:</span>
+                  <div class="flex flex-wrap gap-2 mt-1">
+                    <span v-for="(alloc, idx) in template.allocations" :key="idx" class="px-2 py-1 bg-gray-600 rounded text-xs">
+                      {{ getAllocationLabel(alloc) }}
+                    </span>
+                  </div>
+                </div>
+                <div v-if="template.notes" class="mt-2 text-sm text-gray-400">
+                  {{ template.notes }}
+                </div>
+              </div>
+              <div class="flex gap-2 ml-4">
+                <button @click="editRecurringTemplate(template)" class="btn btn-sm btn-outline">
+                  Edytuj
+                </button>
+                <button v-if="authStore.hasPermission('bills.delete')" @click="deleteRecurringTemplate(template.id)" class="btn btn-sm btn-outline text-red-400 hover:text-red-300">
+                  <Trash2 class="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recurring Bill Modal -->
+    <div v-if="showRecurringModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50" @click.self="closeRecurringModal">
+      <div class="card max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-2xl font-bold gradient-text">{{ editingRecurring ? 'Edytuj' : 'Nowy' }} Rachunek Cykliczny</h2>
+          <button @click="closeRecurringModal" class="text-gray-400 hover:text-white">
+            <X class="w-6 h-6" />
+          </button>
+        </div>
+
+        <form @submit.prevent="saveRecurringTemplate" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium mb-2">Nazwa rachunku</label>
+            <input v-model="newRecurring.customType" type="text" required class="input" placeholder="np. Netflix, Czynsz, Woda..." />
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium mb-2">Kwota (PLN)</label>
+              <input v-model.number="newRecurring.amount" type="number" step="0.01" required class="input" placeholder="150.00" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-2">Częstotliwość</label>
+              <select v-model="newRecurring.frequency" required class="input">
+                <option value="monthly">Miesięcznie</option>
+                <option value="quarterly">Kwartalnie</option>
+                <option value="yearly">Rocznie</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium mb-2">Dzień miesiąca (termin płatności)</label>
+            <input v-model.number="newRecurring.dayOfMonth" type="number" min="1" max="31" required class="input" placeholder="15" />
+            <p class="text-xs text-gray-400 mt-1">Dzień miesiąca kiedy rachunek jest płatny (1-31)</p>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium mb-2">Podział kosztów</label>
+            <div class="space-y-3">
+              <div v-for="(alloc, idx) in newRecurring.allocations" :key="idx" class="p-3 bg-gray-700 rounded-lg space-y-2">
+                <div class="flex gap-2">
+                  <select v-model="alloc.subjectType" class="input flex-1" @change="alloc.subjectId = ''">
+                    <option value="user">Użytkownik</option>
+                    <option value="group">Grupa</option>
+                  </select>
+                  <select v-model="alloc.subjectId" required class="input flex-1">
+                    <option value="">Wybierz...</option>
+                    <option v-if="alloc.subjectType === 'user'" v-for="user in users" :key="user.id" :value="user.id">
+                      {{ user.name || user.email }}
+                    </option>
+                    <option v-if="alloc.subjectType === 'group'" v-for="group in groups" :key="group.id" :value="group.id">
+                      {{ group.name }}
+                    </option>
+                  </select>
+                  <button type="button" @click="removeAllocation(idx)" class="btn btn-sm btn-outline text-red-400">
+                    <X class="w-4 h-4" />
+                  </button>
+                </div>
+                <div class="flex gap-2 items-center">
+                  <select v-model="alloc.allocationType" class="input w-32">
+                    <option value="percentage">Procent</option>
+                    <option value="fraction">Ułamek</option>
+                    <option value="fixed">Stała kwota</option>
+                  </select>
+
+                  <!-- Percentage input -->
+                  <div v-if="alloc.allocationType === 'percentage'" class="flex items-center gap-2 flex-1">
+                    <input v-model.number="alloc.percentage" type="number" step="0.01" min="0" max="100" required class="input flex-1" placeholder="50" />
+                    <span class="text-gray-400">%</span>
+                  </div>
+
+                  <!-- Fraction input -->
+                  <div v-if="alloc.allocationType === 'fraction'" class="flex items-center gap-2 flex-1">
+                    <input v-model.number="alloc.fractionNum" type="number" min="1" required class="input w-20" placeholder="1" />
+                    <span class="text-gray-400">/</span>
+                    <input v-model.number="alloc.fractionDenom" type="number" min="1" required class="input w-20" placeholder="3" />
+                  </div>
+
+                  <!-- Fixed amount input -->
+                  <div v-if="alloc.allocationType === 'fixed'" class="flex items-center gap-2 flex-1">
+                    <input v-model.number="alloc.fixedAmount" type="number" step="0.01" min="0" required class="input flex-1" placeholder="100.00" />
+                    <span class="text-gray-400">PLN</span>
+                  </div>
+                </div>
+              </div>
+              <button type="button" @click="addAllocation" class="btn btn-sm btn-outline w-full">
+                <Plus class="w-4 h-4 mr-2" />
+                Dodaj podział
+              </button>
+              <p v-if="!isAllocationValid" class="text-xs text-yellow-400">
+                {{ allocationValidationMessage }}
+              </p>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium mb-2">Notatki (opcjonalne)</label>
+            <textarea v-model="newRecurring.notes" class="input" rows="2" placeholder="Opcjonalne uwagi..."></textarea>
+          </div>
+
+          <div v-if="recurringError" class="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
+            <AlertCircle class="w-4 h-4" />
+            {{ recurringError }}
+          </div>
+
+          <div class="flex gap-3 justify-end pt-4">
+            <button type="button" @click="closeRecurringModal" class="btn btn-outline">
+              Anuluj
+            </button>
+            <button type="submit" :disabled="savingRecurring || !isAllocationValid" class="btn btn-primary">
+              {{ savingRecurring ? 'Zapisywanie...' : (editingRecurring ? 'Zapisz zmiany' : 'Utwórz') }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -481,6 +678,74 @@ const form = ref({
   billId: '',
   meterReading: '',
   readingDate: new Date().toISOString().slice(0, 16)
+})
+
+// Recurring bills state
+const recurringTemplates = ref([])
+const loadingRecurring = ref(false)
+const showRecurringModal = ref(false)
+const savingRecurring = ref(false)
+const editingRecurring = ref(null)
+const recurringError = ref('')
+const groups = ref([])
+
+const newRecurring = ref({
+  customType: '',
+  frequency: 'monthly',
+  amount: '',
+  dayOfMonth: 1,
+  allocations: [],
+  notes: ''
+})
+
+const isAllocationValid = computed(() => {
+  if (newRecurring.value.allocations.length === 0) return false
+
+  let total = 0
+  let hasNonFixed = false
+
+  for (const alloc of newRecurring.value.allocations) {
+    if (alloc.allocationType === 'percentage') {
+      total += (parseFloat(alloc.percentage) || 0) / 100
+      hasNonFixed = true
+    } else if (alloc.allocationType === 'fraction') {
+      const num = parseInt(alloc.fractionNum) || 0
+      const denom = parseInt(alloc.fractionDenom) || 1
+      total += num / denom
+      hasNonFixed = true
+    }
+  }
+
+  if (hasNonFixed) {
+    return total >= 0.999 && total <= 1.001
+  }
+
+  return true
+})
+
+const allocationValidationMessage = computed(() => {
+  if (newRecurring.value.allocations.length === 0) return 'Dodaj przynajmniej jeden podział'
+
+  let total = 0
+  let hasNonFixed = false
+
+  for (const alloc of newRecurring.value.allocations) {
+    if (alloc.allocationType === 'percentage') {
+      total += (parseFloat(alloc.percentage) || 0) / 100
+      hasNonFixed = true
+    } else if (alloc.allocationType === 'fraction') {
+      const num = parseInt(alloc.fractionNum) || 0
+      const denom = parseInt(alloc.fractionDenom) || 1
+      total += num / denom
+      hasNonFixed = true
+    }
+  }
+
+  if (hasNonFixed) {
+    return `Suma: ${(total * 100).toFixed(2)}% (powinno być 100%)`
+  }
+
+  return ''
 })
 
 const filteredBills = computed(() => {
@@ -569,6 +834,8 @@ const newBill = ref({
 onMounted(async () => {
   await loadBills()
   await loadReadingsData()
+  await loadRecurringTemplates()
+  await loadGroups()
 })
 
 async function loadBills() {
@@ -817,5 +1084,182 @@ function getBillInfo(billId) {
 
 function viewBill(billId) {
   router.push(`/bills/${billId}`)
+}
+
+// Recurring Bills Functions
+async function loadRecurringTemplates() {
+  loadingRecurring.value = true
+  try {
+    const response = await api.get('/recurring-bills')
+    recurringTemplates.value = response.data || []
+  } catch (err) {
+    console.error('Failed to load recurring templates:', err)
+    recurringTemplates.value = []
+  } finally {
+    loadingRecurring.value = false
+  }
+}
+
+async function loadGroups() {
+  try {
+    const response = await api.get('/groups')
+    groups.value = response.data || []
+  } catch (err) {
+    console.error('Failed to load groups:', err)
+    groups.value = []
+  }
+}
+
+function addAllocation() {
+  newRecurring.value.allocations.push({
+    subjectType: 'user',
+    subjectId: '',
+    allocationType: 'fraction',
+    percentage: null,
+    fractionNum: 1,
+    fractionDenom: 1,
+    fixedAmount: null
+  })
+}
+
+function removeAllocation(index) {
+  newRecurring.value.allocations.splice(index, 1)
+}
+
+function closeRecurringModal() {
+  showRecurringModal.value = false
+  editingRecurring.value = null
+  recurringError.value = ''
+  newRecurring.value = {
+    customType: '',
+    frequency: 'monthly',
+    amount: '',
+    dayOfMonth: 1,
+    allocations: [],
+    notes: ''
+  }
+}
+
+async function saveRecurringTemplate() {
+  savingRecurring.value = true
+  recurringError.value = ''
+
+  try {
+    if (!isAllocationValid.value) {
+      recurringError.value = allocationValidationMessage.value || 'Nieprawidłowe alokacje'
+      savingRecurring.value = false
+      return
+    }
+
+    const payload = {
+      customType: newRecurring.value.customType,
+      frequency: newRecurring.value.frequency,
+      amount: parseFloat(newRecurring.value.amount).toFixed(2),
+      dayOfMonth: parseInt(newRecurring.value.dayOfMonth),
+      allocations: newRecurring.value.allocations.map(a => {
+        const alloc = {
+          subjectType: a.subjectType,
+          subjectId: a.subjectId,
+          allocationType: a.allocationType
+        }
+
+        if (a.allocationType === 'percentage') {
+          alloc.percentage = parseFloat(a.percentage)
+        } else if (a.allocationType === 'fraction') {
+          alloc.fractionNumerator = parseInt(a.fractionNum)
+          alloc.fractionDenominator = parseInt(a.fractionDenom)
+        } else if (a.allocationType === 'fixed') {
+          alloc.fixedAmount = parseFloat(a.fixedAmount).toFixed(2)
+        }
+
+        return alloc
+      }),
+      notes: newRecurring.value.notes || undefined
+    }
+
+    if (editingRecurring.value) {
+      await api.patch(`/recurring-bills/${editingRecurring.value}`, payload)
+    } else {
+      await api.post('/recurring-bills', payload)
+    }
+
+    await loadRecurringTemplates()
+    closeRecurringModal()
+  } catch (err) {
+    recurringError.value = err.response?.data?.error || 'Nie udało się zapisać szablonu'
+  } finally {
+    savingRecurring.value = false
+  }
+}
+
+function editRecurringTemplate(template) {
+  editingRecurring.value = template.id
+  newRecurring.value = {
+    customType: template.customType,
+    frequency: template.frequency,
+    amount: formatAmount(template.amount),
+    dayOfMonth: template.dayOfMonth,
+    allocations: template.allocations.map(a => ({
+      subjectType: a.subjectType,
+      subjectId: a.subjectId,
+      allocationType: a.allocationType,
+      percentage: a.percentage || null,
+      fractionNum: a.fractionNumerator || 1,
+      fractionDenom: a.fractionDenominator || 1,
+      fixedAmount: a.fixedAmount ? formatAmount(a.fixedAmount) : null
+    })),
+    notes: template.notes || ''
+  }
+  showRecurringModal.value = true
+}
+
+async function deleteRecurringTemplate(templateId) {
+  if (!confirm('Czy na pewno chcesz usunąć ten szablon cyklicznego rachunku?')) {
+    return
+  }
+
+  try {
+    await api.delete(`/recurring-bills/${templateId}`)
+    await loadRecurringTemplates()
+  } catch (err) {
+    console.error('Failed to delete recurring template:', err)
+    alert('Nie udało się usunąć szablonu')
+  }
+}
+
+function formatFrequency(frequency) {
+  const map = {
+    monthly: 'Miesięcznie',
+    quarterly: 'Kwartalnie',
+    yearly: 'Rocznie'
+  }
+  return map[frequency] || frequency
+}
+
+function formatAmount(amountString) {
+  if (!amountString) return '0.00'
+  // Parse Decimal128 JSON format or plain number
+  const cleaned = String(amountString).replace(/["{}$numberDecimal:]/g, '')
+  const amount = parseFloat(cleaned)
+  return amount.toFixed(2)
+}
+
+function getAllocationLabel(alloc) {
+  const subject = alloc.subjectType === 'user'
+    ? users.value.find(u => u.id === alloc.subjectId)
+    : groups.value.find(g => g.id === alloc.subjectId)
+
+  const name = subject ? (subject.name || subject.email) : 'Nieznany'
+
+  let value = ''
+  if (alloc.allocationType === 'percentage') {
+    value = `${alloc.percentage}%`
+  } else if (alloc.allocationType === 'fraction') {
+    value = `${alloc.fractionNumerator}/${alloc.fractionDenominator}`
+  } else if (alloc.allocationType === 'fixed') {
+    value = `${formatAmount(alloc.fixedAmount)} PLN`
+  }
+
+  return `${name}: ${value}`
 }
 </script>

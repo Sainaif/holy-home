@@ -113,6 +113,7 @@ func main() {
 	loanService := services.NewLoanService(db.Database)
 	choreService := services.NewChoreService(db.Database)
 	supplyService := services.NewSupplyService(db.Database)
+	recurringBillService := services.NewRecurringBillService(db.Database, cfg)
 	eventService := services.NewEventService()
 	exportService := services.NewExportService(db.Database)
 	backupService := services.NewBackupService(db.Database)
@@ -136,6 +137,7 @@ func main() {
 	userHandler := handlers.NewUserHandler(userService, auditService, roleService)
 	groupHandler := handlers.NewGroupHandler(groupService, auditService)
 	billHandler := handlers.NewBillHandler(billService, consumptionService, allocationService, auditService, eventService)
+	recurringBillHandler := handlers.NewRecurringBillHandler(recurringBillService, auditService)
 	loanHandler := handlers.NewLoanHandler(loanService, eventService, auditService)
 	choreHandler := handlers.NewChoreHandler(choreService, approvalService, roleService, auditService, eventService)
 	supplyHandler := handlers.NewSupplyHandler(supplyService, auditService, eventService)
@@ -206,6 +208,15 @@ func main() {
 	consumptions.Get("/", middleware.AuthMiddleware(cfg), billHandler.GetConsumptions)
 	consumptions.Delete("/:id", middleware.AuthMiddleware(cfg), middleware.RequirePermission("readings.delete", getRoleService), billHandler.DeleteConsumption)
 	consumptions.Post("/:id/mark-invalid", middleware.AuthMiddleware(cfg), billHandler.MarkConsumptionInvalid)
+
+	// Recurring bill routes
+	recurringBills := app.Group("/recurring-bills")
+	recurringBills.Post("/", middleware.AuthMiddleware(cfg), middleware.RequirePermission("bills.create", getRoleService), recurringBillHandler.CreateRecurringBillTemplate)
+	recurringBills.Get("/", middleware.AuthMiddleware(cfg), recurringBillHandler.GetRecurringBillTemplates)
+	recurringBills.Get("/:id", middleware.AuthMiddleware(cfg), recurringBillHandler.GetRecurringBillTemplate)
+	recurringBills.Patch("/:id", middleware.AuthMiddleware(cfg), middleware.RequirePermission("bills.update", getRoleService), recurringBillHandler.UpdateRecurringBillTemplate)
+	recurringBills.Delete("/:id", middleware.AuthMiddleware(cfg), middleware.RequirePermission("bills.delete", getRoleService), recurringBillHandler.DeleteRecurringBillTemplate)
+	recurringBills.Post("/generate", middleware.AuthMiddleware(cfg), middleware.RequirePermission("bills.create", getRoleService), recurringBillHandler.GenerateRecurringBills)
 
 	// Loan routes
 	loans := app.Group("/loans")

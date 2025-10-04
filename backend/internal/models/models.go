@@ -45,21 +45,49 @@ type Group struct {
 
 // Bill represents a utility bill or shared expense
 type Bill struct {
-	ID             primitive.ObjectID  `bson:"_id,omitempty" json:"id"`
-	Type           string              `bson:"type" json:"type"` // electricity, gas, internet, inne
-	CustomType     *string             `bson:"custom_type,omitempty" json:"customType,omitempty"` // used when Type is "inne"
-	AllocationType *string             `bson:"allocation_type,omitempty" json:"allocationType,omitempty"` // simple (like gas) or metered (like electricity) - only for "inne"
-	PeriodStart    time.Time           `bson:"period_start" json:"periodStart"`
-	PeriodEnd      time.Time           `bson:"period_end" json:"periodEnd"`
-	PaymentDeadline *time.Time          `bson:"payment_deadline,omitempty" json:"paymentDeadline,omitempty"` // optional deadline for payment
-	TotalAmountPLN primitive.Decimal128 `bson:"total_amount_pln" json:"totalAmountPLN"`
-	TotalUnits     primitive.Decimal128 `bson:"total_units,omitempty" json:"totalUnits,omitempty"`
-	Notes          *string             `bson:"notes,omitempty" json:"notes,omitempty"`
-	Status         string              `bson:"status" json:"status"` // draft, posted, closed
-	ReopenedAt     *time.Time          `bson:"reopened_at,omitempty" json:"reopenedAt,omitempty"`
-	ReopenReason   *string             `bson:"reopen_reason,omitempty" json:"reopenReason,omitempty"`
-	ReopenedBy     *primitive.ObjectID `bson:"reopened_by,omitempty" json:"reopenedBy,omitempty"`
-	CreatedAt      time.Time           `bson:"created_at" json:"createdAt"`
+	ID                    primitive.ObjectID  `bson:"_id,omitempty" json:"id"`
+	Type                  string              `bson:"type" json:"type"` // electricity, gas, internet, inne
+	CustomType            *string             `bson:"custom_type,omitempty" json:"customType,omitempty"` // used when Type is "inne"
+	AllocationType        *string             `bson:"allocation_type,omitempty" json:"allocationType,omitempty"` // simple (like gas) or metered (like electricity) - only for "inne"
+	PeriodStart           time.Time           `bson:"period_start" json:"periodStart"`
+	PeriodEnd             time.Time           `bson:"period_end" json:"periodEnd"`
+	PaymentDeadline       *time.Time          `bson:"payment_deadline,omitempty" json:"paymentDeadline,omitempty"` // optional deadline for payment
+	TotalAmountPLN        primitive.Decimal128 `bson:"total_amount_pln" json:"totalAmountPLN"`
+	TotalUnits            primitive.Decimal128 `bson:"total_units,omitempty" json:"totalUnits,omitempty"`
+	Notes                 *string             `bson:"notes,omitempty" json:"notes,omitempty"`
+	Status                string              `bson:"status" json:"status"` // draft, posted, closed
+	ReopenedAt            *time.Time          `bson:"reopened_at,omitempty" json:"reopenedAt,omitempty"`
+	ReopenReason          *string             `bson:"reopen_reason,omitempty" json:"reopenReason,omitempty"`
+	ReopenedBy            *primitive.ObjectID `bson:"reopened_by,omitempty" json:"reopenedBy,omitempty"`
+	RecurringTemplateID   *primitive.ObjectID `bson:"recurring_template_id,omitempty" json:"recurringTemplateId,omitempty"` // link to recurring template if generated
+	CreatedAt             time.Time           `bson:"created_at" json:"createdAt"`
+}
+
+// RecurringBillTemplate represents a template for auto-generating bills
+type RecurringBillTemplate struct {
+	ID                primitive.ObjectID                    `bson:"_id,omitempty" json:"id"`
+	CustomType        string                                `bson:"custom_type" json:"customType"` // name of the bill (e.g., "Netflix", "Rent")
+	Frequency         string                                `bson:"frequency" json:"frequency"` // monthly, quarterly, yearly
+	Amount            primitive.Decimal128                  `bson:"amount" json:"amount"` // fixed amount per period
+	DayOfMonth        int                                   `bson:"day_of_month" json:"dayOfMonth"` // 1-31, day when bill is due
+	Allocations       []RecurringBillAllocation             `bson:"allocations" json:"allocations"` // predefined split
+	Notes             *string                               `bson:"notes,omitempty" json:"notes,omitempty"`
+	IsActive          bool                                  `bson:"is_active" json:"isActive"`
+	NextDueDate       time.Time                             `bson:"next_due_date" json:"nextDueDate"` // when next bill should be generated
+	LastGeneratedAt   *time.Time                            `bson:"last_generated_at,omitempty" json:"lastGeneratedAt,omitempty"`
+	CreatedAt         time.Time                             `bson:"created_at" json:"createdAt"`
+	UpdatedAt         time.Time                             `bson:"updated_at" json:"updatedAt"`
+}
+
+// RecurringBillAllocation represents predefined cost split for recurring bills
+type RecurringBillAllocation struct {
+	SubjectType     string                `bson:"subject_type" json:"subjectType"` // user or group
+	SubjectID       primitive.ObjectID    `bson:"subject_id" json:"subjectId"` // user ID or group ID
+	AllocationType  string                `bson:"allocation_type" json:"allocationType"` // "percentage", "fraction", "fixed"
+	Percentage      *float64              `bson:"percentage,omitempty" json:"percentage,omitempty"` // 0-100, for percentage type
+	FractionNum     *int                  `bson:"fraction_numerator,omitempty" json:"fractionNumerator,omitempty"` // numerator for fraction (e.g., 1 in 1/3)
+	FractionDenom   *int                  `bson:"fraction_denominator,omitempty" json:"fractionDenominator,omitempty"` // denominator for fraction (e.g., 3 in 1/3)
+	FixedAmount     *primitive.Decimal128 `bson:"fixed_amount,omitempty" json:"fixedAmount,omitempty"` // fixed PLN amount
 }
 
 // Consumption represents individual usage readings

@@ -1,0 +1,234 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Komponenty Frontend" id="frontend">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="900">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Tytuł -->
+        <mxCell id="title" value="Struktura frontendu - Vue 3 + Vite (26 plików)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="350" y="20" width="470" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Main entry -->
+        <mxCell id="main" value="&lt;b&gt;main.js&lt;/b&gt;&lt;hr&gt;- createApp(App)&lt;br&gt;- Vue Router&lt;br&gt;- Pinia&lt;br&gt;- Vue I18n&lt;br&gt;- mount('#app')" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="480" y="80" width="210" height="110" as="geometry" />
+        </mxCell>
+
+        <!-- App.vue -->
+        <mxCell id="app" value="&lt;b&gt;App.vue&lt;/b&gt;&lt;hr&gt;Root component&lt;br&gt;- UpdateBanner&lt;br&gt;- NotificationToast&lt;br&gt;- router-view&lt;br&gt;- useVersionCheck&lt;br&gt;- useEventStream" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="760" y="80" width="210" height="120" as="geometry" />
+        </mxCell>
+
+        <!-- Views -->
+        <mxCell id="viewsBox" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="80" y="240" width="1010" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="viewsTitle" value="VIEWS (Widoki - 8 plików)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontStyle=1;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="450" y="250" width="270" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="v1" value="Login.vue&lt;br&gt;(auth)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="100" y="290" width="110" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="v2" value="Dashboard.vue&lt;br&gt;(strona główna)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="230" y="290" width="110" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="v3" value="Bills.vue&lt;br&gt;(lista)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="360" y="290" width="110" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="v4" value="BillDetail.vue&lt;br&gt;(szczegóły)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="490" y="290" width="110" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="v5" value="Balance.vue&lt;br&gt;(pożyczki)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="620" y="290" width="110" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="v6" value="Chores.vue&lt;br&gt;(obowiązki)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="750" y="290" width="110" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="v7" value="Supplies.vue&lt;br&gt;(zakupy)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="880" y="290" width="110" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="v8" value="Settings.vue&lt;br&gt;(ustawienia)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1010" y="290" width="60" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Components -->
+        <mxCell id="componentsBox" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="80" y="390" width="510" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="componentsTitle" value="COMPONENTS (Komponenty - 5 plików)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontStyle=1;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="190" y="400" width="290" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="c1" value="UpdateBanner.vue&lt;br&gt;(nowa wersja)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="100" y="440" width="110" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="c2" value="NotificationToast.vue&lt;br&gt;(toast)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="230" y="440" width="110" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="c3" value="NotificationHistory.vue&lt;br&gt;(historia)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="360" y="440" width="110" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="c4" value="NotificationPreferences.vue&lt;br&gt;(ustawienia)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="490" y="440" width="80" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Stores -->
+        <mxCell id="storesBox" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="620" y="390" width="470" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="storesTitle" value="STORES (Pinia - 2 pliki)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontStyle=1;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="755" y="400" width="200" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="st1" value="&lt;b&gt;auth.js&lt;/b&gt;&lt;hr size=&quot;1&quot;&gt;State:&lt;br&gt;- accessToken&lt;br&gt;- refreshToken&lt;br&gt;- user&lt;br&gt;- permissions&lt;br&gt;&lt;br&gt;Actions:&lt;br&gt;- login()&lt;br&gt;- refresh()&lt;br&gt;- logout()&lt;br&gt;- hasPermission()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=top;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="640" y="440" width="200" height="160" as="geometry" />
+        </mxCell>
+
+        <mxCell id="st2" value="&lt;b&gt;notification.js&lt;/b&gt;&lt;hr size=&quot;1&quot;&gt;State:&lt;br&gt;- notifications[]&lt;br&gt;- unreadCount&lt;br&gt;- preferences&lt;br&gt;&lt;br&gt;Actions:&lt;br&gt;- addNotification()&lt;br&gt;- markAsRead()&lt;br&gt;- shouldShow()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;verticalAlign=top;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="860" y="440" width="200" height="160" as="geometry" />
+        </mxCell>
+
+        <!-- Composables -->
+        <mxCell id="composablesBox" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="80" y="550" width="510" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="composablesTitle" value="COMPOSABLES (5 plików)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontStyle=1;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="220" y="560" width="210" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="comp1" value="useVersionCheck.js&lt;br&gt;(sprawdza wersję)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="100" y="600" width="90" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="comp2" value="useEventStream.js&lt;br&gt;(SSE)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="210" y="600" width="90" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="comp3" value="useDataEvents.js&lt;br&gt;(handle events)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="320" y="600" width="90" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="comp4" value="usePasskey.js&lt;br&gt;(WebAuthn)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="430" y="600" width="70" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="comp5" value="useChart.js&lt;br&gt;(ECharts)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="520" y="600" width="60" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Router -->
+        <mxCell id="routerBox" value="&lt;b&gt;router/index.js&lt;/b&gt;&lt;hr&gt;Routes:&lt;br&gt;/login → Login.vue&lt;br&gt;/ → Dashboard.vue&lt;br&gt;/bills → Bills.vue&lt;br&gt;/bills/:id → BillDetail.vue&lt;br&gt;/balance → Balance.vue&lt;br&gt;/chores → Chores.vue&lt;br&gt;/supplies → Supplies.vue&lt;br&gt;/settings → Settings.vue&lt;br&gt;&lt;br&gt;Navigation Guard:&lt;br&gt;requiresAuth, requiresAdmin" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;align=left;verticalAlign=top;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="80" y="700" width="250" height="180" as="geometry" />
+        </mxCell>
+
+        <!-- API Client -->
+        <mxCell id="apiBox" value="&lt;b&gt;api/client.js&lt;/b&gt;&lt;hr&gt;Axios instance:&lt;br&gt;baseURL: /api&lt;br&gt;&lt;br&gt;Request Interceptor:&lt;br&gt;- Dodaje Authorization header&lt;br&gt;&lt;br&gt;Response Interceptor:&lt;br&gt;- 401 → refresh token&lt;br&gt;- Retry failed request&lt;br&gt;- Logout jeśli refresh fail" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;align=left;verticalAlign=top;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="360" y="700" width="230" height="140" as="geometry" />
+        </mxCell>
+
+        <!-- i18n -->
+        <mxCell id="i18nBox" value="&lt;b&gt;locales/pl.json&lt;/b&gt;&lt;hr&gt;Tłumaczenia (PL):&lt;br&gt;- dashboard.*&lt;br&gt;- bills.*&lt;br&gt;- loans.*&lt;br&gt;- chores.*&lt;br&gt;- supplies.*&lt;br&gt;- settings.*&lt;br&gt;- common.*" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;align=left;verticalAlign=top;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="620" y="700" width="220" height="140" as="geometry" />
+        </mxCell>
+
+        <!-- PWA -->
+        <mxCell id="pwaBox" value="&lt;b&gt;PWA&lt;/b&gt;&lt;hr&gt;vite.config.js:&lt;br&gt;- VitePWA plugin&lt;br&gt;- Service Worker&lt;br&gt;- Manifest&lt;br&gt;- Ikony (192, 512)&lt;br&gt;- Offline support&lt;br&gt;&lt;br&gt;version.json:&lt;br&gt;- buildTime&lt;br&gt;- version" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;verticalAlign=top;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="870" y="700" width="220" height="140" as="geometry" />
+        </mxCell>
+
+        <!-- Styling -->
+        <mxCell id="styleBox" value="&lt;b&gt;Styling&lt;/b&gt;&lt;hr&gt;Tailwind CSS:&lt;br&gt;- Utility-first&lt;br&gt;- Dark mode&lt;br&gt;- Responsive (md:)&lt;br&gt;&lt;br&gt;Theme:&lt;br&gt;- Purple (#a855f7)&lt;br&gt;- Pink (#ec4899)&lt;br&gt;- Glass effect" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;align=left;verticalAlign=top;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="360" y="700" width="230" height="140" as="geometry" />
+        </mxCell>
+
+        <!-- Connections -->
+        <mxCell id="conn1" value="" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="main" target="viewsBox">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="560" y="450" as="sourcePoint" />
+            <mxPoint x="610" y="400" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="conn2" value="" style="endArrow=classic;html=1;rounded=0;exitX=0.25;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;dashed=1;" edge="1" parent="1" source="viewsBox" target="componentsBox">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="560" y="450" as="sourcePoint" />
+            <mxPoint x="610" y="400" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="conn2Label" value="Używają" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="conn2">
+          <mxGeometry x="-0.2" y="1" relative="1" as="geometry">
+            <mxPoint x="-10" as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="conn3" value="" style="endArrow=classic;html=1;rounded=0;exitX=0.75;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;dashed=1;" edge="1" parent="1" source="viewsBox" target="storesBox">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="560" y="450" as="sourcePoint" />
+            <mxPoint x="610" y="400" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="conn3Label" value="Używają" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="conn3">
+          <mxGeometry x="-0.2" y="1" relative="1" as="geometry">
+            <mxPoint x="10" as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="conn4" value="" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.25;entryY=1;entryDx=0;entryDy=0;dashed=1;" edge="1" parent="1" source="composablesBox" target="viewsBox">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="560" y="450" as="sourcePoint" />
+            <mxPoint x="610" y="400" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="conn4Label" value="Używają" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="conn4">
+          <mxGeometry x="-0.2" y="1" relative="1" as="geometry">
+            <mxPoint x="10" y="10" as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="conn5" value="" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.75;entryY=1;entryDx=0;entryDy=0;dashed=1;" edge="1" parent="1" source="storesBox" target="viewsBox">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="560" y="450" as="sourcePoint" />
+            <mxPoint x="610" y="400" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="conn6" value="" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="storesBox" target="apiBox">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="560" y="650" as="sourcePoint" />
+            <mxPoint x="610" y="600" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="1100" y="450" />
+              <mxPoint x="1100" y="770" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="conn6Label" value="HTTP calls" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="conn6">
+          <mxGeometry x="-0.2" y="1" relative="1" as="geometry">
+            <mxPoint x="10" y="80" as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Backend connection -->
+        <mxCell id="backendBox" value="Backend API&lt;br&gt;/api/*" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="620" y="850" width="220" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="conn7" value="" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="apiBox" target="backendBox">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="560" y="850" as="sourcePoint" />
+            <mxPoint x="610" y="800" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="conn7Label" value="HTTP/HTTPS" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="conn7">
+          <mxGeometry x="-0.2" y="1" relative="1" as="geometry">
+            <mxPoint x="35" as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Flow info -->
+        <mxCell id="flowInfo" value="PRZEPŁYW DANYCH:&lt;br&gt;1. User interakcja → View&lt;br&gt;2. View → Store (action)&lt;br&gt;3. Store → API Client (HTTP)&lt;br&gt;4. API → Backend&lt;br&gt;5. Response → Store (state)&lt;br&gt;6. Store → View (reactive)" style="text;html=1;strokeColor=#d6b656;fillColor=#fff2cc;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontSize=10;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="80" y="80" width="250" height="110" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

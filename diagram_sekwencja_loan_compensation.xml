@@ -1,0 +1,276 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Sekwencja kompensacji długów" id="seq-loan">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="1100">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Tytuł -->
+        <mxCell id="title" value="Diagram sekwencji - Kompensacja długów (Netting tranzytywny)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="300" y="20" width="800" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Actors -->
+        <mxCell id="admin" value="ADMIN" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="80" y="80" width="40" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Components -->
+        <mxCell id="frontend" value="Frontend&lt;br&gt;(Balance.vue)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="200" y="80" width="140" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="loanHandler" value="loan_handler" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="400" y="80" width="120" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="loanService" value="loan_service&lt;br&gt;(KLUCZOWY)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="580" y="80" width="140" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="database" value="MongoDB" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="780" y="80" width="120" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Lifelines -->
+        <mxCell id="line1" value="" style="line;strokeWidth=2;direction=south;html=1;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="269" y="140" width="10" height="930" as="geometry" />
+        </mxCell>
+        <mxCell id="line2" value="" style="line;strokeWidth=2;direction=south;html=1;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="459" y="140" width="10" height="930" as="geometry" />
+        </mxCell>
+        <mxCell id="line3" value="" style="line;strokeWidth=2;direction=south;html=1;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="649" y="140" width="10" height="930" as="geometry" />
+        </mxCell>
+        <mxCell id="line4" value="" style="line;strokeWidth=2;direction=south;html=1;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="839" y="140" width="10" height="930" as="geometry" />
+        </mxCell>
+
+        <!-- Scenario początkowy -->
+        <mxCell id="initialBox" value="STAN POCZĄTKOWY (3 pożyczki):" style="text;html=1;strokeColor=none;fillColor=#f5f5f5;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontStyle=1;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="40" y="180" width="250" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="initialLoans" value="Loan 1: User A → User B (100 PLN)&lt;br&gt;Loan 2: User B → User C (100 PLN)&lt;br&gt;Loan 3: User C → User A (50 PLN)" style="text;html=1;strokeColor=#b85450;fillColor=#f8cecc;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="220" width="250" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Wizualizacja początkowa -->
+        <mxCell id="vizBefore" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="950" y="180" width="420" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="vizBeforeTitle" value="GRAF DŁUGÓW PRZED KOMPENSACJĄ" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="190" width="320" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="userA1" value="User A" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="980" y="230" width="80" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="userB1" value="User B" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1120" y="230" width="80" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="userC1" value="User C" style="ellipse;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="1260" y="230" width="80" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow1" value="" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;strokeColor=#b85450;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="1060" y="255" as="sourcePoint" />
+            <mxPoint x="1120" y="255" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="arrow1Label" value="100 PLN" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontStyle=1" vertex="1" connectable="0" parent="arrow1">
+          <mxGeometry x="-0.2" y="1" relative="1" as="geometry">
+            <mxPoint y="-10" as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="arrow2" value="" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;strokeColor=#b85450;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="1200" y="255" as="sourcePoint" />
+            <mxPoint x="1260" y="255" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="arrow2Label" value="100 PLN" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontStyle=1" vertex="1" connectable="0" parent="arrow2">
+          <mxGeometry x="-0.2" y="1" relative="1" as="geometry">
+            <mxPoint y="-10" as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="arrow3" value="" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;strokeColor=#b85450;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="userC1" target="userA1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="1020" y="350" as="sourcePoint" />
+            <mxPoint x="1070" y="300" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="1300" y="320" />
+              <mxPoint x="1020" y="320" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="arrow3Label" value="50 PLN" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontStyle=1" vertex="1" connectable="0" parent="arrow3">
+          <mxGeometry x="-0.2" y="1" relative="1" as="geometry">
+            <mxPoint y="10" as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Start procesu -->
+        <mxCell id="phase1" value="FAZA 1: Inicjacja kompensacji" style="text;html=1;strokeColor=none;fillColor=#f5f5f5;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontStyle=1;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="40" y="390" width="250" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="s1" value="" style="endArrow=classic;html=1;rounded=0;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="100" y="430" as="sourcePoint" />
+            <mxPoint x="270" y="430" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="s1Label" value="1. Klika 'Kompensuj długi'" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;" vertex="1" connectable="0" parent="s1">
+          <mxGeometry x="-0.2" y="1" relative="1" as="geometry">
+            <mxPoint x="10" y="-10" as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="s2" value="" style="endArrow=classic;html=1;rounded=0;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="270" y="460" as="sourcePoint" />
+            <mxPoint x="460" y="460" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="s2Label" value="POST /loans/compensate" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;" vertex="1" connectable="0" parent="s2">
+          <mxGeometry x="-0.2" y="1" relative="1" as="geometry">
+            <mxPoint x="10" y="-10" as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="s3" value="" style="endArrow=classic;html=1;rounded=0;strokeColor=#b85450;strokeWidth=2;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="460" y="490" as="sourcePoint" />
+            <mxPoint x="650" y="490" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="s3Label" value="PerformGroupCompensation()" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontStyle=1" vertex="1" connectable="0" parent="s3">
+          <mxGeometry x="-0.2" y="1" relative="1" as="geometry">
+            <mxPoint x="15" y="-10" as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Algorytm kompensacji -->
+        <mxCell id="algoBox" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="550" y="520" width="450" height="430" as="geometry" />
+        </mxCell>
+        <mxCell id="algoTitle" value="ALGORYTM KOMPENSACJI DŁUGÓW" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontStyle=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="625" y="530" width="300" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="step1" value="Krok 1: Zbierz wszystkie otwarte pożyczki" style="text;html=1;strokeColor=none;fillColor=#f5f5f5;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontStyle=1;fontColor=#333333;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="560" y="560" width="430" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="algo1" value="" style="endArrow=classic;html=1;rounded=0;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="650" y="590" as="sourcePoint" />
+            <mxPoint x="840" y="590" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="algo1Label" value="Find loans (status=open/partial)" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=9;" vertex="1" connectable="0" parent="algo1">
+          <mxGeometry x="-0.2" y="1" relative="1" as="geometry">
+            <mxPoint x="15" y="-8" as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="step2" value="Krok 2: Oblicz saldo netto każdego użytkownika" style="text;html=1;strokeColor=none;fillColor=#f5f5f5;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontStyle=1;fontColor=#333333;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="560" y="620" width="430" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="balanceCalc" value="Obliczenia sald:&lt;br&gt;&lt;br&gt;Creditor (kto pożyczył):&lt;br&gt;  User A: +100 (pożyczył B)&lt;br&gt;  User B: +100 (pożyczył C)&lt;br&gt;  User C: +50 (pożyczył A)&lt;br&gt;&lt;br&gt;Debtor (kto jest winien):&lt;br&gt;  User A: -50 (winien C)&lt;br&gt;  User B: -100 (winien A)&lt;br&gt;  User C: -100 (winien B)&lt;br&gt;&lt;br&gt;Net Balance:&lt;br&gt;  User A: +100 - 50 = &lt;b&gt;+50&lt;/b&gt; (creditor)&lt;br&gt;  User B: +100 - 100 = &lt;b&gt;0&lt;/b&gt; (neutral)&lt;br&gt;  User C: +50 - 100 = &lt;b&gt;-50&lt;/b&gt; (debtor)" style="text;html=1;strokeColor=#b85450;fillColor=#f8cecc;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="560" y="650" width="430" height="180" as="geometry" />
+        </mxCell>
+
+        <mxCell id="step3" value="Krok 3: Znajdź minimalne transfery (Greedy Algorithm)" style="text;html=1;strokeColor=none;fillColor=#f5f5f5;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontStyle=1;fontColor=#333333;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="560" y="840" width="430" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="greedyCalc" value="Sortuj:&lt;br&gt;  Creditors: [User A: +50]&lt;br&gt;  Debtors: [User C: -50]&lt;br&gt;&lt;br&gt;Dopasowanie:&lt;br&gt;  Max creditor: User A (+50)&lt;br&gt;  Max debtor: User C (-50)&lt;br&gt;  Transfer = min(50, 50) = 50 PLN&lt;br&gt;&lt;br&gt;Wynik:&lt;br&gt;  &lt;b&gt;User C → User A: 50 PLN&lt;/b&gt;&lt;br&gt;&lt;br&gt;Nowe salda:&lt;br&gt;  User A: 50 - 50 = 0 ✓&lt;br&gt;  User C: -50 + 50 = 0 ✓" style="text;html=1;strokeColor=#82b366;fillColor=#d5e8d4;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="560" y="870" width="430" height="170" as="geometry" />
+        </mxCell>
+
+        <!-- Zapisywanie wyników -->
+        <mxCell id="phase2" value="FAZA 2: Zapisywanie wyników" style="text;html=1;strokeColor=none;fillColor=#f5f5f5;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontStyle=1;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="40" y="970" width="250" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="s4" value="" style="endArrow=classic;html=1;rounded=0;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="650" y="1010" as="sourcePoint" />
+            <mxPoint x="840" y="1010" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="s4Label" value="Update old loans (status=settled)" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=9;" vertex="1" connectable="0" parent="s4">
+          <mxGeometry x="-0.2" y="1" relative="1" as="geometry">
+            <mxPoint x="25" y="-8" as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="s5" value="" style="endArrow=classic;html=1;rounded=0;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="650" y="1040" as="sourcePoint" />
+            <mxPoint x="840" y="1040" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="s5Label" value="Insert new loan (C→A: 50 PLN)" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=9;" vertex="1" connectable="0" parent="s5">
+          <mxGeometry x="-0.2" y="1" relative="1" as="geometry">
+            <mxPoint x="25" y="-8" as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="s6" value="" style="endArrow=classic;html=1;rounded=0;dashed=1;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="270" y="1070" as="sourcePoint" />
+            <mxPoint x="100" y="1070" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="s6Label" value="Odświeża widok (1 pożyczka zamiast 3)" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;" vertex="1" connectable="0" parent="s6">
+          <mxGeometry x="-0.2" y="1" relative="1" as="geometry">
+            <mxPoint x="-20" y="-10" as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Wizualizacja końcowa -->
+        <mxCell id="vizAfter" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="950" y="390" width="420" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="vizAfterTitle" value="GRAF DŁUGÓW PO KOMPENSACJI" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="400" width="320" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="userA2" value="User A" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="980" y="450" width="80" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="userB2" value="User B" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1120" y="450" width="80" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="userC2" value="User C" style="ellipse;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="1260" y="450" width="80" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow4" value="" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;strokeColor=#82b366;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="userC2" target="userA2">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="1020" y="550" as="sourcePoint" />
+            <mxPoint x="1070" y="500" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="arrow4Label" value="50 PLN" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=11;fontStyle=1;fontColor=#006100;" vertex="1" connectable="0" parent="arrow4">
+          <mxGeometry x="-0.2" y="1" relative="1" as="geometry">
+            <mxPoint y="-10" as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Result -->
+        <mxCell id="result" value="EFEKT KOMPENSACJI:&lt;br&gt;• 3 pożyczki → 1 pożyczka&lt;br&gt;• User B neutralny (nie uczestniczy w transferze)&lt;br&gt;• Netting tranzytywny zredukował kompleksowość&lt;br&gt;• Minimalna liczba transakcji do zbilansowania wszystkich" style="text;html=1;strokeColor=#82b366;fillColor=#d5e8d4;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontSize=10;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="950" y="560" width="420" height="90" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -5,10 +5,16 @@
         <h1 class="text-4xl font-bold gradient-text mb-2">{{ $t('bills.title') }}</h1>
         <p class="text-gray-400">Historia rachunków i odczyty liczników</p>
       </div>
-      <button v-if="authStore.hasPermission('bills.create') && activeTab === 'bills'" @click="showCreateModal = true" class="btn btn-primary flex items-center gap-2">
-        <Plus class="w-5 h-5" />
-        {{ $t('bills.createNew') }}
-      </button>
+      <div v-if="authStore.hasPermission('bills.create') && activeTab === 'bills'" class="flex gap-2">
+        <button @click="showScanModal = true" class="btn btn-outline flex items-center gap-2">
+          <Camera class="w-5 h-5" />
+          Skanuj fakturę
+        </button>
+        <button @click="showCreateModal = true" class="btn btn-primary flex items-center gap-2">
+          <Plus class="w-5 h-5" />
+          {{ $t('bills.createNew') }}
+        </button>
+      </div>
       <button v-if="authStore.hasPermission('bills.create') && activeTab === 'recurring'" @click="showRecurringModal = true" class="btn btn-primary flex items-center gap-2">
         <Plus class="w-5 h-5" />
         Nowy Rachunek Cykliczny
@@ -123,6 +129,20 @@
             </button>
           </div>
         </form>
+      </div>
+    </div>
+
+    <!-- Scan Bill Modal -->
+    <div v-if="showScanModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50" @click.self="showScanModal = false">
+      <div class="card max-w-2xl w-full mx-4">
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-2xl font-bold gradient-text">Skanuj fakturę</h2>
+          <button @click="showScanModal = false" class="text-gray-400 hover:text-white">
+            <X class="w-6 h-6" />
+          </button>
+        </div>
+
+        <BillScanUpload @scan-complete="handleScanComplete" />
       </div>
     </div>
 
@@ -650,8 +670,9 @@ import { useAuthStore } from '../stores/auth'
 import api from '../api/client'
 import {
   Plus, FileX, Zap, Flame, Wifi, Calendar, Receipt, Gauge,
-  Send, Check, X, AlertCircle, Trash2, ChevronDown, ChevronUp
+  Send, Check, X, AlertCircle, Trash2, ChevronDown, ChevronUp, Camera
 } from 'lucide-vue-next'
+import BillScanUpload from '../components/BillScanUpload.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -847,6 +868,37 @@ const newBill = ref({
   paymentDeadline: '',
   notes: ''
 })
+
+const showScanModal = ref(false)
+
+function handleScanComplete(extractedData) {
+  // Map extracted data to form
+  if (extractedData.type) {
+    newBill.value.type = extractedData.type
+  }
+  if (extractedData.totalAmount) {
+    newBill.value.totalAmountPLN = extractedData.totalAmount
+  }
+  if (extractedData.units) {
+    newBill.value.totalUnits = extractedData.units
+  }
+  if (extractedData.periodStart) {
+    newBill.value.periodStart = new Date(extractedData.periodStart).toISOString().slice(0, 10)
+  }
+  if (extractedData.periodEnd) {
+    newBill.value.periodEnd = new Date(extractedData.periodEnd).toISOString().slice(0, 10)
+  }
+  if (extractedData.deadline) {
+    newBill.value.paymentDeadline = new Date(extractedData.deadline).toISOString().slice(0, 10)
+  }
+  if (extractedData.notes) {
+    newBill.value.notes = extractedData.notes
+  }
+
+  // Close scan modal and show create modal
+  showScanModal.value = false
+  showCreateModal.value = true
+}
 
 onMounted(async () => {
   await loadBills()

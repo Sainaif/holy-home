@@ -305,3 +305,28 @@ type ApprovalRequest struct {
 	ReviewNotes  *string                `bson:"review_notes,omitempty" json:"reviewNotes,omitempty"`
 	CreatedAt    time.Time              `bson:"created_at" json:"createdAt"`
 }
+
+// BillScan represents a scanned bill image with OCR and AI extraction results
+type BillScan struct {
+	ID           primitive.ObjectID     `bson:"_id,omitempty" json:"id"`
+	UploadedBy   primitive.ObjectID     `bson:"uploaded_by" json:"uploadedBy"`
+	ImagePath    string                 `bson:"image_path" json:"imagePath"`
+	OCRText      string                 `bson:"ocr_text,omitempty" json:"ocrText,omitempty"`
+	AIExtraction *AIExtraction          `bson:"ai_extraction,omitempty" json:"aiExtraction,omitempty"`
+	Confidence   float64                `bson:"confidence" json:"confidence"` // 0.0-1.0
+	Status       string                 `bson:"status" json:"status"` // "processing", "completed", "failed"
+	ErrorMessage *string                `bson:"error_message,omitempty" json:"errorMessage,omitempty"`
+	CreatedAt    time.Time              `bson:"created_at" json:"createdAt"`
+	ProcessedAt  *time.Time             `bson:"processed_at,omitempty" json:"processedAt,omitempty"`
+}
+
+// AIExtraction represents data extracted from bill by AI
+type AIExtraction struct {
+	Type        string    `bson:"type" json:"type"` // electricity, gas, water, internet, inne
+	TotalAmount float64   `bson:"total_amount" json:"totalAmount"`
+	Units       *float64  `bson:"units,omitempty" json:"units,omitempty"`
+	PeriodStart time.Time `bson:"period_start" json:"periodStart"`
+	PeriodEnd   time.Time `bson:"period_end" json:"periodEnd"`
+	Deadline    *time.Time `bson:"deadline,omitempty" json:"deadline,omitempty"`
+	Notes       *string   `bson:"notes,omitempty" json:"notes,omitempty"`
+}

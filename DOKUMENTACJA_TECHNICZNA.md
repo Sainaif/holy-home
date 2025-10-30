@@ -3,8 +3,8 @@
 
 **Autor:** Sainaif
 **Data utworzenia:** 30 września 2025
-**Ostatnia aktualizacja:** 28 października 2025
-**Wersja:** 1.0
+**Ostatnia aktualizacja:** 30 października 2025
+**Wersja:** 2.0 (z diagramami Mermaid + moduł OCR/AI)
 
 ---
 
@@ -18,6 +18,7 @@ Holy Home to aplikacja webowa stworzona do zarządzania finansami i obowiązkami
 
 Aplikacja rozwiązuje następujące problemy:
 - Rozliczanie rachunków za media (prąd, gaz, internet) z uwzględnieniem indywidualnego i wspólnego zużycia
+- **Automatyczne skanowanie faktur** - rozpoznawanie danych z faktur za pomocą OCR i AI (bez używania klawiatury)
 - Śledzenie pożyczek między współlokatorami i automatyczne kompensowanie długów
 - Zarządzanie domowymi zakupami i wspólnym budżetem
 - Planowanie i przydzielanie obowiązków domowych
@@ -139,6 +140,13 @@ Holy Home wykorzystuje klasyczną architekturę 3-warstwową:
 - **Hashowanie haseł:** Argon2id (golang.org/x/crypto)
 - **UUID:** google/uuid v1.6.0
 - **Driver MongoDB:** go.mongodb.org/mongo-driver v1.17.1
+- **OCR (Optical Character Recognition):**
+  - Tesseract 5.0 (open-source OCR engine)
+  - github.com/otiai10/gosseract v2.4.0 (Go bindings)
+- **AI/ML Integration:**
+  - OpenAI API client - github.com/sashabaranov/go-openai v1.20.0
+  - GPT-4 Vision dla parsowania faktur
+  - Alternatywa: Google Cloud Vision API
 
 #### Frontend:
 - **Framework:** Vue 3.5.21 (Composition API)
@@ -1501,6 +1509,406 @@ Transfer: C → A: 50 PLN
    - `useDataEvents` parsuje event i aktualizuje listę rachunków
    - `NotificationToast` wyświetla toast: "Dodano nowy rachunek: Prąd październik"
 
+### 7.5. Moduł automatyzacji - Skanowanie faktur (OCR + AI)
+
+**Cel:** Automatyczne rozpoznawanie danych z faktur bez używania klawiatury. Użytkownik robi tylko zdjęcie telefonem, a system sam wypełnia formularz rachunku.
+
+#### 7.5.1. Technologie
+
+**OCR Engine:**
+- **Tesseract 5.0** - open-source silnik OCR (Optical Character Recognition)
+- **Go bindings:** github.com/otiai10/gosseract v2.4.0
+- Wspiera polski język (trained data dla języka polskiego)
+- Wykrywa tekst z obrazów w różnych formatach (JPG, PNG, PDF)
+
+**AI Parsing:**
+- **OpenAI GPT-4 Vision API** - parsowanie wykrytego tekstu do strukturyzowanych danych
+- **Alternatywa:** Google Cloud Vision API (jeśli preferowana)
+- Model: gpt-4-vision-preview
+- Zrozumienie kontekstu (różne formaty faktur)
+
+**Backend Integration:**
+- Handler: `bill_scan_handler.go`
+- Service: `ocr_service.go`, `ai_extraction_service.go`
+- Models: `BillScan`, `OCRResult`, `AIExtraction`
+
+**Frontend:**
+- Camera API (getUserMedia) - dostęp do kamery
+- FileReader API - konwersja zdjęcia do base64
+- Progressi
+
+ve Web App - działanie na mobile
+
+#### 7.5.2. Proces skanowania faktury
+
+**Krok 1: Użytkownik robi zdjęcie**
+1. Otwiera aplikację mobilną (PWA)
+2. Klika ikonę kamery w formularzu "Nowy rachunek"
+3. Robi zdjęcie faktury
+4. System pokazuje preview
+
+**Krok 2: Upload i OCR**
+5. Zdjęcie jest konwertowane do base64
+6. POST request do `/bills/scan` z image data
+7. Backend zapisuje zdjęcie (temporary storage)
+8. Tesseract OCR przetwarza obraz → ekstraktuje tekst
+9. Status: "OCR processing..."
+
+**Krok 3: AI Extraction**
+10. Wykryty tekst jest wysyłany do GPT-4 Vision API
+11. AI parsuje tekst według promptu:
+```
+Wyciągnij z poniższej faktury za media następujące dane:
+- typ rachunku (prąd/gaz/internet/woda)
+- okres rozliczeniowy (data rozpoczęcia i zakończenia)
+- kwota całkowita w PLN
+- zużycie w jednostkach (kWh, m3, etc.)
+- numer faktury
+- termin płatności
+
+Zwróć wynik w formacie JSON.
+```
+12. GPT-4 Vision zwraca strukturyzowany JSON
+13. System oblicza confidence score (pewność rozpoznania)
+
+**Krok 4: Auto-fill formularza**
+14. Jeśli confidence > 80% → automatyczne wypełnienie
+15. Jeśli confidence < 80% → wymaga ręcznej weryfikacji
+16. Użytkownik widzi wypełniony formularz
+17. Może zaakceptować lub poprawić dane
+18. Kliknięcie "Zapisz" tworzy rachunek
+
+#### 7.5.3. Endpointy API
+
+**POST `/bills/scan`**
+- Opis: Upload zdjęcia faktury do skanowania
+- Authorization: JWT required
+- Request Body:
+```json
+{
+  "image": "data:image/jpeg;base64,/9j/4AAQSkZJRg...",
+  "type_hint": "electricity"
+}
+```
+- Response (202 Accepted):
+```json
+{
+  "scan_id": "uuid-1234-5678",
+  "status": "processing",
+  "message": "Faktura jest przetwarzana. Sprawdź status za chwilę."
+}
+```
+
+**GET `/bills/scan/:id`**
+- Opis: Sprawdź status przetwarzania
+- Authorization: JWT required
+- Response (status: processing):
+```json
+{
+  "scan_id": "uuid-1234-5678",
+  "status": "processing",
+  "progress": 50,
+  "current_step": "AI extraction"
+}
+```
+- Response (status: completed):
+```json
+{
+  "scan_id": "uuid-1234-5678",
+  "status": "completed",
+  "confidence": 0.95,
+  "extracted_data": {
+    "type": "electricity",
+    "period_start": "2025-10-01",
+    "period_end": "2025-10-31",
+    "total_amount_pln": 300.00,
+    "total_units": 500,
+    "price_per_unit": 0.60,
+    "invoice_number": "FV/2025/10/12345",
+    "due_date": "2025-11-15"
+  },
+  "ocr_text": "FAKTURA VAT\nNumer: FV/2025/10/12345\n..."
+}
+```
+
+**POST `/bills/from-scan/:scan_id`**
+- Opis: Utwórz rachunek na podstawie zeskanowanych danych
+- Authorization: JWT required, permission: `bills.create`
+- Request Body:
+```json
+{
+  "accept_ai_data": true,
+  "manual_corrections": {
+    "total_amount_pln": 305.50
+  }
+}
+```
+- Response (201 Created):
+```json
+{
+  "bill_id": "bill-uuid",
+  "status": "draft",
+  "message": "Rachunek utworzony ze skanowanej faktury"
+}
+```
+
+#### 7.5.4. Algorytm AI extraction
+
+**Prompt dla GPT-4 Vision:**
+```
+System: Jesteś asystentem wyciągającym dane z polskich faktur za media.
+
+User: Wyciągnij z poniższej faktury następujące informacje:
+1. Typ rachunku (electricity/gas/internet/water/other)
+2. Okres rozliczeniowy (period_start, period_end w formacie YYYY-MM-DD)
+3. Kwota całkowita (total_amount_pln jako liczba)
+4. Zużycie w jednostkach (total_units jako liczba, jeśli dostępne)
+5. Cena za jednostkę (price_per_unit, jeśli dostępna)
+6. Numer faktury (invoice_number)
+7. Termin płatności (due_date w formacie YYYY-MM-DD)
+
+Tekst OCR:
+"""
+{ocr_text}
+"""
+
+Zwróć TYLKO JSON bez dodatkowych komentarzy:
+{
+  "type": "string",
+  "period_start": "YYYY-MM-DD",
+  "period_end": "YYYY-MM-DD",
+  "total_amount_pln": number,
+  "total_units": number | null,
+  "price_per_unit": number | null,
+  "invoice_number": "string",
+  "due_date": "YYYY-MM-DD" | null,
+  "confidence_notes": "string - co było trudne do rozpoznania"
+}
+```
+
+**Obliczanie Confidence Score:**
+```go
+func calculateConfidence(aiResult AIExtraction, ocrText string) float64 {
+    score := 1.0
+
+    // Sprawdź czy AI znalazło kluczowe dane
+    if aiResult.TotalAmount == 0 {
+        score -= 0.3
+    }
+    if aiResult.PeriodStart.IsZero() || aiResult.PeriodEnd.IsZero() {
+        score -= 0.2
+    }
+    if aiResult.Type == "other" || aiResult.Type == "" {
+        score -= 0.15
+    }
+
+    // Sprawdź jakość OCR (długość tekstu, obecność kluczowych słów)
+    if len(ocrText) < 50 {
+        score -= 0.2  // zbyt mało tekstu
+    }
+
+    keywords := []string{"faktura", "kwota", "PLN", "zł", "okres"}
+    foundKeywords := 0
+    for _, kw := range keywords {
+        if strings.Contains(strings.ToLower(ocrText), kw) {
+            foundKeywords++
+        }
+    }
+    if foundKeywords < 2 {
+        score -= 0.15
+    }
+
+    return math.Max(0, score)
+}
+```
+
+#### 7.5.5. Obsługa błędów
+
+**Niska jakość zdjęcia:**
+- OCR nie wykrywa tekstu → confidence = 0
+- Response 400: "Nie można odczytać tekstu. Zrób lepsze zdjęcie (więcej światła, mniej rozmycia)"
+- Użytkownik może spróbować ponownie
+
+**Nierozpoznany format faktury:**
+- AI nie wie jak sparsować → type = "other", confidence < 0.5
+- System sugeruje ręczne wprowadzenie
+- Zapisuje scan do późniejszego treningu modelu
+
+**Błąd API (OpenAI/Tesseract):**
+- Retry mechanism (3 próby z exponential backoff)
+- Jeśli fail → graceful fallback do ręcznego wprowadzania
+- User notification: "Problem z przetwarzaniem. Wprowadź dane ręcznie."
+
+**Brak internetu (mobile):**
+- Zdjęcie zapisywane lokalnie (IndexedDB)
+- Offline queue
+- Automatyczny retry gdy połączenie wraca
+
+#### 7.5.6. Diagram sekwencji
+
+```mermaid
+sequenceDiagram
+    participant U as User (Mobile)
+    participant F as Frontend
+    participant API as Backend API
+    participant OCR as Tesseract OCR
+    participant AI as GPT-4 Vision
+    participant DB as MongoDB
+
+    U->>F: 1. Otwiera kamerę
+    F->>U: Wyświetla podgląd kamery
+    U->>F: 2. Robi zdjęcie faktury
+    F->>F: Konwersja do base64
+    F->>API: POST /bills/scan<br/>{image: base64}
+    API->>DB: Zapisz scan (status: processing)
+    API->>F: 202 {scan_id, status: processing}
+    F->>U: "Przetwarzanie..."
+
+    API->>OCR: Wyciągnij tekst z obrazu
+    OCR->>API: Raw text
+    API->>DB: Update scan (ocr_text)
+
+    API->>AI: POST GPT-4 Vision API<br/>{prompt + ocr_text}
+    AI->>API: Strukturyzowany JSON
+    API->>API: Oblicz confidence score
+    API->>DB: Update scan (extracted_data, confidence)
+
+    F->>API: GET /bills/scan/:id (polling co 2s)
+    API->>F: {status: completed, confidence: 0.95, data}
+
+    alt confidence >= 0.8
+        F->>U: Auto-fill formularz
+        U->>F: Zatwierdza dane
+    else confidence < 0.8
+        F->>U: Pokaż dane + warning
+        U->>F: Ręcznie poprawia
+    end
+
+    F->>API: POST /bills/from-scan/:scan_id
+    API->>DB: Insert new bill (draft)
+    API->>F: 201 {bill_id}
+    F->>U: "Rachunek utworzony!"
+```
+
+#### 7.5.7. Diagram aktywności
+
+```mermaid
+flowchart TD
+    Start([Użytkownik otwiera<br/>formularz rachunku]) --> Camera[Kliknij ikonę<br/>aparatu]
+    Camera --> TakePhoto{Zrób zdjęcie}
+    TakePhoto -->|Dobra jakość| Preview[Podgląd zdjęcia]
+    TakePhoto -->|Słaba jakość| Camera
+    Preview --> Upload[Upload zdjęcia<br/>POST /bills/scan]
+    Upload --> OCR[Tesseract OCR<br/>wyciąga tekst]
+    OCR --> CheckOCR{Tekst<br/>wykryty?}
+    CheckOCR -->|NIE| ErrorOCR[Błąd: Nie można odczytać]
+    ErrorOCR --> Manual1[Ręczne wprowadzenie]
+    CheckOCR -->|TAK| AI[GPT-4 Vision<br/>parsuje dane]
+    AI --> CheckAI{Confidence<br/>>= 80%?}
+    CheckAI -->|NIE| Verify[Pokaż dane + warning<br/>wymaga weryfikacji]
+    CheckAI -->|TAK| AutoFill[Auto-fill formularz]
+    Verify --> UserCheck{Użytkownik<br/>sprawdza}
+    UserCheck -->|Poprawia| Edit[Edycja pól]
+    UserCheck -->|OK| Save
+    AutoFill --> UserReview{Użytkownik<br/>przegląda}
+    UserReview -->|Edytuje| Edit
+    UserReview -->|Zatwierdza| Save[POST /bills/from-scan]
+    Edit --> Save
+    Manual1 --> Save
+    Save --> Success([Rachunek utworzony<br/>status: draft])
+```
+
+#### 7.5.8. Przykładowe wyniki
+
+**Faktura za prąd (Enea):**
+```
+OCR Text (fragment):
+"FAKTURA VAT
+Numer: 2025/10/EE/1234567
+Enea Operator Sp. z o.o.
+Okres rozliczeniowy: 01.10.2025 - 31.10.2025
+Zużycie energii elektrycznej: 500 kWh
+Wartość brutto: 300,00 PLN
+Termin płatności: 15.11.2025"
+
+AI Extracted Data:
+{
+  "type": "electricity",
+  "period_start": "2025-10-01",
+  "period_end": "2025-10-31",
+  "total_amount_pln": 300.00,
+  "total_units": 500,
+  "price_per_unit": 0.60,
+  "invoice_number": "2025/10/EE/1234567",
+  "due_date": "2025-11-15",
+  "confidence_notes": "Wszystkie dane jasno widoczne"
+}
+
+Confidence: 0.98
+```
+
+**Faktura za internet (Orange):**
+```
+OCR Text (fragment):
+"Faktura VAT
+Orange Polska S.A.
+Nr faktury: 987/2025
+Za usługi: 01-10-2025 do 31-10-2025
+Razem do zapłaty: 59,99 PLN
+Termin: 20.11.2025"
+
+AI Extracted Data:
+{
+  "type": "internet",
+  "period_start": "2025-10-01",
+  "period_end": "2025-10-31",
+  "total_amount_pln": 59.99,
+  "total_units": null,
+  "price_per_unit": null,
+  "invoice_number": "987/2025",
+  "due_date": "2025-11-20",
+  "confidence_notes": "Standardowa faktura Orange"
+}
+
+Confidence: 0.95
+```
+
+#### 7.5.9. Integracja z istniejącymi funkcjami
+
+Po utworzeniu rachunku ze skanu:
+- Bill ma status `draft` - można edytować
+- Można dodać consumption records (odczyty liczników)
+- Można opublikować (`POST /bills/:id/post`) → trigger alokacji
+- Wszystkie pozostałe funkcje działają normalnie
+
+#### 7.5.10. Uwagi implementacyjne
+
+**Wymagane zmienne środowiskowe (.env):**
+```bash
+# OCR
+TESSERACT_PATH=/usr/bin/tesseract
+TESSERACT_LANG=pol  # polski
+
+# AI
+OPENAI_API_KEY=sk-...
+OPENAI_MODEL=gpt-4-vision-preview
+OPENAI_MAX_TOKENS=500
+
+# Storage
+BILL_SCANS_PATH=./storage/bill_scans
+BILL_SCANS_MAX_SIZE_MB=10
+```
+
+**Koszty:**
+- Tesseract OCR: darmowe (open-source)
+- GPT-4 Vision API: ~$0.01-0.03 za obraz (w zależności od rozmiaru)
+- Miesięcznie: przy 100 skanach ≈ $1-3
+
+**Alternatywy bez kosztów:**
+- Google Cloud Vision API (300 requestów/miesiąc free tier)
+- Azure Computer Vision (5000 transakcji/miesiąc free tier)
+- Własny model ML (trening na fakturach) - bardziej złożone
+
 ---
 
 ## 8. API - LISTA ENDPOINTÓW
@@ -2420,9 +2828,495 @@ docker logs holyhome-frontend
 
 ---
 
-## 12. PODSUMOWANIE
+## 12. DIAGRAMY UML I MODELOWANIE
 
-### 12.1. Osiągnięte cele
+Ta sekcja zawiera wszystkie diagramy UML i architektoniczne aplikacji w formacie Mermaid (renderowane automatycznie w GitHub/GitLab).
+
+### 12.1. Diagram klas UML
+
+Diagram przedstawia główne klasy systemu, ich atrybuty, metody oraz relacje.
+
+```mermaid
+classDiagram
+    %% Użytkownicy i uprawnienia
+    class User {
+        +ObjectID _id
+        +string email
+        +string password_hash
+        +string name
+        +string role
+        +ObjectID group_id
+        +bool is_active
+        +bool must_change_password
+        +array passkey_credentials
+        +Login(email, password) bool
+        +ChangePassword(oldPass, newPass) error
+        +Enable2FA() string
+        +ValidateTotp(code) bool
+    }
+
+    class Group {
+        +ObjectID _id
+        +string name
+        +float weight
+        +GetMembers() []User
+    }
+
+    class Role {
+        +ObjectID _id
+        +string name
+        +string display_name
+        +bool is_system
+        +[]string permissions
+        +HasPermission(perm) bool
+        +AddPermission(perm) error
+    }
+
+    class Permission {
+        +ObjectID _id
+        +string name
+        +string description
+        +string category
+    }
+
+    %% Rachunki
+    class Bill {
+        +ObjectID _id
+        +string type
+        +string custom_type
+        +Date period_start
+        +Date period_end
+        +Decimal128 total_amount_pln
+        +float total_units
+        +Decimal128 price_per_unit
+        +string status
+        +Date due_date
+        +ObjectID created_by
+        +Post() error
+        +Close() error
+        +Reopen() error
+        +AllocateCosts() error
+    }
+
+    class BillAllocation {
+        +ObjectID _id
+        +ObjectID bill_id
+        +ObjectID user_id
+        +float allocated_units
+        +Decimal128 allocated_amount_pln
+        +Calculate() error
+    }
+
+    class Consumption {
+        +ObjectID _id
+        +ObjectID bill_id
+        +ObjectID user_id
+        +float units
+        +float meter_value
+        +Date recorded_at
+        +string source
+        +bool is_valid
+        +MarkInvalid() error
+    }
+
+    class Payment {
+        +ObjectID _id
+        +ObjectID bill_id
+        +ObjectID payer_user_id
+        +Decimal128 amount_pln
+        +Date paid_at
+        +string method
+        +string reference
+    }
+
+    %% Skanowanie faktur (OCR + AI)
+    class BillScan {
+        +ObjectID _id
+        +ObjectID bill_id
+        +ObjectID user_id
+        +string image_url
+        +string ocr_text
+        +JSON ai_result
+        +float confidence
+        +string status
+        +ProcessOCR() string
+        +ExtractWithAI() JSON
+        +CreateBill() Bill
+    }
+
+    class OCRService {
+        <<service>>
+        +ExtractText(image) string
+        +ValidateQuality(image) bool
+    }
+
+    class AIService {
+        <<service>>
+        +ParseInvoice(text) JSON
+        +CalculateConfidence(data) float
+    }
+
+    %% Pożyczki
+    class Loan {
+        +ObjectID _id
+        +ObjectID lender_id
+        +ObjectID borrower_id
+        +Decimal128 amount_pln
+        +Decimal128 remaining_amount_pln
+        +string status
+        +string note
+        +Date due_date
+        +AddPayment(amount) error
+        +Settle() error
+    }
+
+    class LoanPayment {
+        +ObjectID _id
+        +ObjectID loan_id
+        +Decimal128 amount_pln
+        +Date paid_at
+        +string note
+    }
+
+    %% Obowiązki
+    class Chore {
+        +ObjectID _id
+        +string name
+        +string description
+        +string frequency
+        +int custom_interval_days
+        +int difficulty
+        +int priority
+        +int points
+        +string assignment_mode
+        +bool is_active
+        +Assign(user_id) ChoreAssignment
+        +Rotate() error
+    }
+
+    class ChoreAssignment {
+        +ObjectID _id
+        +ObjectID chore_id
+        +ObjectID assignee_user_id
+        +Date due_date
+        +string status
+        +Date completed_at
+        +int points
+        +bool is_on_time
+        +MarkComplete() error
+        +Swap(other_user_id) error
+    }
+
+    %% Zakupy
+    class SupplyItem {
+        +ObjectID _id
+        +string name
+        +string category
+        +float current_quantity
+        +float min_quantity
+        +string unit
+        +int priority
+        +Date last_restocked_at
+        +bool needs_refund
+        +Restock(quantity, cost) error
+        +Consume(quantity) error
+    }
+
+    class SupplySettings {
+        +ObjectID _id
+        +Decimal128 weekly_contribution_pln
+        +int contribution_day
+        +Decimal128 current_budget_pln
+        +Date last_contribution_at
+        +AdjustBudget(amount) error
+    }
+
+    class SupplyItemHistory {
+        +ObjectID _id
+        +ObjectID supply_item_id
+        +ObjectID user_id
+        +string action
+        +float quantity_delta
+        +Decimal128 cost_pln
+    }
+
+    %% Sesje i audyt
+    class Session {
+        +ObjectID _id
+        +ObjectID user_id
+        +string refresh_token_hash
+        +string name
+        +string ip_address
+        +string user_agent
+        +Date created_at
+        +Date expires_at
+        +Refresh() string
+        +Revoke() error
+    }
+
+    class AuditLog {
+        +ObjectID _id
+        +ObjectID user_id
+        +string action
+        +string resource_type
+        +string resource_id
+        +JSON details
+        +string ip_address
+        +string status
+        +Log(action, resource) error
+    }
+
+    %% Relacje - Użytkownicy
+    User "1" --> "0..1" Group : belongs_to
+    User "1" --> "1" Role : has
+    Role "1" --> "*" Permission : has
+    User "1" --> "*" Session : has
+    User "1" --> "*" AuditLog : creates
+
+    %% Relacje - Rachunki
+    User "1" --> "*" Bill : creates
+    Bill "1" --> "*" BillAllocation : has
+    Bill "1" --> "*" Consumption : has
+    Bill "1" --> "*" Payment : has
+    Bill "1" --> "0..1" BillScan : scanned_from
+    BillAllocation "*" --> "1" User : allocated_to
+    Consumption "*" --> "1" User : belongs_to
+    Payment "*" --> "1" User : paid_by
+
+    %% Relacje - OCR/AI
+    BillScan "*" --> "1" User : uploaded_by
+    BillScan --> OCRService : uses
+    BillScan --> AIService : uses
+
+    %% Relacje - Pożyczki
+    Loan "*" --> "1" User : lender
+    Loan "*" --> "1" User : borrower
+    Loan "1" --> "*" LoanPayment : has
+
+    %% Relacje - Obowiązki
+    Chore "1" --> "*" ChoreAssignment : has
+    ChoreAssignment "*" --> "1" User : assigned_to
+
+    %% Relacje - Zakupy
+    SupplyItem "1" --> "*" SupplyItemHistory : has
+    SupplyItemHistory "*" --> "1" User : created_by
+```
+
+### 12.2. Diagram przypadków użycia (Use Case)
+
+Diagram przedstawia głównych aktorów i ich interakcje z systemem.
+
+```mermaid
+flowchart TB
+    %% Aktorzy
+    Admin([ADMIN])
+    Resident([RESIDENT])
+    System([SYSTEM OCR/AI])
+
+    %% Use Cases - Administracja
+    subgraph "Zarządzanie systemem"
+        UC1[Zarządzaj użytkownikami]
+        UC2[Konfiguruj role i uprawnienia]
+        UC3[Przeglądaj audit log]
+        UC4[Export/backup danych]
+    end
+
+    %% Use Cases - Rachunki
+    subgraph "Rachunki"
+        UC5[Skanuj fakturę]
+        UC6[Utwórz rachunek]
+        UC7[Dodaj odczyt licznika]
+        UC8[Opublikuj rachunek]
+        UC9[Przeglądaj alokację kosztów]
+        UC10[Zapłać rachunek]
+    end
+
+    %% Use Cases - Pożyczki
+    subgraph "Pożyczki"
+        UC11[Utwórz pożyczkę]
+        UC12[Spłać pożyczkę]
+        UC13[Kompensuj długi]
+        UC14[Przeglądaj bilans]
+    end
+
+    %% Use Cases - Obowiązki
+    subgraph "Obowiązki"
+        UC15[Przydziel obowiązek]
+        UC16[Wykonaj zadanie]
+        UC17[Zamień zadania]
+        UC18[Przeglądaj leaderboard]
+    end
+
+    %% Use Cases - Zakupy
+    subgraph "Zakupy"
+        UC19[Zarządzaj zapasami]
+        UC20[Dodaj zakup]
+        UC21[Wpłać składkę]
+        UC22[Przeglądaj budżet]
+    end
+
+    %% Połączenia - Admin
+    Admin --> UC1
+    Admin --> UC2
+    Admin --> UC3
+    Admin --> UC4
+    Admin --> UC8
+    Admin --> UC13
+
+    %% Połączenia - Resident
+    Resident --> UC5
+    Resident --> UC6
+    Resident --> UC7
+    Resident --> UC9
+    Resident --> UC10
+    Resident --> UC11
+    Resident --> UC12
+    Resident --> UC14
+    Resident --> UC15
+    Resident --> UC16
+    Resident --> UC17
+    Resident --> UC18
+    Resident --> UC19
+    Resident --> UC20
+    Resident --> UC21
+    Resident --> UC22
+
+    %% Połączenia - System
+    System --> UC5
+    UC5 -.include.-> UC6
+
+    %% Relacje extend/include
+    UC8 -.include.-> UC9
+    UC9 -.include.-> UC10
+    UC13 -.include.-> UC11
+```
+
+### 12.3. Mockup UI - Skanowanie faktury (Mobile)
+
+Poniższy ASCII art przedstawia interfejs mobilny do skanowania faktur:
+
+```
+┌─────────────────────────────────┐
+│  Holy Home - Nowy rachunek      │
+│  ←                          ⋮   │
+├─────────────────────────────────┤
+│                                 │
+│  ┌───────────────────────────┐  │
+│  │                           │  │
+│  │   📷                      │  │
+│  │                           │  │
+│  │   [Ikona kamery]          │  │
+│  │                           │  │
+│  │   Skanuj fakturę          │  │
+│  │                           │  │
+│  └───────────────────────────┘  │
+│                                 │
+│  lub wprowadź ręcznie:          │
+│                                 │
+│  Typ rachunku: [Wybierz ▼]      │
+│  ┌───────────────────────────┐  │
+│  │ ● Prąd                    │  │
+│  │ ○ Gaz                     │  │
+│  │ ○ Internet                │  │
+│  │ ○ Inne                    │  │
+│  └───────────────────────────┘  │
+│                                 │
+│  [    Dalej    ]                │
+│                                 │
+└─────────────────────────────────┘
+
+
+┌─────────────────────────────────┐  Po kliknięciu kamery
+│  Skanowanie faktury             │
+│  ←                          ×   │
+├─────────────────────────────────┤
+│ ┌───────────────────────────┐   │
+│ │▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓│   │
+│ │▓▓▓▓▓▓▓ PODGLĄD ▓▓▓▓▓▓▓▓▓▓▓│   │
+│ │▓▓▓▓▓▓▓ KAMERY  ▓▓▓▓▓▓▓▓▓▓│   │
+│ │▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓│   │
+│ │▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓│   │
+│ │▓▓┌─────────────────────┐▓│   │
+│ │▓▓│  Umieść fakturę     │▓│   │
+│ │▓▓│  w ramce            │▓│   │
+│ │▓▓└─────────────────────┘▓│   │
+│ │▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓│   │
+│ └───────────────────────────┘   │
+│                                 │
+│        [  Zrób zdjęcie  ]       │
+│                                 │
+└─────────────────────────────────┘
+
+
+┌─────────────────────────────────┐  Po zrobieniu zdjęcia
+│  Przetwarzanie...               │
+│                            ×    │
+├─────────────────────────────────┤
+│  ┌───────────────────────────┐  │
+│  │  [Miniatura faktury]      │  │
+│  └───────────────────────────┘  │
+│                                 │
+│  🔄 Rozpoznawanie tekstu...     │
+│  ████████░░░░░░░░░░░░  50%      │
+│                                 │
+│  Status: OCR processing         │
+│                                 │
+│  Proszę czekać...               │
+│                                 │
+└─────────────────────────────────┘
+
+
+┌─────────────────────────────────┐  Po przetworzeniu (success)
+│  Dane z faktury                 │
+│  ←                        ✓     │
+├─────────────────────────────────┤
+│  ✓ Rozpoznano (pewność: 95%)    │
+│                                 │
+│  Typ: Prąd                      │
+│  Okres: 01.10 - 31.10.2025      │
+│  Kwota: 300.00 PLN              │
+│  Zużycie: 500 kWh               │
+│  Termin: 15.11.2025             │
+│                                 │
+│  ⚠ Sprawdź dane przed zapisem   │
+│                                 │
+│  [ Edytuj ]  [ Zapisz rachunek ]│
+│                                 │
+└─────────────────────────────────┘
+
+
+┌─────────────────────────────────┐  Jeśli niska pewność
+│  Weryfikacja wymagana           │
+│  ←                        !     │
+├─────────────────────────────────┤
+│  ⚠ Niepewne dane (pewność: 65%) │
+│                                 │
+│  Typ: ? [Wybierz ▼]             │
+│  Okres: 01.10 - 31.10.2025 ✓    │
+│  Kwota: [___________]  PLN      │
+│  Zużycie: [_______] kWh         │
+│  Termin: [__________]           │
+│                                 │
+│  Uzupełnij brakujące dane       │
+│                                 │
+│  [  Zapisz rachunek  ]          │
+│                                 │
+└─────────────────────────────────┘
+```
+
+**Opis flow UI:**
+
+1. **Ekran 1:** Użytkownik widzi przycisk skanowania (ikona kamery) i opcję ręcznego wprowadzania
+2. **Ekran 2:** Po kliknięciu - aktywuje się kamera z ramką na fakturę
+3. **Ekran 3:** Po zrobieniu zdjęcia - progress bar pokazuje status przetwarzania (OCR → AI)
+4. **Ekran 4a:** Jeśli pewność >= 80% - formularz auto-wypełniony, użytkownik sprawdza i zatwierdza
+5. **Ekran 4b:** Jeśli pewność < 80% - formularz z ostrzeżeniem, wymaga ręcznego uzupełnienia
+
+---
+
+## 13. PODSUMOWANIE
+
+### 13.1. Osiągnięte cele
 
 Aplikacja Holy Home została pomyślnie zaimplementowana i spełnia założone cele:
 
@@ -2449,7 +3343,7 @@ Aplikacja Holy Home została pomyślnie zaimplementowana i spełnia założone c
 - Nginx jako reverse proxy
 - Hosting obrazów w GHCR
 
-### 12.2. Statystyki projektu
+### 13.2. Statystyki projektu
 
 **Czas realizacji:** 26 dni (30.09 - 25.10.2025)
 
@@ -2466,7 +3360,7 @@ Aplikacja Holy Home została pomyślnie zaimplementowana i spełnia założone c
 
 **Commity:** 35
 
-### 12.3. Wnioski
+### 13.3. Wnioski
 
 #### Co zadziałało dobrze:
 
@@ -2488,7 +3382,7 @@ Aplikacja Holy Home została pomyślnie zaimplementowana i spełnia założone c
 
 4. **Internacjonalizacja:** Obecnie tylko język polski, co ogranicza potencjalną bazę użytkowników.
 
-### 12.4. Możliwe kierunki rozwoju
+### 13.4. Możliwe kierunki rozwoju
 
 #### Krótkoterminowe (1-3 miesiące):
 
@@ -2514,7 +3408,7 @@ Aplikacja Holy Home została pomyślnie zaimplementowana i spełnia założone c
 4. **Public API:** Dla integracji z zewnętrznymi aplikacjami
 5. **Marketplace:** Moduły dodatkowe (np. zarządzanie pojazdami, zwierzętami)
 
-### 12.5. Uwagi końcowe
+### 13.5. Uwagi końcowe
 
 Holy Home to prosta aplikacja rozwiązująca realne problemy współdzielonych gospodarstw domowych. Nie jest to produkt komercyjny ani skomplikowany system enterprise, ale praktyczne narzędzie stworzone w odpowiedzi na konkretne potrzeby.
 
@@ -2524,19 +3418,589 @@ Aplikacja jest gotowa do użytku w środowisku produkcyjnym po skonfigurowaniu o
 
 ---
 
-## ZAŁĄCZNIKI
+## 14. ZAŁĄCZNIKI - DIAGRAMY ARCHITEKTONICZNE
+
+### 14.1. Diagram architektury systemu
+
+Architektura trójwarstwowa aplikacji Holy Home:
+
+```mermaid
+graph TB
+    subgraph "Warstwa prezentacji"
+        PWA[PWA - Vue 3 + Vite]
+        Browser[Przeglądarka]
+    end
+
+    subgraph "Warstwa logiki biznesowej"
+        API[API REST - Go Fiber]
+        Auth[Moduł autentykacji]
+        Bills[Moduł rachunków]
+        Loans[Moduł pożyczek]
+        Groups[Moduł grup]
+        Chores[Moduł obowiązków]
+        Supplies[Moduł zakupów]
+        OCR[Moduł OCR/AI]
+    end
+
+    subgraph "Warstwa danych"
+        MongoDB[(MongoDB 8.0)]
+        Redis[(Redis - sesje)]
+    end
+
+    subgraph "Usługi zewnętrzne"
+        OpenAI[OpenAI API]
+        Email[SMTP]
+    end
+
+    Browser --> PWA
+    PWA -->|HTTPS/REST| API
+    API --> Auth
+    API --> Bills
+    API --> Loans
+    API --> Groups
+    API --> Chores
+    API --> Supplies
+    API --> OCR
+
+    Auth --> MongoDB
+    Bills --> MongoDB
+    Loans --> MongoDB
+    Groups --> MongoDB
+    Chores --> MongoDB
+    Supplies --> MongoDB
+    OCR --> MongoDB
+
+    Auth --> Redis
+    OCR --> OpenAI
+    API --> Email
+```
+
+### 14.2. Diagram ERD - model bazy danych
+
+Relacje między kolekcjami w MongoDB:
+
+```mermaid
+erDiagram
+    users ||--o{ user_groups : "należy do"
+    users ||--o{ sessions : "ma"
+    users ||--o{ audit_logs : "wykonuje"
+    users ||--o{ loans_as_lender : "pożycza"
+    users ||--o{ loans_as_borrower : "pożycza od"
+    users ||--o{ notifications : "otrzymuje"
+
+    groups ||--o{ user_groups : "zawiera"
+    groups ||--o{ bills : "ma"
+    groups ||--o{ loans : "ma"
+    groups ||--o{ chores : "ma"
+    groups ||--o{ supplies : "ma"
+    groups ||--o{ roles : "definiuje"
+
+    bills ||--o{ bill_allocations : "dzieli na"
+    bills ||--o{ bill_scans : "pochodzi ze skanowania"
+
+    user_groups }o--|| roles : "ma rolę"
+
+    bill_allocations }o--|| users : "przypisana do"
+
+    chores }o--|| users : "przypisane do"
+
+    supplies }o--|| users : "dodane przez"
+
+    users {
+        ObjectId _id PK
+        string username UK
+        string email UK
+        string password_hash
+        bool totp_enabled
+        string totp_secret
+        array webauthn_credentials
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    groups {
+        ObjectId _id PK
+        string name
+        string description
+        ObjectId created_by FK
+        timestamp created_at
+    }
+
+    user_groups {
+        ObjectId _id PK
+        ObjectId user_id FK
+        ObjectId group_id FK
+        ObjectId role_id FK
+        timestamp joined_at
+    }
+
+    roles {
+        ObjectId _id PK
+        ObjectId group_id FK
+        string name
+        array permissions
+        bool is_default
+    }
+
+    bills {
+        ObjectId _id PK
+        ObjectId group_id FK
+        string type
+        float total_amount
+        date period_start
+        date period_end
+        string status
+        ObjectId created_by FK
+        ObjectId scan_id FK
+        timestamp created_at
+    }
+
+    bill_allocations {
+        ObjectId _id PK
+        ObjectId bill_id FK
+        ObjectId user_id FK
+        float amount
+        string status
+    }
+
+    bill_scans {
+        ObjectId _id PK
+        ObjectId group_id FK
+        ObjectId uploaded_by FK
+        string image_path
+        object ocr_result
+        object ai_extraction
+        float confidence
+        string status
+        timestamp created_at
+    }
+
+    loans {
+        ObjectId _id PK
+        ObjectId group_id FK
+        ObjectId lender_id FK
+        ObjectId borrower_id FK
+        float amount
+        string description
+        string status
+        timestamp created_at
+    }
+
+    chores {
+        ObjectId _id PK
+        ObjectId group_id FK
+        string title
+        string description
+        ObjectId assigned_to FK
+        string frequency
+        date due_date
+        string status
+    }
+
+    supplies {
+        ObjectId _id PK
+        ObjectId group_id FK
+        string name
+        float budget
+        float spent
+        ObjectId added_by FK
+        timestamp created_at
+    }
+
+    sessions {
+        ObjectId _id PK
+        ObjectId user_id FK
+        string token_hash
+        timestamp expires_at
+        string ip_address
+        string user_agent
+    }
+
+    notifications {
+        ObjectId _id PK
+        ObjectId user_id FK
+        string type
+        string message
+        bool read
+        timestamp created_at
+    }
+
+    audit_logs {
+        ObjectId _id PK
+        ObjectId user_id FK
+        ObjectId group_id FK
+        string action
+        object details
+        string ip_address
+        timestamp created_at
+    }
+```
+
+### 14.3. Diagram komponentów backendu
+
+Struktura modułów backendu w Go:
+
+```mermaid
+graph TB
+    subgraph "Entry Point"
+        Main[main.go]
+    end
+
+    subgraph "API Layer - Handlers"
+        AuthH[auth.go]
+        UsersH[users.go]
+        GroupsH[groups.go]
+        BillsH[bills.go]
+        LoansH[loans.go]
+        ChoresH[chores.go]
+        SuppliesH[supplies.go]
+        NotifH[notifications.go]
+        OCRH[bill_scan.go]
+    end
+
+    subgraph "Business Logic - Services"
+        AuthS[AuthService]
+        GroupS[GroupService]
+        BillS[BillService]
+        LoanS[LoanService]
+        ChoreS[ChoreService]
+        SupplyS[SupplyService]
+        NotifS[NotificationService]
+        OCRS[OCRService]
+        AIS[AIService]
+    end
+
+    subgraph "Data Access - Models"
+        UserM[User]
+        GroupM[Group]
+        BillM[Bill]
+        LoanM[Loan]
+        ChoreM[Chore]
+        SupplyM[Supply]
+        NotifM[Notification]
+        ScanM[BillScan]
+    end
+
+    subgraph "Middleware"
+        JWTMid[JWT Auth]
+        RBACMid[RBAC Check]
+        LogMid[Logger]
+        CorsMid[CORS]
+    end
+
+    subgraph "Database"
+        Mongo[(MongoDB)]
+        RedisDB[(Redis)]
+    end
+
+    subgraph "External APIs"
+        OpenAI[OpenAI API]
+        Tesseract[Tesseract OCR]
+    end
+
+    Main --> AuthH
+    Main --> UsersH
+    Main --> GroupsH
+    Main --> BillsH
+    Main --> LoansH
+    Main --> ChoresH
+    Main --> SuppliesH
+    Main --> NotifH
+    Main --> OCRH
+
+    Main --> JWTMid
+    Main --> RBACMid
+    Main --> LogMid
+    Main --> CorsMid
+
+    AuthH --> AuthS
+    UsersH --> AuthS
+    GroupsH --> GroupS
+    BillsH --> BillS
+    LoansH --> LoanS
+    ChoresH --> ChoreS
+    SuppliesH --> SupplyS
+    NotifH --> NotifS
+    OCRH --> OCRS
+    OCRH --> AIS
+
+    AuthS --> UserM
+    GroupS --> GroupM
+    BillS --> BillM
+    LoanS --> LoanM
+    ChoreS --> ChoreM
+    SupplyS --> SupplyM
+    NotifS --> NotifM
+    OCRS --> ScanM
+    AIS --> ScanM
+
+    UserM --> Mongo
+    GroupM --> Mongo
+    BillM --> Mongo
+    LoanM --> Mongo
+    ChoreM --> Mongo
+    SupplyM --> Mongo
+    NotifM --> Mongo
+    ScanM --> Mongo
+
+    AuthS --> RedisDB
+
+    OCRS --> Tesseract
+    AIS --> OpenAI
+```
+
+### 14.4. Diagram komponentów frontendu
+
+Struktura komponentów Vue 3:
+
+```mermaid
+graph TB
+    subgraph "App Root"
+        App[App.vue]
+        Router[Vue Router]
+    end
+
+    subgraph "Views"
+        Login[Login.vue]
+        Register[Register.vue]
+        Dashboard[Dashboard.vue]
+        GroupView[GroupView.vue]
+        Bills[Bills.vue]
+        Loans[Loans.vue]
+        Profile[Profile.vue]
+        Admin[AdminPanel.vue]
+    end
+
+    subgraph "Components - Layout"
+        Nav[Navigation.vue]
+        Sidebar[Sidebar.vue]
+        Footer[Footer.vue]
+    end
+
+    subgraph "Components - Functional"
+        BillForm[BillForm.vue]
+        BillScan[BillScanUpload.vue]
+        LoanForm[LoanForm.vue]
+        UserList[UserList.vue]
+        NotifBell[NotificationBell.vue]
+        Balance[Balance.vue]
+        ChoreCard[ChoreCard.vue]
+        SupplyItem[SupplyItem.vue]
+    end
+
+    subgraph "State Management - Pinia"
+        AuthStore[authStore]
+        GroupStore[groupStore]
+        BillStore[billStore]
+        LoanStore[loanStore]
+        NotifStore[notificationStore]
+    end
+
+    subgraph "API Layer"
+        API[api/client.js]
+    end
+
+    subgraph "Utils"
+        SSE[sse.js]
+        Format[formatters.js]
+        Valid[validators.js]
+    end
+
+    App --> Router
+    Router --> Login
+    Router --> Register
+    Router --> Dashboard
+    Router --> GroupView
+    Router --> Bills
+    Router --> Loans
+    Router --> Profile
+    Router --> Admin
+
+    App --> Nav
+    Dashboard --> Sidebar
+
+    GroupView --> BillForm
+    GroupView --> BillScan
+    GroupView --> LoanForm
+    GroupView --> UserList
+    GroupView --> Balance
+
+    Bills --> BillForm
+    Bills --> BillScan
+    Loans --> LoanForm
+
+    Nav --> NotifBell
+
+    Dashboard --> ChoreCard
+    Dashboard --> SupplyItem
+
+    Login --> AuthStore
+    Register --> AuthStore
+    Dashboard --> GroupStore
+    GroupView --> GroupStore
+    Bills --> BillStore
+    Loans --> LoanStore
+    NotifBell --> NotifStore
+
+    AuthStore --> API
+    GroupStore --> API
+    BillStore --> API
+    LoanStore --> API
+    NotifStore --> API
+
+    NotifStore --> SSE
+
+    BillForm --> Format
+    LoanForm --> Format
+    BillForm --> Valid
+```
+
+### 14.5. Diagram sekwencji - alokacja rachunku
+
+Proces rozliczania rachunku między członków grupy:
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant Frontend
+    participant API
+    participant BillService
+    participant AllocationAlgo
+    participant DB
+    participant SSE
+
+    User->>Frontend: Wypełnia formularz rachunku
+    Frontend->>User: Pokazuje podgląd alokacji
+    User->>Frontend: Zatwierdza rachunek
+
+    Frontend->>API: POST /bills (dane rachunku)
+    API->>BillService: CreateBill(billData)
+
+    BillService->>DB: Pobierz użytkowników grupy
+    DB-->>BillService: Lista użytkowników
+
+    BillService->>AllocationAlgo: AllocateBill(users, total, type)
+
+    alt Typ: electricity/water/gas
+        AllocationAlgo->>AllocationAlgo: Oblicz współczynniki per capita
+        AllocationAlgo->>AllocationAlgo: Uwzględnij użycie pokoi
+    else Typ: internet/other
+        AllocationAlgo->>AllocationAlgo: Podziel równo
+    end
+
+    AllocationAlgo-->>BillService: Alokacje per user
+
+    BillService->>DB: Zapisz rachunek
+    BillService->>DB: Zapisz alokacje
+    DB-->>BillService: OK
+
+    BillService->>SSE: Wyślij event "bill.created"
+    SSE-->>Frontend: Real-time update
+    Frontend-->>User: Pokazuje nowy rachunek
+
+    BillService-->>API: Bill + Allocations
+    API-->>Frontend: 201 Created
+    Frontend-->>User: Sukces
+```
+
+### 14.6. Diagram wdrożenia (deployment)
+
+Architektura wdrożenia aplikacji:
+
+```mermaid
+graph TB
+    subgraph "Development Environment - WSL2"
+        WSL[WSL2 Ubuntu]
+        DockerDev[Docker Desktop]
+        VSCode[VS Code + Claude Code]
+    end
+
+    subgraph "CI/CD"
+        GitHub[GitHub Repository]
+        Actions[GitHub Actions]
+        GHCR[GitHub Container Registry]
+    end
+
+    subgraph "Production Environment"
+        subgraph "Docker Compose Stack"
+            Nginx[Nginx Container<br/>reverse proxy + SSL]
+            Backend[Backend Container<br/>Go API :3000]
+            Frontend[Frontend Container<br/>Vue + Nginx :80]
+            MongoDB[MongoDB Container<br/>:27017]
+            Redis[Redis Container<br/>:6379]
+        end
+
+        subgraph "Volumes"
+            MongoVol[mongo_data]
+            UploadsVol[uploads]
+            LogsVol[logs]
+        end
+
+        subgraph "Network"
+            Net[holy-home-network<br/>Bridge]
+        end
+    end
+
+    subgraph "External Services"
+        OpenAI[OpenAI API]
+        SMTP[SMTP Server]
+    end
+
+    VSCode -->|Kod| GitHub
+    WSL -->|Docker build| DockerDev
+
+    GitHub -->|Push| Actions
+    Actions -->|Build images| GHCR
+
+    GHCR -->|Pull images| Backend
+    GHCR -->|Pull images| Frontend
+
+    Nginx -->|/api/*| Backend
+    Nginx -->|/*| Frontend
+
+    Backend --> MongoDB
+    Backend --> Redis
+    Backend --> OpenAI
+    Backend --> SMTP
+
+    MongoDB -.->|persist| MongoVol
+    Backend -.->|persist| UploadsVol
+    Backend -.->|persist| LogsVol
+
+    Nginx ---|bridge| Net
+    Backend ---|bridge| Net
+    Frontend ---|bridge| Net
+    MongoDB ---|bridge| Net
+    Redis ---|bridge| Net
+
+    Internet((Internet)) -->|HTTPS :443| Nginx
+```
+
+---
+
+## 15. ZAŁĄCZNIKI
 
 ### A. Diagramy
 
-Wszystkie diagramy są dostępne w formacie XML dla draw.io:
+Wszystkie diagramy są osadzone w dokumencie w formacie Mermaid:
 
-1. `diagram_architektura.xml` - Architektura systemu
-2. `diagram_erd.xml` - Model bazy danych
-3. `diagram_komponenty_backend.xml` - Komponenty backendu
-4. `diagram_komponenty_frontend.xml` - Komponenty frontendu
-5. `diagram_sekwencja_bill_allocation.xml` - Proces rozliczania rachunku
-6. `diagram_sekwencja_loan_compensation.xml` - Kompensacja długów
-7. `diagram_deployment.xml` - Architektura deploymentu
+**Diagramy UML i modelowanie:**
+- Diagram klas UML - sekcja 12.1
+- Diagram przypadków użycia - sekcja 12.2
+- Mockup interfejsu mobilnego - sekcja 12.3
+
+**Diagramy architektoniczne:**
+- Architektura systemu (3-tier) - sekcja 14.1
+- Model bazy danych (ERD) - sekcja 14.2
+- Komponenty backendu - sekcja 14.3
+- Komponenty frontendu - sekcja 14.4
+- Sekwencja alokacji rachunku - sekcja 14.5
+- Architektura wdrożenia (deployment) - sekcja 14.6
+
+**Diagramy procesów biznesowych:**
+- Sekwencja skanowania faktury (OCR) - sekcja 7.5
+- Proces skanowania faktury (activity) - sekcja 7.5
+- Sekwencja kompensacji długów - sekcja 8.5
 
 ### B. Użyteczne komendy
 

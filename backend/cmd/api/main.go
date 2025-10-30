@@ -124,6 +124,9 @@ func main() {
 	permissionService := services.NewPermissionService(db.Database)
 	roleService := services.NewRoleService(db.Database)
 	approvalService := services.NewApprovalService(db.Database)
+	ocrService := services.NewOCRService()
+	aiService := services.NewAIService()
+	billScanService := services.NewBillScanService(db.Database, ocrService, aiService)
 
 	// Initialize default permissions and roles
 	if err := permissionService.InitializeDefaultPermissions(context.Background()); err != nil {
@@ -147,6 +150,7 @@ func main() {
 	backupHandler := handlers.NewBackupHandler(backupService)
 	eventHandler := handlers.NewEventHandler(eventService)
 	exportHandler := handlers.NewExportHandler(exportService)
+	billScanHandler := handlers.NewBillScanHandler(billScanService)
 	auditHandler := handlers.NewAuditHandler(auditService)
 	roleHandler := handlers.NewRoleHandler(roleService, permissionService, auditService, eventService, userService)
 	approvalHandler := handlers.NewApprovalHandler(approvalService)
@@ -205,6 +209,12 @@ func main() {
 	bills.Delete("/:id", middleware.AuthMiddleware(cfg), middleware.RequirePermission("bills.delete", getRoleService), billHandler.DeleteBill)
 	bills.Get("/:id/allocation", middleware.AuthMiddleware(cfg), billHandler.GetBillAllocation)
 	bills.Get("/:id/payment-status", middleware.AuthMiddleware(cfg), billHandler.GetBillPaymentStatus)
+
+	// Bill scan routes
+	billScans := app.Group("/bill-scans")
+	billScans.Post("/", middleware.AuthMiddleware(cfg), billScanHandler.UploadBillScan)
+	billScans.Get("/:id", middleware.AuthMiddleware(cfg), billScanHandler.GetBillScan)
+	billScans.Get("/", middleware.AuthMiddleware(cfg), billScanHandler.GetUserScans)
 
 	// Consumption routes
 	consumptions := app.Group("/consumptions")

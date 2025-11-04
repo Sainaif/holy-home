@@ -177,7 +177,7 @@
             </thead>
             <tbody>
               <tr v-for="reading in readings" :key="reading.id" class="border-b border-gray-700">
-                <td class="py-3">{{ getUserName(reading.userId) }}</td>
+                <td class="py-3">{{ getSubjectName(reading.subjectId, reading.subjectType) }}</td>
                 <td class="py-3">{{ formatMeterValue(reading.meterValue) }} {{ getUnit(bill.type) }}</td>
                 <td class="py-3">{{ formatMeterValue(reading.units) }} {{ getUnit(bill.type) }}</td>
                 <td class="py-3">{{ formatDateTime(reading.recordedAt) }}</td>
@@ -214,6 +214,7 @@ const bill = ref(null)
 const readings = ref([])
 const allocations = ref([])
 const users = ref([])
+const groups = ref([])
 const allPayments = ref([]) // All payments for this bill (to show who paid)
 const loading = ref(false)
 const loadingReadings = ref(false)
@@ -231,12 +232,14 @@ const reopenData = ref({
 onMounted(async () => {
   loading.value = true
   try {
-    const [billRes, usersRes] = await Promise.all([
+    const [billRes, usersRes, groupsRes] = await Promise.all([
       api.get(`/bills/${billId}`),
-      api.get('/users')
+      api.get('/users'),
+      api.get('/groups')
     ])
     bill.value = billRes.data
     users.value = usersRes.data || []
+    groups.value = groupsRes.data || []
 
     // Load readings
     loadingReadings.value = true
@@ -289,9 +292,14 @@ function getUnit(type) {
   return 'jednostek'
 }
 
-function getUserName(userId) {
-  const user = users.value.find(u => u.id === userId)
-  return user?.name || 'Nieznany'
+function getSubjectName(subjectId, subjectType) {
+  if (subjectType === 'group') {
+    const group = groups.value.find(g => g.id === subjectId)
+    return group ? group.name : 'Nieznana grupa'
+  } else {
+    const user = users.value.find(u => u.id === subjectId)
+    return user ? user.name : 'Nieznany'
+  }
 }
 
 function formatMoney(decimal128) {

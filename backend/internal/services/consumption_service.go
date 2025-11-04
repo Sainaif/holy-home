@@ -47,7 +47,7 @@ func (s *ConsumptionService) CreateConsumption(ctx context.Context, req CreateCo
 		return nil, errors.New("cannot add consumption to closed bill")
 	}
 
-	// Verify user exists
+	// Verify user exists and get their group
 	var user models.User
 	err = s.db.Collection("users").FindOne(ctx, bson.M{"_id": req.UserID}).Decode(&user)
 	if err != nil {
@@ -57,18 +57,27 @@ func (s *ConsumptionService) CreateConsumption(ctx context.Context, req CreateCo
 		return nil, fmt.Errorf("database error: %w", err)
 	}
 
+	// Determine subject type and ID based on user's group membership
+	subjectType := "user"
+	subjectID := req.UserID
+	if user.GroupID != nil {
+		subjectType = "group"
+		subjectID = *user.GroupID
+	}
+
 	unitsDec, err := utils.DecimalFromFloat(req.Units)
 	if err != nil {
 		return nil, fmt.Errorf("invalid units: %w", err)
 	}
 
 	consumption := models.Consumption{
-		ID:         primitive.NewObjectID(),
-		BillID:     req.BillID,
-		UserID:     req.UserID,
-		Units:      unitsDec,
-		RecordedAt: req.RecordedAt,
-		Source:     source,
+		ID:          primitive.NewObjectID(),
+		BillID:      req.BillID,
+		SubjectType: subjectType,
+		SubjectID:   subjectID,
+		Units:       unitsDec,
+		RecordedAt:  req.RecordedAt,
+		Source:      source,
 	}
 
 	if req.MeterValue != nil {
@@ -108,9 +117,26 @@ func (s *ConsumptionService) GetConsumptions(ctx context.Context, billID *primit
 	return consumptions, nil
 }
 
-// GetUserConsumptions retrieves consumptions for a user
+// GetUserConsumptions retrieves consumptions for a user or their group
 func (s *ConsumptionService) GetUserConsumptions(ctx context.Context, userID primitive.ObjectID, from *time.Time, to *time.Time) ([]models.Consumption, error) {
-	filter := bson.M{"user_id": userID}
+	// Get user to check if they're in a group
+	var user models.User
+	err := s.db.Collection("users").FindOne(ctx, bson.M{"_id": userID}).Decode(&user)
+	if err != nil {
+		return nil, fmt.Errorf("user not found: %w", err)
+	}
+
+	// Build filter based on whether user is in a group
+	filter := bson.M{}
+	if user.GroupID != nil {
+		// User is in a group, find group consumptions
+		filter["subject_type"] = "group"
+		filter["subject_id"] = *user.GroupID
+	} else {
+		// User is not in a group, find individual consumptions
+		filter["subject_type"] = "user"
+		filter["subject_id"] = userID
+	}
 
 	if from != nil || to != nil {
 		dateFilter := bson.M{}
@@ -151,9 +177,9 @@ func (s *ConsumptionService) DeleteConsumption(ctx context.Context, consumptionI
 	return nil
 }
 
-// MarkConsumptionInvalid marks a consumption as invalid (user must own it)
+// MarkConsumptionInvalid marks a consumption as invalid (user or their group must own it)
 func (s *ConsumptionService) MarkConsumptionInvalid(ctx context.Context, consumptionID, userID primitive.ObjectID) error {
-	// Find the consumption and verify ownership
+	// Find the consumption
 	var consumption models.Consumption
 	err := s.db.Collection("consumptions").FindOne(ctx, bson.M{"_id": consumptionID}).Decode(&consumption)
 	if err != nil {
@@ -163,8 +189,22 @@ func (s *ConsumptionService) MarkConsumptionInvalid(ctx context.Context, consump
 		return fmt.Errorf("database error: %w", err)
 	}
 
-	// Verify user owns this consumption
-	if consumption.UserID != userID {
+	// Get user to check their group
+	var user models.User
+	err = s.db.Collection("users").FindOne(ctx, bson.M{"_id": userID}).Decode(&user)
+	if err != nil {
+		return fmt.Errorf("user not found: %w", err)
+	}
+
+	// Verify ownership - either direct user ownership or group ownership
+	isOwner := false
+	if consumption.SubjectType == "user" && consumption.SubjectID == userID {
+		isOwner = true
+	} else if consumption.SubjectType == "group" && user.GroupID != nil && consumption.SubjectID == *user.GroupID {
+		isOwner = true
+	}
+
+	if !isOwner {
 		return errors.New("you can only mark your own readings as invalid")
 	}
 

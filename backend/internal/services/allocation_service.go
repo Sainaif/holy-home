@@ -201,8 +201,8 @@ func (s *AllocationService) CalculateMeteredAllocation(ctx context.Context, bill
 		return nil, errors.New("total weight is zero")
 	}
 
-	// Calculate total consumed units from readings
-	userUnits := make(map[primitive.ObjectID]float64)
+	// Calculate total consumed units from readings (aggregated by subject)
+	subjectUnits := make(map[primitive.ObjectID]float64)
 	totalConsumedUnits := 0.0
 
 	for _, c := range consumptions {
@@ -210,7 +210,7 @@ func (s *AllocationService) CalculateMeteredAllocation(ctx context.Context, bill
 		if err != nil {
 			continue
 		}
-		userUnits[c.UserID] = units
+		subjectUnits[c.SubjectID] += units // Aggregate units per subject (group or user)
 		totalConsumedUnits += units
 	}
 
@@ -230,32 +230,103 @@ func (s *AllocationService) CalculateMeteredAllocation(ctx context.Context, bill
 		ratePerUnit = personalPool / totalConsumedUnits
 	}
 
-	// Calculate allocation per user
-	breakdown := make([]AllocationBreakdown, 0, len(users))
+	// Group users by group or show individually
+	groupAllocations := make(map[primitive.ObjectID]struct {
+		groupID        primitive.ObjectID
+		groupName      string
+		weight         float64
+		personalAmount float64
+		sharedAmount   float64
+		units          float64
+	})
+	individualAllocations := []AllocationBreakdown{}
+
 	for _, u := range users {
 		weight := userWeights[u.ID]
 
+		// Determine subject ID for consumption lookup
+		var subjectID primitive.ObjectID
+		if u.GroupID != nil {
+			subjectID = *u.GroupID
+		} else {
+			subjectID = u.ID
+		}
+
 		// Personal amount based on consumption
-		units := userUnits[u.ID]
+		units := subjectUnits[subjectID]
 		personalAmount := units * ratePerUnit
 
 		// Shared amount based on weight
 		sharedAmount := (weight / totalWeight) * sharedPool
 
-		// Total amount
-		totalUserAmount := personalAmount + sharedAmount
+		if u.GroupID != nil {
+			// User is in a group - aggregate to group
+			if existing, ok := groupAllocations[*u.GroupID]; ok {
+				existing.sharedAmount += sharedAmount
+				// Personal amount is already aggregated at the group level from consumption
+				groupAllocations[*u.GroupID] = existing
+			} else {
+				// Find group name
+				groupName := ""
+				for _, g := range groups {
+					if g.ID == *u.GroupID {
+						groupName = g.Name
+						break
+					}
+				}
+				groupAllocations[*u.GroupID] = struct {
+					groupID        primitive.ObjectID
+					groupName      string
+					weight         float64
+					personalAmount float64
+					sharedAmount   float64
+					units          float64
+				}{
+					groupID:        *u.GroupID,
+					groupName:      groupName,
+					weight:         weight,
+					personalAmount: personalAmount, // From group's total consumption
+					sharedAmount:   sharedAmount,
+					units:          units,
+				}
+			}
+		} else {
+			// User is not in a group - show individually
+			totalUserAmount := personalAmount + sharedAmount
 
+			individualAllocations = append(individualAllocations, AllocationBreakdown{
+				SubjectID:      u.ID,
+				SubjectType:    "user",
+				SubjectName:    u.Name,
+				Weight:         weight,
+				Amount:         utils.RoundToTwoDecimals(totalUserAmount),
+				PersonalAmount: floatPtr(utils.RoundToTwoDecimals(personalAmount)),
+				SharedAmount:   floatPtr(utils.RoundToTwoDecimals(sharedAmount)),
+				Units:          floatPtr(utils.RoundToThreeDecimals(units)),
+			})
+		}
+	}
+
+	// Build final breakdown
+	breakdown := make([]AllocationBreakdown, 0, len(groupAllocations)+len(individualAllocations))
+
+	// Add group allocations
+	for _, ga := range groupAllocations {
+		totalAmount := ga.personalAmount + ga.sharedAmount
 		breakdown = append(breakdown, AllocationBreakdown{
-			SubjectID:      u.ID,
-			SubjectType:    "user",
-			SubjectName:    u.Name,
-			Weight:         weight,
-			Amount:         utils.RoundToTwoDecimals(totalUserAmount),
-			PersonalAmount: floatPtr(utils.RoundToTwoDecimals(personalAmount)),
-			SharedAmount:   floatPtr(utils.RoundToTwoDecimals(sharedAmount)),
-			Units:          floatPtr(utils.RoundToThreeDecimals(units)),
+			SubjectID:      ga.groupID,
+			SubjectType:    "group",
+			SubjectName:    ga.groupName,
+			Weight:         ga.weight,
+			Amount:         utils.RoundToTwoDecimals(totalAmount),
+			PersonalAmount: floatPtr(utils.RoundToTwoDecimals(ga.personalAmount)),
+			SharedAmount:   floatPtr(utils.RoundToTwoDecimals(ga.sharedAmount)),
+			Units:          floatPtr(utils.RoundToThreeDecimals(ga.units)),
 		})
 	}
+
+	// Add individual allocations
+	breakdown = append(breakdown, individualAllocations...)
 
 	return breakdown, nil
 }

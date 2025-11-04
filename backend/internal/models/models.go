@@ -94,13 +94,14 @@ type RecurringBillAllocation struct {
 
 // Consumption represents individual usage readings
 type Consumption struct {
-	ID         primitive.ObjectID    `bson:"_id,omitempty" json:"id"`
-	BillID     primitive.ObjectID    `bson:"bill_id" json:"billId"`
-	UserID     primitive.ObjectID    `bson:"user_id" json:"userId"`
-	Units      primitive.Decimal128  `bson:"units" json:"units"`
-	MeterValue *primitive.Decimal128 `bson:"meter_value,omitempty" json:"meterValue,omitempty"`
-	RecordedAt time.Time             `bson:"recorded_at" json:"recordedAt"`
-	Source     string                `bson:"source" json:"source"` // user, admin
+	ID          primitive.ObjectID    `bson:"_id,omitempty" json:"id"`
+	BillID      primitive.ObjectID    `bson:"bill_id" json:"billId"`
+	SubjectType string                `bson:"subject_type" json:"subjectType"` // "user" or "group"
+	SubjectID   primitive.ObjectID    `bson:"subject_id" json:"subjectId"` // user ID or group ID
+	Units       primitive.Decimal128  `bson:"units" json:"units"`
+	MeterValue  *primitive.Decimal128 `bson:"meter_value,omitempty" json:"meterValue,omitempty"`
+	RecordedAt  time.Time             `bson:"recorded_at" json:"recordedAt"`
+	Source      string                `bson:"source" json:"source"` // user, admin
 }
 
 // Payment represents a payment towards a bill

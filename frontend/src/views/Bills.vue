@@ -409,12 +409,19 @@
             </select>
           </div>
           <div>
-            <label class="block text-sm font-medium mb-2">Użytkownik</label>
-            <select v-model="readingFilters.userId" class="input">
-              <option value="">Wszyscy użytkownicy</option>
-              <option v-for="user in users" :key="user.id" :value="user.id">
-                {{ user.name }}
-              </option>
+            <label class="block text-sm font-medium mb-2">Osoba/Grupa</label>
+            <select v-model="readingFilters.subjectId" class="input">
+              <option value="">Wszyscy</option>
+              <optgroup label="Grupy">
+                <option v-for="group in groups" :key="'group-' + group.id" :value="group.id">
+                  {{ group.name }}
+                </option>
+              </optgroup>
+              <optgroup label="Użytkownicy">
+                <option v-for="user in users" :key="'user-' + user.id" :value="user.id">
+                  {{ user.name }}
+                </option>
+              </optgroup>
             </select>
           </div>
           <div>
@@ -443,7 +450,7 @@
                 {{ getBillInfo(reading.billId) }} →
               </span>
             </div>
-            <span class="text-sm text-gray-400">{{ getUserName(reading.userId) }}</span>
+            <span class="text-sm text-gray-400">{{ getSubjectName(reading.subjectId, reading.subjectType) }}</span>
           </div>
         </div>
       </div>
@@ -686,7 +693,7 @@ const loadingReading = ref(false)
 
 const readingFilters = ref({
   billId: '',
-  userId: '',
+  subjectId: '',
   sortBy: 'date-desc'
 })
 
@@ -814,8 +821,8 @@ const filteredReadings = computed(() => {
     result = result.filter(r => r.billId === readingFilters.value.billId)
   }
 
-  if (readingFilters.value.userId) {
-    result = result.filter(r => r.userId === readingFilters.value.userId)
+  if (readingFilters.value.subjectId) {
+    result = result.filter(r => r.subjectId === readingFilters.value.subjectId)
   }
 
   result.sort((a, b) => {
@@ -1089,9 +1096,14 @@ function getUnitForBill(billId) {
   return getUnit(bill.type) || 'jednostek'
 }
 
-function getUserName(userId) {
-  const user = users.value.find(u => u.id === userId)
-  return user ? user.name : 'Nieznany'
+function getSubjectName(subjectId, subjectType) {
+  if (subjectType === 'group') {
+    const group = groups.value.find(g => g.id === subjectId)
+    return group ? group.name : 'Nieznana grupa'
+  } else {
+    const user = users.value.find(u => u.id === subjectId)
+    return user ? user.name : 'Nieznany'
+  }
 }
 
 function getBillInfo(billId) {

@@ -316,12 +316,20 @@ func (s *ExportService) ExportConsumptionsCSV(ctx context.Context, userID *primi
 			}
 		}
 
-		// Get user
-		if _, exists := userMap[cons.UserID]; !exists {
-			var user models.User
-			err := s.db.Collection("users").FindOne(ctx, bson.M{"_id": cons.UserID}).Decode(&user)
-			if err == nil {
-				userMap[cons.UserID] = user.Email
+		// Get subject (user or group) name
+		if _, exists := userMap[cons.SubjectID]; !exists {
+			if cons.SubjectType == "group" {
+				var group models.Group
+				err := s.db.Collection("groups").FindOne(ctx, bson.M{"_id": cons.SubjectID}).Decode(&group)
+				if err == nil {
+					userMap[cons.SubjectID] = group.Name
+				}
+			} else {
+				var user models.User
+				err := s.db.Collection("users").FindOne(ctx, bson.M{"_id": cons.SubjectID}).Decode(&user)
+				if err == nil {
+					userMap[cons.SubjectID] = user.Email
+				}
 			}
 		}
 	}
@@ -339,7 +347,7 @@ func (s *ExportService) ExportConsumptionsCSV(ctx context.Context, userID *primi
 	// Write consumption rows
 	for _, cons := range consumptions {
 		bill := billMap[cons.BillID]
-		userEmail := userMap[cons.UserID]
+		subjectName := userMap[cons.SubjectID]
 
 		units, _ := utils.DecimalToFloat(cons.Units)
 
@@ -355,7 +363,7 @@ func (s *ExportService) ExportConsumptionsCSV(ctx context.Context, userID *primi
 			cons.ID.Hex(),
 			bill.Type,
 			period,
-			userEmail,
+			subjectName,
 			fmt.Sprintf("%.3f", units),
 			meterValue,
 			cons.RecordedAt.Format("2006-01-02 15:04"),

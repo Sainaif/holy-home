@@ -1,5 +1,8 @@
 # Holy Home
 
+[![CI](https://github.com/Sainaif/home-app/actions/workflows/ci.yml/badge.svg)](https://github.com/Sainaif/home-app/actions/workflows/ci.yml)
+[![Docker Publish](https://github.com/Sainaif/home-app/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/Sainaif/home-app/actions/workflows/docker-publish.yml)
+
 Self-hosted app for managing household bills, utilities, and loans. Built for shared living situations.
 
 ## What it does

@@ -435,7 +435,7 @@ func (s *UserService) ResetPasswordWithToken(ctx context.Context, token string, 
 
 	// Update user password and clear must_change_password flag
 	now := time.Now()
-	_, err = s.db.Collection("users").UpdateOne(
+	updateResult, err := s.db.Collection("users").UpdateOne(
 		ctx,
 		bson.M{"_id": resetToken.UserID},
 		bson.M{"$set": bson.M{
@@ -446,10 +446,13 @@ func (s *UserService) ResetPasswordWithToken(ctx context.Context, token string, 
 	if err != nil {
 		return nil, fmt.Errorf("failed to update password: %w", err)
 	}
+	if updateResult.MatchedCount == 0 {
+		return nil, errors.New("user not found for password reset")
+	}
 
 	// Mark token as used
 	tokenHash := utils.HashToken(token)
-	_, err = s.db.Collection("password_reset_tokens").UpdateOne(
+	tokenUpdateResult, err := s.db.Collection("password_reset_tokens").UpdateOne(
 		ctx,
 		bson.M{"token_hash": tokenHash},
 		bson.M{"$set": bson.M{
@@ -460,12 +463,24 @@ func (s *UserService) ResetPasswordWithToken(ctx context.Context, token string, 
 	if err != nil {
 		return nil, fmt.Errorf("failed to mark token as used: %w", err)
 	}
+	if tokenUpdateResult.MatchedCount == 0 {
+		return nil, errors.New("reset token record not found")
+	}
 
 	// Get user details for JWT generation
 	var user models.User
 	err = s.db.Collection("users").FindOne(ctx, bson.M{"_id": resetToken.UserID}).Decode(&user)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve user: %w", err)
+	}
+
+	// Double-check that the stored password matches what we just set
+	valid, err := utils.VerifyPassword(newPassword, user.PasswordHash)
+	if err != nil {
+		return nil, fmt.Errorf("failed to verify updated password: %w", err)
+	}
+	if !valid {
+		return nil, errors.New("password update verification failed")
 	}
 
 	// Generate JWT tokens for automatic login

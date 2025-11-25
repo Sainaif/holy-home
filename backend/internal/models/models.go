@@ -183,6 +183,7 @@ type Notification struct {
 	ScheduledFor time.Time           `bson:"scheduled_for" json:"scheduledFor"`
 	SentAt       *time.Time          `bson:"sent_at,omitempty" json:"sentAt,omitempty"`
 	Status       string              `bson:"status" json:"status"` // queued, sent
+	Read         bool                `bson:"read" json:"read"`
 	UserID       *primitive.ObjectID `bson:"user_id,omitempty" json:"userId,omitempty"`
 }
 

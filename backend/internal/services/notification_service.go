@@ -78,7 +78,7 @@ func (s *NotificationService) sendPushNotification(sub *models.WebPushSubscripti
 }
 
 func (s *NotificationService) GetNotificationsForUser(ctx context.Context, userID primitive.ObjectID) ([]*models.Notification, error) {
-	cursor, err := s.db.Collection("notifications").Find(ctx, bson.M{"userId": userID})
+	cursor, err := s.db.Collection("notifications").Find(ctx, bson.M{"user_id": userID})
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +95,7 @@ func (s *NotificationService) GetNotificationsForUser(ctx context.Context, userI
 func (s *NotificationService) MarkNotificationAsRead(ctx context.Context, notificationID, userID primitive.ObjectID) error {
 	_, err := s.db.Collection("notifications").UpdateOne(
 		ctx,
-		bson.M{"_id": notificationID, "userId": userID},
+		bson.M{"_id": notificationID, "user_id": userID},
 		bson.M{"$set": bson.M{"read": true}},
 	)
 	return err
@@ -104,7 +104,7 @@ func (s *NotificationService) MarkNotificationAsRead(ctx context.Context, notifi
 func (s *NotificationService) MarkAllNotificationsAsRead(ctx context.Context, userID primitive.ObjectID) error {
 	_, err := s.db.Collection("notifications").UpdateMany(
 		ctx,
-		bson.M{"userId": userID},
+		bson.M{"user_id": userID},
 		bson.M{"$set": bson.M{"read": true}},
 	)
 	return err

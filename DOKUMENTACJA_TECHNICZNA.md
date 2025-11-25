@@ -1509,8 +1509,6 @@ Transfer: C → A: 50 PLN
    - `useDataEvents` parsuje event i aktualizuje listę rachunków
    - `NotificationToast` wyświetla toast: "Dodano nowy rachunek: Prąd październik"
 
-# Dokumentacja Systemu OCR - Holy Home
-
 ## 7.5. OCR + AI 
 
 System OCR (Optical Character Recognition) został zaimplementowany w aplikacji Holy Home w celu automatycznego rozpoznawania i ekstrakcji danych z faktur za media. Funkcjonalność wykorzystuje **GPT-4o-mini Vision API** od OpenAI do bezpośredniej analizy obrazów faktur (bez osobnego silnika OCR) i automatycznego wypełniania formularzy rachunków.

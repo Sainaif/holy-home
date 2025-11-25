@@ -1,4 +1,4 @@
-# DOKUMENTACJA TECHNICZNA
+9# DOKUMENTACJA TECHNICZNA
 ## Aplikacja Holy Home - System zarządzania domowym budżetem
 
 **Autor:** Sainaif
@@ -1509,405 +1509,287 @@ Transfer: C → A: 50 PLN
    - `useDataEvents` parsuje event i aktualizuje listę rachunków
    - `NotificationToast` wyświetla toast: "Dodano nowy rachunek: Prąd październik"
 
-### 7.5. Moduł automatyzacji - Skanowanie faktur (OCR + AI)
+# Dokumentacja Systemu OCR - Holy Home
 
-**Cel:** Automatyczne rozpoznawanie danych z faktur bez używania klawiatury. Użytkownik robi tylko zdjęcie telefonem, a system sam wypełnia formularz rachunku.
+## 7.5. OCR + AI 
 
-#### 7.5.1. Technologie
+System OCR (Optical Character Recognition) został zaimplementowany w aplikacji Holy Home w celu automatycznego rozpoznawania i ekstrakcji danych z faktur za media. Funkcjonalność wykorzystuje **GPT-4o-mini Vision API** od OpenAI do bezpośredniej analizy obrazów faktur (bez osobnego silnika OCR) i automatycznego wypełniania formularzy rachunków.
 
-**OCR Engine:**
-- **Tesseract 5.0** - open-source silnik OCR (Optical Character Recognition)
-- **Go bindings:** github.com/otiai10/gosseract v2.4.0
-- Wspiera polski język (trained data dla języka polskiego)
-- Wykrywa tekst z obrazów w różnych formatach (JPG, PNG, PDF)
+## Funkcjonalność
 
-**AI Parsing:**
-- **OpenAI GPT-4 Vision API** - parsowanie wykrytego tekstu do strukturyzowanych danych
-- **Alternatywa:** Google Cloud Vision API (jeśli preferowana)
-- Model: gpt-4-vision-preview
-- Zrozumienie kontekstu (różne formaty faktur)
+### Automatyczna Ekstrakcja Danych
 
-**Backend Integration:**
-- Handler: `bill_scan_handler.go`
-- Service: `ocr_service.go`, `ai_extraction_service.go`
-- Models: `BillScan`, `OCRResult`, `AIExtraction`
+System OCR automatycznie rozpoznaje i wyciąga następujące informacje z faktur:
 
-**Frontend:**
-- Camera API (getUserMedia) - dostęp do kamery
-- FileReader API - konwersja zdjęcia do base64
-- Progressi
+1. **Numer faktury** (`invoice_number`) - numer dokumentu księgowego
+2. **Data wystawienia** (`date`) - data wystawienia faktury w formacie DD.MM.YYYY
+3. **Kwota brutto** (`total_brutto`) - całkowita kwota do zapłaty z walutą (np. "909,78 zł")
+4. **Termin płatności** (`deadline`) - termin zapłaty w formacie DD.MM.YYYY
+5. **Nazwa sprzedawcy** (`sellers_name`) - nazwa firmy wystawiającej fakturę
+6. **Jednostki zużycia** (`units`) - ilość zużytych jednostek (np. "245 m³" dla gazu, "150 kWh" dla prądu)
+7. **Typ rachunku** (`bill_type`) - automatyczne określenie typu:
+   - `electricity` - dla faktur za prąd/energię elektryczną
+   - `gas` - dla faktur za gaz
+   - `internet` - dla faktur za internet/telefon
+   - `inne` - dla pozostałych typów
+8. **Okres rozliczeniowy od** (`period_from`) - data początkowa okresu rozliczeniowego DD.MM.YYYY
+9. **Okres rozliczeniowy do** (`period_to`) - data końcowa okresu rozliczeniowego DD.MM.YYYY
 
-ve Web App - działanie na mobile
+### Inteligentne Rozpoznawanie Typu
 
-#### 7.5.2. Proces skanowania faktury
+System automatycznie określa typ rachunku na podstawie zawartości faktury:
+- Wykrywa słowa kluczowe takie jak "prąd", "energia elektryczna", "kWh" dla rachunków za energię
+- Rozpoznaje "gaz", "m³" dla rachunków za gaz
+- Identyfikuje "internet", "telefon" dla usług telekomunikacyjnych
 
-**Krok 1: Użytkownik robi zdjęcie**
-1. Otwiera aplikację mobilną (PWA)
-2. Klika ikonę kamery w formularzu "Nowy rachunek"
-3. Robi zdjęcie faktury
-4. System pokazuje preview
+### Automatyczne Wypełnianie Formularza
 
-**Krok 2: Upload i OCR**
-5. Zdjęcie jest konwertowane do base64
-6. POST request do `/bills/scan` z image data
-7. Backend zapisuje zdjęcie (temporary storage)
-8. Tesseract OCR przetwarza obraz → ekstraktuje tekst
-9. Status: "OCR processing..."
+Po przeskanowaniu faktury, system automatycznie:
+1. Ustawia właściwy typ rachunku w rozwijanej liście
+2. Wypełnia pole kwoty (konwertując polskie formatowanie np. "909,78" → 909.78)
+3. Wypełnia jednostki zużycia (ekstraktując wartość numeryczną z tekstu)
+4. Ustawia daty okresu rozliczeniowego
+5. Ustawia termin płatności
+6. Dodaje informacje o sprzedawcy i numerze faktury do notatek
 
-**Krok 3: AI Extraction**
-10. Wykryty tekst jest wysyłany do GPT-4 Vision API
-11. AI parsuje tekst według promptu:
-```
-Wyciągnij z poniższej faktury za media następujące dane:
-- typ rachunku (prąd/gaz/internet/woda)
-- okres rozliczeniowy (data rozpoczęcia i zakończenia)
-- kwota całkowita w PLN
-- zużycie w jednostkach (kWh, m3, etc.)
-- numer faktury
-- termin płatności
+## Architektura Techniczna
 
-Zwróć wynik w formacie JSON.
-```
-12. GPT-4 Vision zwraca strukturyzowany JSON
-13. System oblicza confidence score (pewność rozpoznania)
+### Wybór Technologii
 
-**Krok 4: Auto-fill formularza**
-14. Jeśli confidence > 80% → automatyczne wypełnienie
-15. Jeśli confidence < 80% → wymaga ręcznej weryfikacji
-16. Użytkownik widzi wypełniony formularz
-17. Może zaakceptować lub poprawić dane
-18. Kliknięcie "Zapisz" tworzy rachunek
+System wykorzystuje **bezpośrednią analizę obrazu przez GPT-4o-mini Vision API**, bez osobnego silnika OCR:
+- ❌ **NIE używa** Tesseract OCR
+- ❌ **NIE ma** dwuetapowego przetwarzania (OCR → AI parsing)
+- ✅ **Używa** GPT-4o-mini Vision API do jednoczesnego rozpoznawania tekstu i ekstrakcji danych
+- ✅ **Synchroniczne** przetwarzanie - jedna odpowiedź z wszystkimi danymi
+- ✅ **Prostszy** przepływ danych - upload → OpenAI API → response → auto-fill
 
-#### 7.5.3. Endpointy API
+**Zalety tego podejścia:**
+- Brak instalacji Tesseract na serwerze
+- Lepsza dokładność dla nietypowych formatów faktur
+- Inteligentne rozumienie kontekstu (AI wie czym są "Okres rozliczeniowy" vs "Okres umowy")
+- Jedna integracja zamiast dwóch systemów
 
-**POST `/bills/scan`**
-- Opis: Upload zdjęcia faktury do skanowania
-- Authorization: JWT required
-- Request Body:
-```json
-{
-  "image": "data:image/jpeg;base64,/9j/4AAQSkZJRg...",
-  "type_hint": "electricity"
-}
-```
-- Response (202 Accepted):
-```json
-{
-  "scan_id": "uuid-1234-5678",
-  "status": "processing",
-  "message": "Faktura jest przetwarzana. Sprawdź status za chwilę."
-}
-```
+### Backend (Go)
 
-**GET `/bills/scan/:id`**
-- Opis: Sprawdź status przetwarzania
-- Authorization: JWT required
-- Response (status: processing):
-```json
-{
-  "scan_id": "uuid-1234-5678",
-  "status": "processing",
-  "progress": 50,
-  "current_step": "AI extraction"
-}
-```
-- Response (status: completed):
-```json
-{
-  "scan_id": "uuid-1234-5678",
-  "status": "completed",
-  "confidence": 0.95,
-  "extracted_data": {
-    "type": "electricity",
-    "period_start": "2025-10-01",
-    "period_end": "2025-10-31",
-    "total_amount_pln": 300.00,
-    "total_units": 500,
-    "price_per_unit": 0.60,
-    "invoice_number": "FV/2025/10/12345",
-    "due_date": "2025-11-15"
-  },
-  "ocr_text": "FAKTURA VAT\nNumer: FV/2025/10/12345\n..."
-}
-```
+**Lokalizacja:** `backend/internal/services/ocr_service.go`
 
-**POST `/bills/from-scan/:scan_id`**
-- Opis: Utwórz rachunek na podstawie zeskanowanych danych
-- Authorization: JWT required, permission: `bills.create`
-- Request Body:
-```json
-{
-  "accept_ai_data": true,
-  "manual_corrections": {
-    "total_amount_pln": 305.50
-  }
-}
-```
-- Response (201 Created):
-```json
-{
-  "bill_id": "bill-uuid",
-  "status": "draft",
-  "message": "Rachunek utworzony ze skanowanej faktury"
-}
-```
-
-#### 7.5.4. Algorytm AI extraction
-
-**Prompt dla GPT-4 Vision:**
-```
-System: Jesteś asystentem wyciągającym dane z polskich faktur za media.
-
-User: Wyciągnij z poniższej faktury następujące informacje:
-1. Typ rachunku (electricity/gas/internet/water/other)
-2. Okres rozliczeniowy (period_start, period_end w formacie YYYY-MM-DD)
-3. Kwota całkowita (total_amount_pln jako liczba)
-4. Zużycie w jednostkach (total_units jako liczba, jeśli dostępne)
-5. Cena za jednostkę (price_per_unit, jeśli dostępna)
-6. Numer faktury (invoice_number)
-7. Termin płatności (due_date w formacie YYYY-MM-DD)
-
-Tekst OCR:
-"""
-{ocr_text}
-"""
-
-Zwróć TYLKO JSON bez dodatkowych komentarzy:
-{
-  "type": "string",
-  "period_start": "YYYY-MM-DD",
-  "period_end": "YYYY-MM-DD",
-  "total_amount_pln": number,
-  "total_units": number | null,
-  "price_per_unit": number | null,
-  "invoice_number": "string",
-  "due_date": "YYYY-MM-DD" | null,
-  "confidence_notes": "string - co było trudne do rozpoznania"
-}
-```
-
-**Obliczanie Confidence Score:**
 ```go
-func calculateConfidence(aiResult AIExtraction, ocrText string) float64 {
-    score := 1.0
+type OCRService struct {
+    apiKey string
+}
 
-    // Sprawdź czy AI znalazło kluczowe dane
-    if aiResult.TotalAmount == 0 {
-        score -= 0.3
-    }
-    if aiResult.PeriodStart.IsZero() || aiResult.PeriodEnd.IsZero() {
-        score -= 0.2
-    }
-    if aiResult.Type == "other" || aiResult.Type == "" {
-        score -= 0.15
-    }
+type OCRResult struct {
+    InvoiceNumber string `json:"invoice_number"` // Numer faktury
+    Date          string `json:"date"`           // Data wystawienia (DD.MM.YYYY)
+    TotalBrutto   string `json:"total_brutto"`   // Kwota z walutą (np. "909,78 zł")
+    Deadline      string `json:"deadline"`       // Termin płatności (DD.MM.YYYY)
+    SellersName   string `json:"sellers_name"`   // Nazwa sprzedawcy
+    Units         string `json:"units"`          // Jednostki zużycia (np. "245 m³")
+    BillType      string `json:"bill_type"`      // Typ: electricity/gas/internet/inne
+    PeriodFrom    string `json:"period_from"`    // Okres rozliczeniowy od (DD.MM.YYYY)
+    PeriodTo      string `json:"period_to"`      // Okres rozliczeniowy do (DD.MM.YYYY)
+}
 
-    // Sprawdź jakość OCR (długość tekstu, obecność kluczowych słów)
-    if len(ocrText) < 50 {
-        score -= 0.2  // zbyt mało tekstu
-    }
+func (s *OCRService) ParseInvoice(ctx context.Context, imageBytes []byte) (*OCRResult, error)
+```
 
-    keywords := []string{"faktura", "kwota", "PLN", "zł", "okres"}
-    foundKeywords := 0
-    for _, kw := range keywords {
-        if strings.Contains(strings.ToLower(ocrText), kw) {
-            foundKeywords++
-        }
-    }
-    if foundKeywords < 2 {
-        score -= 0.15
-    }
+**Przepływ:**
+1. Konwersja obrazu do base64
+2. Przygotowanie requestu do OpenAI API z obrazem + promptem
+3. Wywołanie `POST https://api.openai.com/v1/chat/completions`
+4. Parsowanie JSON response
+5. Zwrócenie strukturyzowanych danych
 
-    return math.Max(0, score)
+**Handler API:**
+- **Lokalizacja:** `backend/internal/handlers/ocr_handler.go`
+- **Endpoint:** `POST /ocr`
+- **Content-Type:** `multipart/form-data`
+- **Parametr:** `file` - plik obrazu faktury (JPEG, PNG, JFIF)
+- **Odpowiedź:** Bezpośredni JSON z wyekstraktowanymi danymi (synchroniczny)
+
+**Model AI:** 
+- **Model:** `gpt-4o-mini` (OpenAI Vision)
+- **Endpoint:** `https://api.openai.com/v1/chat/completions`
+- **Max tokens:** 500
+- **Funkcjonalność:** Jednoczesne rozpoznawanie tekstu + ekstrakcja strukturyzowanych danych
+
+### Frontend (Vue.js)
+
+**Lokalizacja:** `frontend/src/views/Bills.vue`
+
+**Komponenty UI:**
+- Sekcja "Zeskanuj fakturę (OCR)" w formularzu tworzenia rachunku
+- Input file z ikoną Upload (Lucide)
+- Wskaźnik stanu:
+  - "Przetwarzanie..." (niebieski) - podczas skanowania
+  - "✓ Zeskanowano" (zielony) - sukces
+  - Komunikat błędu (czerwony) - jeśli wystąpił problem
+- Przycisk "Wybierz plik" (disabled podczas przetwarzania)
+
+**Funkcja `handleFileUpload(event)`:**
+```javascript
+async function handleFileUpload(event) {
+  // 1. Pobiera plik z input
+  // 2. Wysyła POST /ocr z FormData (multipart/form-data)
+  // 3. Odbiera OCRResult JSON
+  // 4. Automatycznie wypełnia formularz:
+  //    - bill_type → newBill.value.type
+  //    - total_brutto → parseFloat z konwersją "909,78" → 909.78
+  //    - units → parseFloat z ekstrakcją liczby z "245 m³"
+  //    - period_from/to → konwersja DD.MM.YYYY → YYYY-MM-DD
+  //    - deadline → konwersja DD.MM.YYYY → YYYY-MM-DD
+  //    - sellers_name + invoice_number → notes
 }
 ```
 
-#### 7.5.5. Obsługa błędów
+**Obsługa dat:**
+- Konwersja z formatu polskiego DD.MM.YYYY na format HTML5 YYYY-MM-DD
+- **Priorytet:** period_from/period_to (okres rozliczeniowy)
+- **Fallback:** date (data faktury) jeśli period_from nie istnieje
+- Automatyczne parsowanie deadline na paymentDeadline
 
-**Niska jakość zdjęcia:**
-- OCR nie wykrywa tekstu → confidence = 0
-- Response 400: "Nie można odczytać tekstu. Zrób lepsze zdjęcie (więcej światła, mniej rozmycia)"
-- Użytkownik może spróbować ponownie
+**Obsługa błędów:**
+- Wyświetla `err.response?.data?.error` lub domyślny komunikat
+- Reset file input po zakończeniu (sukces lub błąd)
+- Timeout dla komunikatu sukcesu (3 sekundy)
 
-**Nierozpoznany format faktury:**
-- AI nie wie jak sparsować → type = "other", confidence < 0.5
-- System sugeruje ręczne wprowadzenie
-- Zapisuje scan do późniejszego treningu modelu
+## Konfiguracja
 
-**Błąd API (OpenAI/Tesseract):**
-- Retry mechanism (3 próby z exponential backoff)
-- Jeśli fail → graceful fallback do ręcznego wprowadzania
-- User notification: "Problem z przetwarzaniem. Wprowadź dane ręcznie."
+### Wymagane Zmienne Środowiskowe
 
-**Brak internetu (mobile):**
-- Zdjęcie zapisywane lokalnie (IndexedDB)
-- Offline queue
-- Automatyczny retry gdy połączenie wraca
+W pliku `.env`:
 
-#### 7.5.6. Diagram sekwencji
-
-```mermaid
-sequenceDiagram
-    participant U as User (Mobile)
-    participant F as Frontend
-    participant API as Backend API
-    participant OCR as Tesseract OCR
-    participant AI as GPT-4 Vision
-    participant DB as MongoDB
-
-    U->>F: 1. Otwiera kamerę
-    F->>U: Wyświetla podgląd kamery
-    U->>F: 2. Robi zdjęcie faktury
-    F->>F: Konwersja do base64
-    F->>API: POST /bills/scan<br/>{image: base64}
-    API->>DB: Zapisz scan (status: processing)
-    API->>F: 202 {scan_id, status: processing}
-    F->>U: "Przetwarzanie..."
-
-    API->>OCR: Wyciągnij tekst z obrazu
-    OCR->>API: Raw text
-    API->>DB: Update scan (ocr_text)
-
-    API->>AI: POST GPT-4 Vision API<br/>{prompt + ocr_text}
-    AI->>API: Strukturyzowany JSON
-    API->>API: Oblicz confidence score
-    API->>DB: Update scan (extracted_data, confidence)
-
-    F->>API: GET /bills/scan/:id (polling co 2s)
-    API->>F: {status: completed, confidence: 0.95, data}
-
-    alt confidence >= 0.8
-        F->>U: Auto-fill formularz
-        U->>F: Zatwierdza dane
-    else confidence < 0.8
-        F->>U: Pokaż dane + warning
-        U->>F: Ręcznie poprawia
-    end
-
-    F->>API: POST /bills/from-scan/:scan_id
-    API->>DB: Insert new bill (draft)
-    API->>F: 201 {bill_id}
-    F->>U: "Rachunek utworzony!"
+```env
+# OpenAI Configuration
+OPENAI_API_KEY=sk-proj-xxxxxxxxxxxxxxxxxxxxx
 ```
 
-#### 7.5.7. Diagram aktywności
+### Docker Compose
 
-```mermaid
-flowchart TD
-    Start([Użytkownik otwiera<br/>formularz rachunku]) --> Camera[Kliknij ikonę<br/>aparatu]
-    Camera --> TakePhoto{Zrób zdjęcie}
-    TakePhoto -->|Dobra jakość| Preview[Podgląd zdjęcia]
-    TakePhoto -->|Słaba jakość| Camera
-    Preview --> Upload[Upload zdjęcia<br/>POST /bills/scan]
-    Upload --> OCR[Tesseract OCR<br/>wyciąga tekst]
-    OCR --> CheckOCR{Tekst<br/>wykryty?}
-    CheckOCR -->|NIE| ErrorOCR[Błąd: Nie można odczytać]
-    ErrorOCR --> Manual1[Ręczne wprowadzenie]
-    CheckOCR -->|TAK| AI[GPT-4 Vision<br/>parsuje dane]
-    AI --> CheckAI{Confidence<br/>>= 80%?}
-    CheckAI -->|NIE| Verify[Pokaż dane + warning<br/>wymaga weryfikacji]
-    CheckAI -->|TAK| AutoFill[Auto-fill formularz]
-    Verify --> UserCheck{Użytkownik<br/>sprawdza}
-    UserCheck -->|Poprawia| Edit[Edycja pól]
-    UserCheck -->|OK| Save
-    AutoFill --> UserReview{Użytkownik<br/>przegląda}
-    UserReview -->|Edytuje| Edit
-    UserReview -->|Zatwierdza| Save[POST /bills/from-scan]
-    Edit --> Save
-    Manual1 --> Save
-    Save --> Success([Rachunek utworzony<br/>status: draft])
+W `deploy/docker-compose.yml` dodano przekazywanie zmiennej:
+
+```yaml
+environment:
+  - OPENAI_API_KEY=${OPENAI_API_KEY}
 ```
 
-#### 7.5.8. Przykładowe wyniki
+## Wykorzystanie
 
-**Faktura za prąd (Enea):**
-```
-OCR Text (fragment):
-"FAKTURA VAT
-Numer: 2025/10/EE/1234567
-Enea Operator Sp. z o.o.
-Okres rozliczeniowy: 01.10.2025 - 31.10.2025
-Zużycie energii elektrycznej: 500 kWh
-Wartość brutto: 300,00 PLN
-Termin płatności: 15.11.2025"
+### Przez Interfejs Użytkownika
 
-AI Extracted Data:
-{
-  "type": "electricity",
-  "period_start": "2025-10-01",
-  "period_end": "2025-10-31",
-  "total_amount_pln": 300.00,
-  "total_units": 500,
-  "price_per_unit": 0.60,
-  "invoice_number": "2025/10/EE/1234567",
-  "due_date": "2025-11-15",
-  "confidence_notes": "Wszystkie dane jasno widoczne"
-}
+1. Przejdź do sekcji **Rachunki**
+2. Kliknij przycisk **"Utwórz rachunek"**
+3. W oknie modalnym znajdź sekcję **"Zeskanuj fakturę (OCR)"**
+4. Kliknij **"Wybierz plik"** i wybierz zdjęcie/skan faktury
+5. Poczekaj na przetworzenie (wskaźnik: "Przetwarzanie...")
+6. Formularz zostanie automatycznie wypełniony
+7. Zweryfikuj i popraw dane jeśli potrzeba
+8. Kliknij **"Utwórz rachunek"**
 
-Confidence: 0.98
-```
+### Przez API
 
-**Faktura za internet (Orange):**
-```
-OCR Text (fragment):
-"Faktura VAT
-Orange Polska S.A.
-Nr faktury: 987/2025
-Za usługi: 01-10-2025 do 31-10-2025
-Razem do zapłaty: 59,99 PLN
-Termin: 20.11.2025"
-
-AI Extracted Data:
-{
-  "type": "internet",
-  "period_start": "2025-10-01",
-  "period_end": "2025-10-31",
-  "total_amount_pln": 59.99,
-  "total_units": null,
-  "price_per_unit": null,
-  "invoice_number": "987/2025",
-  "due_date": "2025-11-20",
-  "confidence_notes": "Standardowa faktura Orange"
-}
-
-Confidence: 0.95
-```
-
-#### 7.5.9. Integracja z istniejącymi funkcjami
-
-Po utworzeniu rachunku ze skanu:
-- Bill ma status `draft` - można edytować
-- Można dodać consumption records (odczyty liczników)
-- Można opublikować (`POST /bills/:id/post`) → trigger alokacji
-- Wszystkie pozostałe funkcje działają normalnie
-
-#### 7.5.10. Uwagi implementacyjne
-
-**Wymagane zmienne środowiskowe (.env):**
 ```bash
-# OCR
-TESSERACT_PATH=/usr/bin/tesseract
-TESSERACT_LANG=pol  # polski
-
-# AI
-OPENAI_API_KEY=sk-...
-OPENAI_MODEL=gpt-4-vision-preview
-OPENAI_MAX_TOKENS=500
-
-# Storage
-BILL_SCANS_PATH=./storage/bill_scans
-BILL_SCANS_MAX_SIZE_MB=10
+curl -X POST \
+  http://localhost:16162/ocr \
+  -F "file=@faktura.jpg"
 ```
 
-**Koszty:**
-- Tesseract OCR: darmowe (open-source)
-- GPT-4 Vision API: ~$0.01-0.03 za obraz (w zależności od rozmiaru)
-- Miesięcznie: przy 100 skanach ≈ $1-3
+**Przykładowa odpowiedź:**
 
-**Alternatywy bez kosztów:**
-- Google Cloud Vision API (300 requestów/miesiąc free tier)
-- Azure Computer Vision (5000 transakcji/miesiąc free tier)
-- Własny model ML (trening na fakturach) - bardziej złożone
+```json
+{
+  "invoice_number": "P/56155268/0003/25",
+  "date": "03.11.2025",
+  "total_brutto": "909,78 zł",
+  "deadline": "17.11.2025",
+  "sellers_name": "PGNiG",
+  "units": "245 m³",
+  "bill_type": "gas",
+  "period_from": "02.10.2025",
+  "period_to": "01.11.2025"
+}
+```
+
+## Obsługa Błędów
+
+### Możliwe Błędy:
+
+1. **OPENAI_API_KEY not set** - Brak klucza API w konfiguracji
+2. **Failed to call OpenAI API** - Problem z połączeniem do API OpenAI
+3. **Invalid response format** - Nieprawidłowa struktura odpowiedzi z API
+4. **Failed to parse OCR result** - Błąd parsowania wyniku JSON
+
+### Komunikaty dla Użytkownika:
+
+- **"Przetwarzanie..."** - OCR w trakcie analizy
+- **"✓ Zeskanowano"** - Sukces, dane wyekstraktowane
+- **Komunikat błędu** - Wyświetlany w czerwonym polu pod przyciskiem upload
+
+## Ograniczenia
+
+1. **Jakość obrazu:** Wyniki zależą od jakości zdjęcia/skanu faktury
+2. **Format faktury:** Najlepsze wyniki dla standardowych polskich faktur
+3. **Język:** Zoptymalizowane dla faktur w języku polskim
+4. **Koszty:** Każde wywołanie OCR generuje koszt API OpenAI
+5. **Dokładność dat:** Okresy rozliczeniowe mogą wymagać ręcznej weryfikacji
+
+## Bezpieczeństwo
+
+- Obrazy faktur nie są przechowywane na serwerze
+- Przesyłane są bezpośrednio do API OpenAI w formacie base64
+- Klucz API przechowywany w zmiennych środowiskowych
+- Brak logowania wrażliwych danych z faktur
+
+## Wydajność
+
+- **Czas przetwarzania:** 2-5 sekund (zależnie od API OpenAI)
+- **Rozmiar obrazu:** Zalecane do 5MB
+- **Format obrazu:** JPEG, PNG, JFIF
+
+## Rozwój i Ulepszenia
+
+### Zrealizowane:
+
+- ✅ Podstawowe rozpoznawanie tekstu
+- ✅ Automatyczna detekcja typu rachunku
+- ✅ Ekstrakcja jednostek zużycia
+- ✅ Rozpoznawanie okresu rozliczeniowego
+- ✅ Integracja z formularzem tworzenia rachunków
+
+### Planowane:
+
+- 🔄 Cache wyników dla tej samej faktury
+- 🔄 Obsługa wielostronicowych faktur
+- 🔄 Rozpoznawanie tabel z podsumowaniem
+- 🔄 Wsparcie dla innych języków
+- 🔄 Walidacja wyekstraktowanych danych
+
+## Testowanie
+
+### Przykładowe Faktury Testowe:
+
+```bash
+# Test faktury za gaz
+curl -X POST -F "file=@faktura_gaz.jfif" http://localhost:16162/ocr
+
+# Test faktury za prąd
+curl -X POST -F "file=@faktura_prad.jpg" http://localhost:16162/ocr
+```
+
+## Wsparcie
+
+W przypadku problemów:
+1. Sprawdź czy `OPENAI_API_KEY` jest poprawnie skonfigurowany
+2. Zweryfikuj logi kontenera API: `docker-compose logs api`
+3. Upewnij się, że faktura jest czytelna i dobrze oświetlona
+4. Sprawdź czy obraz nie przekracza limitów rozmiaru
+
+## Autorzy i Historia
+
+- **Wersja 1.0** (Listopad 2025) - Pierwsza implementacja
+  - Podstawowe rozpoznawanie OCR
+  - Integracja z GPT-4o-mini
+  - Auto-wypełnianie formularzy
 
 ---
 

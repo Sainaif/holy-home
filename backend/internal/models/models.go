@@ -321,9 +321,9 @@ type ApprovalRequest struct {
 
 // NotificationPreference represents a user's notification preferences
 type NotificationPreference struct {
-	ID           primitive.ObjectID `bson:"_id,omitempty" json:"id"`
-	UserID       primitive.ObjectID `bson:"user_id" json:"userId"`
-	Preferences  map[string]bool    `bson:"preferences" json:"preferences"`
-	AllEnabled   bool               `bson:"all_enabled" json:"allEnabled"`
-	UpdatedAt    time.Time          `bson:"updated_at" json:"updatedAt"`
+	ID          primitive.ObjectID `bson:"_id,omitempty" json:"id"`
+	UserID      primitive.ObjectID `bson:"user_id" json:"userId"`
+	Preferences map[string]bool    `bson:"preferences" json:"preferences"`
+	AllEnabled  bool               `bson:"all_enabled" json:"allEnabled"`
+	UpdatedAt   time.Time          `bson:"updated_at" json:"updatedAt"`
 }

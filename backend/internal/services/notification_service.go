@@ -1,4 +1,3 @@
-
 package services
 
 import (
@@ -15,11 +14,11 @@ import (
 )
 
 type NotificationService struct {
-	db                           *mongo.Database
-	eventService                 *EventService
-	webPushService               *WebPushService
+	db                            *mongo.Database
+	eventService                  *EventService
+	webPushService                *WebPushService
 	notificationPreferenceService *NotificationPreferenceService
-	cfg                          *config.Config
+	cfg                           *config.Config
 }
 
 func NewNotificationService(db *mongo.Database, eventService *EventService, webPushService *WebPushService, notificationPreferenceService *NotificationPreferenceService, cfg *config.Config) *NotificationService {

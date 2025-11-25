@@ -1,4 +1,3 @@
-
 package services
 
 import (
@@ -40,9 +39,9 @@ func (s *NotificationPreferenceService) UpdatePreferences(ctx context.Context, u
 		bson.M{"user_id": userID},
 		bson.M{
 			"$set": bson.M{
-				"preferences":  preferences,
-				"all_enabled":  allEnabled,
-				"updated_at":   time.Now(),
+				"preferences": preferences,
+				"all_enabled": allEnabled,
+				"updated_at":  time.Now(),
 			},
 		},
 		opts,

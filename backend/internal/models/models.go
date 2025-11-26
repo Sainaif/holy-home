@@ -185,6 +185,8 @@ type Notification struct {
 	Status       string              `bson:"status" json:"status"` // queued, sent
 	Read         bool                `bson:"read" json:"read"`
 	UserID       *primitive.ObjectID `bson:"user_id,omitempty" json:"userId,omitempty"`
+	Title        string              `bson:"title" json:"title"`
+	Body         string              `bson:"body" json:"body"`
 }
 
 // SupplySettings represents household supply budget settings (singleton)

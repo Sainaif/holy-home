@@ -535,72 +535,95 @@ func (s *SupplyService) CreateManualContribution(ctx context.Context, userID pri
 
 // ProcessWeeklyContributions creates automatic weekly contributions for all active users
 func (s *SupplyService) ProcessWeeklyContributions(ctx context.Context) error {
-	settings, err := s.GetSettings(ctx)
+	session, err := s.db.Client().StartSession()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to start session: %w", err)
 	}
+	defer session.EndSession(ctx)
 
-	if !settings.IsActive {
-		return errors.New("supply system is not active")
-	}
-
-	// Get all active users
-	cursor, err := s.db.Collection("users").Find(ctx, bson.M{"is_active": true})
-	if err != nil {
-		return fmt.Errorf("failed to get users: %w", err)
-	}
-	defer cursor.Close(ctx)
-
-	var users []models.User
-	if err := cursor.All(ctx, &users); err != nil {
-		return fmt.Errorf("failed to decode users: %w", err)
-	}
-
-	now := time.Now()
-	weekStart := now.AddDate(0, 0, -int(now.Weekday()))
-	weekEnd := weekStart.AddDate(0, 0, 6)
-
-	totalContributed := 0.0
-
-	// Create contribution for each active user
-	for _, user := range users {
-		contribution := models.SupplyContribution{
-			ID:          primitive.NewObjectID(),
-			UserID:      user.ID,
-			AmountPLN:   settings.WeeklyContributionPLN,
-			PeriodStart: weekStart,
-			PeriodEnd:   weekEnd,
-			Type:        "weekly_auto",
-			CreatedAt:   now,
-		}
-
-		_, err := s.db.Collection("supply_contributions").InsertOne(ctx, contribution)
+	err = mongo.WithSession(ctx, session, func(sc mongo.SessionContext) error {
+		settings, err := s.GetSettings(sc)
 		if err != nil {
-			return fmt.Errorf("failed to create contribution for user %s: %w", user.Email, err)
+			return err
 		}
 
-		amount, _ := utils.DecimalToFloat(settings.WeeklyContributionPLN)
-		totalContributed += amount
-	}
+		if !settings.IsActive {
+			return errors.New("supply system is not active")
+		}
 
-	// Update budget
-	currentBudget, _ := utils.DecimalToFloat(settings.CurrentBudgetPLN)
-	newBudget, _ := utils.DecimalFromFloat(currentBudget + totalContributed)
+		now := time.Now()
+		if now.Weekday().String() != settings.ContributionDay {
+			return nil // Not the right day
+		}
 
-	_, err = s.db.Collection("supply_settings").UpdateOne(
-		ctx,
-		bson.M{},
-		bson.M{"$set": bson.M{
-			"current_budget_pln":   newBudget,
-			"last_contribution_at": now,
-			"updated_at":           now,
-		}},
-	)
-	if err != nil {
-		return fmt.Errorf("failed to update budget: %w", err)
-	}
+		// Get all active users
+		cursor, err := s.db.Collection("users").Find(sc, bson.M{"is_active": true})
+		if err != nil {
+			return fmt.Errorf("failed to get users: %w", err)
+		}
+		defer cursor.Close(sc)
 
-	return nil
+		var users []models.User
+		if err := cursor.All(sc, &users); err != nil {
+			return fmt.Errorf("failed to decode users: %w", err)
+		}
+
+		weekStart := now.AddDate(0, 0, -int(now.Weekday()))
+		weekEnd := weekStart.AddDate(0, 0, 6)
+
+		totalContributed := 0.0
+
+		// Create contribution for each active user
+		for _, user := range users {
+			contribution := models.SupplyContribution{
+				ID:          primitive.NewObjectID(),
+				UserID:      user.ID,
+				AmountPLN:   settings.WeeklyContributionPLN,
+				PeriodStart: weekStart,
+				PeriodEnd:   weekEnd,
+				Type:        "weekly_auto",
+				CreatedAt:   now,
+			}
+
+			_, err := s.db.Collection("supply_contributions").InsertOne(sc, contribution)
+			if err != nil {
+				return fmt.Errorf("failed to create contribution for user %s: %w", user.Email, err)
+			}
+
+			amount, err := utils.DecimalToFloat(settings.WeeklyContributionPLN)
+			if err != nil {
+				return fmt.Errorf("could not convert weekly contribution: %w", err)
+			}
+			totalContributed += amount
+		}
+
+		// Update budget
+		currentBudget, err := utils.DecimalToFloat(settings.CurrentBudgetPLN)
+		if err != nil {
+			return fmt.Errorf("could not convert current budget: %w", err)
+		}
+		newBudget, err := utils.DecimalFromFloat(currentBudget + totalContributed)
+		if err != nil {
+			return fmt.Errorf("could not convert new budget: %w", err)
+		}
+
+		_, err = s.db.Collection("supply_settings").UpdateOne(
+			sc,
+			bson.M{},
+			bson.M{"$set": bson.M{
+				"current_budget_pln":   newBudget,
+				"last_contribution_at": now,
+				"updated_at":           now,
+			}},
+		)
+		if err != nil {
+			return fmt.Errorf("failed to update budget: %w", err)
+		}
+
+		return nil
+	})
+
+	return err
 }
 
 // GetStats returns spending statistics

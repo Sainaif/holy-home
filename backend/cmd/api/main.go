@@ -376,6 +376,19 @@ func main() {
 		}
 	}()
 
+	// Start supply contribution processing job
+	go func() {
+		ticker := time.NewTicker(24 * time.Hour)
+		defer ticker.Stop()
+
+		for range ticker.C {
+			log.Println("Running scheduled supply contribution processing...")
+			if err := supplyService.ProcessWeeklyContributions(context.Background()); err != nil {
+				log.Printf("Error during scheduled supply contribution processing: %v", err)
+			}
+		}
+	}()
+
 	// Start server
 	addr := fmt.Sprintf("%s:%s", cfg.App.Host, cfg.App.Port)
 	go func() {

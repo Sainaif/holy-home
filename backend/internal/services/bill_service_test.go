@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"errors"
 	"os"
 	"testing"
 	"time"
@@ -110,31 +111,21 @@ func TestDeleteBill_Atomicity(t *testing.T) {
 	_, err = db.Collection("consumptions").InsertOne(context.Background(), bson.M{"bill_id": billID})
 	require.NoError(t, err)
 
-	// Create a service that will fail
-	failingBillService := NewBillService(db, notificationService)
-	failingBillService.db.Client().Disconnect(context.Background())
+	billService.failInsideTransaction = func() error {
+		return errors.New("simulated error")
+	}
 
 	// Attempt to delete the bill, expecting a failure
-	err = failingBillService.DeleteBill(context.Background(), billID)
+	err = billService.DeleteBill(context.Background(), billID)
 	require.Error(t, err)
-
-	// Create a new client to verify the data was not deleted
-	mongoURI := os.Getenv("MONGODB_URI")
-	if mongoURI == "" {
-		mongoURI = "mongodb://localhost:27017"
-	}
-	newClient, err := mongo.Connect(context.Background(), options.Client().ApplyURI(mongoURI))
-	require.NoError(t, err)
-	defer newClient.Disconnect(context.Background())
-	verificationDB := newClient.Database("holy-home-test")
 
 	// Verify that the bill still exists
 	var bill models.Bill
-	err = verificationDB.Collection("bills").FindOne(context.Background(), bson.M{"_id": billID}).Decode(&bill)
+	err = db.Collection("bills").FindOne(context.Background(), bson.M{"_id": billID}).Decode(&bill)
 	require.NoError(t, err, "Bill should not have been deleted")
 
 	// Verify that the consumptions were NOT deleted
-	count, err := verificationDB.Collection("consumptions").CountDocuments(context.Background(), bson.M{"bill_id": billID})
+	count, err := db.Collection("consumptions").CountDocuments(context.Background(), bson.M{"bill_id": billID})
 	require.NoError(t, err)
 	assert.Equal(t, int64(1), count, "Consumptions should not have been deleted")
 }

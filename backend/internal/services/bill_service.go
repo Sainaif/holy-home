@@ -18,6 +18,8 @@ import (
 type BillService struct {
 	db                  *mongo.Database
 	notificationService *NotificationService
+	// For testing purposes only
+	failInsideTransaction func() error
 }
 
 func NewBillService(db *mongo.Database, notificationService *NotificationService) *BillService {
@@ -328,6 +330,10 @@ func (s *BillService) DeleteBill(ctx context.Context, billID primitive.ObjectID)
 		_, err := s.db.Collection("consumptions").DeleteMany(sessCtx, bson.M{"bill_id": billID})
 		if err != nil {
 			return nil, fmt.Errorf("failed to delete consumptions: %w", err)
+		}
+
+		if s.failInsideTransaction != nil {
+			return nil, s.failInsideTransaction()
 		}
 
 		// Delete all payments

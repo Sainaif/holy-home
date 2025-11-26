@@ -134,7 +134,7 @@ func TestDeleteBill_Atomicity(t *testing.T) {
 	require.NoError(t, err, "Bill should not have been deleted")
 
 	// Verify that the consumptions were NOT deleted
-	count, err := verificationDB.Collection("consumptions").CountDocuments(context.Background(), bson.M{"_id": billID})
+	count, err := verificationDB.Collection("consumptions").CountDocuments(context.Background(), bson.M{"bill_id": billID})
 	require.NoError(t, err)
 	assert.Equal(t, int64(1), count, "Consumptions should not have been deleted")
 }

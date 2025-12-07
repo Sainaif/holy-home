@@ -19,5 +19,5 @@ COPY --from=builder /out/api /app/api
 COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
 ENV TZ=Europe/Warsaw
 USER app
-EXPOSE 8080
+EXPOSE 3000
 ENTRYPOINT ["/app/api"]

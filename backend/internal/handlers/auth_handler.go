@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/sainaif/holy-home/internal/config"
 	"github.com/sainaif/holy-home/internal/middleware"
 	"github.com/sainaif/holy-home/internal/services"
 )
@@ -14,14 +15,40 @@ type AuthHandler struct {
 	authService  *services.AuthService
 	userService  *services.UserService
 	auditService *services.AuditService
+	cfg          *config.Config
 }
 
-func NewAuthHandler(authService *services.AuthService, userService *services.UserService, auditService *services.AuditService) *AuthHandler {
+func NewAuthHandler(authService *services.AuthService, userService *services.UserService, auditService *services.AuditService, cfg *config.Config) *AuthHandler {
 	return &AuthHandler{
 		authService:  authService,
 		userService:  userService,
 		auditService: auditService,
+		cfg:          cfg,
 	}
+}
+
+// AuthConfigResponse contains public auth configuration for the frontend
+type AuthConfigResponse struct {
+	AllowEmailLogin    bool `json:"allowEmailLogin"`
+	AllowUsernameLogin bool `json:"allowUsernameLogin"`
+	RequireUsername    bool `json:"requireUsername"`
+	TwoFAEnabled       bool `json:"twoFAEnabled"`
+}
+
+// GetAuthConfig returns public auth configuration
+// @Summary Get auth configuration
+// @Description Get public authentication configuration for the frontend
+// @Tags auth
+// @Produce json
+// @Success 200 {object} AuthConfigResponse
+// @Router /auth/config [get]
+func (h *AuthHandler) GetAuthConfig(c *fiber.Ctx) error {
+	return c.JSON(AuthConfigResponse{
+		AllowEmailLogin:    h.cfg.Auth.AllowEmailLogin,
+		AllowUsernameLogin: h.cfg.Auth.AllowUsernameLogin,
+		RequireUsername:    h.cfg.Auth.RequireUsername,
+		TwoFAEnabled:       h.cfg.Auth.TwoFAEnabled,
+	})
 }
 
 // Login godoc

@@ -21,8 +21,18 @@ func NewGroupHandler(groupService *services.GroupService, auditService *services
 
 // CreateGroup creates a new group (ADMIN only)
 func (h *GroupHandler) CreateGroup(c *fiber.Ctx) error {
-	userID, _ := middleware.GetUserID(c)
-	userEmail := c.Locals("userEmail").(string)
+	userID, err := middleware.GetUserID(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
+	userEmail, err := middleware.GetUserEmail(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
 
 	var req services.CreateGroupRequest
 	if err := c.BodyParser(&req); err != nil {
@@ -82,8 +92,18 @@ func (h *GroupHandler) GetGroup(c *fiber.Ctx) error {
 
 // UpdateGroup updates a group (ADMIN only)
 func (h *GroupHandler) UpdateGroup(c *fiber.Ctx) error {
-	userID, _ := middleware.GetUserID(c)
-	userEmail := c.Locals("userEmail").(string)
+	userID, err := middleware.GetUserID(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
+	userEmail, err := middleware.GetUserEmail(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
 
 	id := c.Params("id")
 	groupID, err := primitive.ObjectIDFromHex(id)
@@ -120,8 +140,18 @@ func (h *GroupHandler) UpdateGroup(c *fiber.Ctx) error {
 
 // DeleteGroup deletes a group (ADMIN only)
 func (h *GroupHandler) DeleteGroup(c *fiber.Ctx) error {
-	userID, _ := middleware.GetUserID(c)
-	userEmail := c.Locals("userEmail").(string)
+	userID, err := middleware.GetUserID(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
+	userEmail, err := middleware.GetUserEmail(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
 
 	id := c.Params("id")
 	groupID, err := primitive.ObjectIDFromHex(id)

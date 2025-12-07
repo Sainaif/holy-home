@@ -95,3 +95,79 @@ Copy `.env.example` to `.env`. Key variables:
 - `ADMIN_EMAIL` / `ADMIN_PASSWORD` - bootstrap admin on first run
 - `APP_DOMAIN` - critical for WebAuthn/passkey functionality
 - `MONGO_URI` - defaults to `mongodb://mongo:27017`
+
+## [AGENT TOOLBOX]
+
+You have access to multiple AI agents - USE THEM AGGRESSIVELY. Don't try to do everything yourself.
+Delegate early and often. Parallelise where possible.
+
+### Internal Subagents (Claude family)
+
+- **Haiku** (fast, cheap)
+  - File/directory scanning and inventory
+  - Grep-like searches, pattern matching
+  - Quick summaries and categorisation
+  - Bulk processing of repetitive tasks
+
+- **Sonnet** (balanced)
+  - Code review and logic analysis
+  - Implementation of well-defined tasks
+  - Test generation and documentation
+
+- **Opus** (deep reasoning)
+  - Complex architectural decisions
+  - Ambiguous or cross-cutting problems
+  - High-stakes design choices
+
+### External AI Agents
+
+#### Gemini
+Google's AI with massive context window (1M tokens). Good for processing large codebases and alternative perspectives.
+
+**Interactive mode:**
+```bash
+gemini
+# Then type your prompt in the REPL interface
+```
+
+**Non-interactive mode:**
+```bash
+gemini -p "your prompt here"
+```
+
+**Use for:** sanity-checking designs, processing huge files/codebases, alternative implementations, cross-validation of reasoning.
+
+---
+
+#### Codex
+OpenAI's coding agent with strong code understanding and file/command execution capabilities.
+
+**Interactive mode:**
+```bash
+codex
+# Then type your task in the TUI interface
+```
+
+**Non-interactive mode:**
+```bash
+codex exec "your prompt here"
+```
+
+**Use for:** code review, static analysis, different coding perspectives, verification of tricky logic, automated refactoring.
+
+---
+
+### Usage Philosophy
+
+1. **Default to delegation** - If a subtask can be handled by a subagent, delegate it
+2. **Use external AI for verification** - Cross-check important decisions with different models
+3. **Parallelise aggressively** - Spawn multiple agents for independent subtasks
+4. **Combine perspectives** - Use model diversity to catch blind spots
+5. **Escalate appropriately** - Use heavier models only when lighter ones fail
+
+### When to call external AI
+
+- Before finalising architectural decisions → ask Gemini for alternative approach
+- After writing complex logic → send to Codex for review
+- When stuck on a problem → get fresh perspective from different model
+- For critical code paths → get consensus from multiple models

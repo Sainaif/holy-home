@@ -25,8 +25,18 @@ func NewLoanHandler(loanService *services.LoanService, eventService *services.Ev
 
 // CreateLoan creates a new loan
 func (h *LoanHandler) CreateLoan(c *fiber.Ctx) error {
-	userID, _ := middleware.GetUserID(c)
-	userEmail := c.Locals("userEmail").(string)
+	userID, err := middleware.GetUserID(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
+	userEmail, err := middleware.GetUserEmail(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
 
 	var req services.CreateLoanRequest
 	if err := c.BodyParser(&req); err != nil {
@@ -64,8 +74,18 @@ func (h *LoanHandler) CreateLoan(c *fiber.Ctx) error {
 
 // CreateLoanPayment records a loan repayment
 func (h *LoanHandler) CreateLoanPayment(c *fiber.Ctx) error {
-	userID, _ := middleware.GetUserID(c)
-	userEmail := c.Locals("userEmail").(string)
+	userID, err := middleware.GetUserID(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
+	userEmail, err := middleware.GetUserEmail(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
 
 	var req services.CreateLoanPaymentRequest
 	if err := c.BodyParser(&req); err != nil {
@@ -200,8 +220,18 @@ func (h *LoanHandler) GetLoanPayments(c *fiber.Ctx) error {
 
 // DeleteLoan deletes a loan (ADMIN only)
 func (h *LoanHandler) DeleteLoan(c *fiber.Ctx) error {
-	userID, _ := middleware.GetUserID(c)
-	userEmail := c.Locals("userEmail").(string)
+	userID, err := middleware.GetUserID(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
+	userEmail, err := middleware.GetUserEmail(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
 
 	id := c.Params("id")
 	loanID, err := primitive.ObjectIDFromHex(id)
@@ -242,8 +272,18 @@ func (h *LoanHandler) DeleteLoan(c *fiber.Ctx) error {
 
 // CompensateLoan manually triggers group debt compensation
 func (h *LoanHandler) CompensateLoan(c *fiber.Ctx) error {
-	userID, _ := middleware.GetUserID(c)
-	userEmail := c.Locals("userEmail").(string)
+	userID, err := middleware.GetUserID(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
+	userEmail, err := middleware.GetUserEmail(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
 
 	result, err := h.loanService.PerformGroupCompensation(c.Context())
 	if err != nil {

@@ -2,17 +2,18 @@ import { ref, onUnmounted } from 'vue'
 import { useAuthStore } from '../stores/auth'
 
 /**
- * Composable for managing SSE (Server-Sent Events) connections
+ * Composable for managing WebSocket connections for real-time events
  * Handles authentication, reconnection, and event dispatching
- * @version 2.0.0 - SSE disabled
+ * @version 3.0.0 - WebSocket implementation (secure - no token in URL)
  */
 export function useEventStream() {
   const authStore = useAuthStore()
   const isConnected = ref(false)
   const isConnecting = ref(false)
+  const isAuthenticated = ref(false)
   const error = ref(null)
 
-  let eventSource = null
+  let socket = null
   let reconnectTimer = null
   let reconnectAttempts = 0
   const maxReconnectAttempts = 10
@@ -21,7 +22,30 @@ export function useEventStream() {
   const eventHandlers = new Map()
 
   /**
-   * Connect to SSE stream
+   * Build WebSocket URL from API URL
+   */
+  function getWebSocketURL() {
+    const baseURL = import.meta.env.VITE_API_URL || '/api'
+
+    // If baseURL is absolute, convert protocol
+    if (baseURL.startsWith('http://') || baseURL.startsWith('https://')) {
+      return baseURL.replace(/^http/, 'ws') + '/ws/events'
+    }
+
+    // Relative URL - construct from window.location
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    const host = window.location.host
+
+    // Handle /api prefix
+    if (baseURL.startsWith('/')) {
+      return `${protocol}//${host}${baseURL}/ws/events`
+    }
+
+    return `${protocol}//${host}/api/ws/events`
+  }
+
+  /**
+   * Connect to WebSocket stream
    */
   function connect() {
     if (!authStore.accessToken) {
@@ -29,54 +53,97 @@ export function useEventStream() {
       return
     }
 
-    if (eventSource) {
+    if (socket) {
       disconnect()
     }
 
     isConnecting.value = true
+    isAuthenticated.value = false
     error.value = null
 
     try {
-      // EventSource doesn't support custom headers, so we pass token as query param
-      const baseURL = import.meta.env.VITE_API_URL || '/api'
-      const url = `${baseURL}/events/stream?token=${authStore.accessToken}`
+      const url = getWebSocketURL()
+      socket = new WebSocket(url)
 
-      eventSource = new EventSource(url)
+      socket.onopen = () => {
+        console.log('[WS] Connected, sending auth...')
 
-      eventSource.onopen = () => {
-        console.log('[SSE] Connected to event stream')
-        isConnected.value = true
-        isConnecting.value = false
-        reconnectAttempts = 0
-        error.value = null
+        // Send auth message immediately after connection
+        socket.send(JSON.stringify({
+          type: 'auth',
+          token: authStore.accessToken
+        }))
       }
 
-      eventSource.onmessage = (event) => {
+      socket.onmessage = (event) => {
         try {
-          const data = JSON.parse(event.data)
-          console.log('[SSE] Message received:', data)
-          handleEvent(data)
+          const message = JSON.parse(event.data)
+
+          switch (message.type) {
+            case 'authenticated':
+              console.log('[WS] Authentication successful')
+              isConnected.value = true
+              isConnecting.value = false
+              isAuthenticated.value = true
+              reconnectAttempts = 0
+              error.value = null
+              break
+
+            case 'error':
+              console.error('[WS] Server error:', message.data)
+              error.value = typeof message.data === 'string'
+                ? message.data
+                : 'Błąd serwera'
+              // If auth error, don't reconnect
+              if (message.data && message.data.includes('token')) {
+                disconnect()
+              }
+              break
+
+            case 'event':
+              // Parse the nested event data
+              if (message.data) {
+                const eventData = typeof message.data === 'string'
+                  ? JSON.parse(message.data)
+                  : message.data
+                handleEvent(eventData)
+              }
+              break
+
+            case 'heartbeat':
+              // Heartbeat received - connection is alive
+              break
+
+            default:
+              console.log('[WS] Unknown message type:', message.type)
+          }
         } catch (err) {
-          console.warn('[SSE] Failed to parse message:', err)
+          console.warn('[WS] Failed to parse message:', err)
         }
       }
 
-      eventSource.onerror = (err) => {
-        console.error('[SSE] Connection error:', err)
+      socket.onerror = (err) => {
+        console.error('[WS] Connection error:', err)
         isConnected.value = false
         isConnecting.value = false
+        isAuthenticated.value = false
         error.value = 'Błąd połączenia'
+      }
 
-        // Cleanup and attempt reconnect
-        if (eventSource) {
-          eventSource.close()
-          eventSource = null
+      socket.onclose = (event) => {
+        console.log('[WS] Connection closed:', event.code, event.reason)
+        isConnected.value = false
+        isConnecting.value = false
+        isAuthenticated.value = false
+        socket = null
+
+        // Don't reconnect on normal close (1000) or auth failure
+        if (event.code !== 1000 && authStore.accessToken) {
+          scheduleReconnect()
         }
-
-        scheduleReconnect()
       }
     } catch (err) {
-      console.error('[SSE] Failed to create EventSource:', err)
+      console.error('[WS] Failed to create WebSocket:', err)
       isConnecting.value = false
       error.value = err.message
       scheduleReconnect()
@@ -88,7 +155,7 @@ export function useEventStream() {
    */
   function scheduleReconnect() {
     if (reconnectAttempts >= maxReconnectAttempts) {
-      console.warn('[SSE] Max reconnection attempts reached')
+      console.warn('[WS] Max reconnection attempts reached')
       error.value = 'Osiągnięto maksymalną liczbę prób ponownego połączenia'
       return
     }
@@ -102,7 +169,7 @@ export function useEventStream() {
       30000 // Max 30 seconds
     )
 
-    console.log(`[SSE] Reconnecting in ${delay}ms (attempt ${reconnectAttempts + 1})`)
+    console.log(`[WS] Reconnecting in ${delay}ms (attempt ${reconnectAttempts + 1})`)
 
     reconnectTimer = setTimeout(() => {
       reconnectAttempts++
@@ -111,7 +178,7 @@ export function useEventStream() {
   }
 
   /**
-   * Disconnect from SSE stream
+   * Disconnect from WebSocket stream
    */
   function disconnect() {
     if (reconnectTimer) {
@@ -119,19 +186,20 @@ export function useEventStream() {
       reconnectTimer = null
     }
 
-    if (eventSource) {
-      eventSource.close()
-      eventSource = null
+    if (socket) {
+      socket.close(1000, 'Client disconnect')
+      socket = null
     }
 
     isConnected.value = false
     isConnecting.value = false
+    isAuthenticated.value = false
     reconnectAttempts = 0
   }
 
   /**
    * Register event handler
-   * @param {string} eventType - Type of event (e.g., 'prediction.updated')
+   * @param {string} eventType - Type of event (e.g., 'bill.created')
    * @param {Function} handler - Handler function to call when event received
    */
   function on(eventType, handler) {
@@ -158,19 +226,19 @@ export function useEventStream() {
 
   /**
    * Handle incoming event
-   * @param {Object} data - Event data from SSE
+   * @param {Object} data - Event data from WebSocket
    */
   function handleEvent(data) {
     const { type } = data
 
     if (!type) {
-      console.warn('[SSE] Event has no type:', data)
+      console.warn('[WS] Event has no type:', data)
       return
     }
 
-    // Handle special connection event
+    // Handle special connection event (legacy compatibility)
     if (type === 'connected') {
-      console.log('[SSE] Connection confirmed')
+      console.log('[WS] Connection confirmed')
       return
     }
 
@@ -181,7 +249,7 @@ export function useEventStream() {
         try {
           handler(data)
         } catch (err) {
-          console.error(`[SSE] Error in handler for ${type}:`, err)
+          console.error(`[WS] Error in handler for ${type}:`, err)
         }
       })
     }
@@ -193,7 +261,7 @@ export function useEventStream() {
         try {
           handler(data)
         } catch (err) {
-          console.error('[SSE] Error in wildcard handler:', err)
+          console.error('[WS] Error in wildcard handler:', err)
         }
       })
     }
@@ -210,6 +278,7 @@ export function useEventStream() {
   return {
     isConnected,
     isConnecting,
+    isAuthenticated,
     error,
     connect,
     disconnect,

@@ -3,95 +3,200 @@
 [![CI](https://github.com/Sainaif/home-app/actions/workflows/ci.yml/badge.svg)](https://github.com/Sainaif/home-app/actions/workflows/ci.yml)
 [![Docker Publish](https://github.com/Sainaif/home-app/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/Sainaif/home-app/actions/workflows/docker-publish.yml)
 
-Self-hosted app for managing household bills, utilities, and loans. Built for shared living situations.
+A self-hosted household management app for shared living. Track bills, split costs fairly, manage loans, and keep everyone accountable.
 
-## What it does
+## Features
 
-- Track bills (electricity, gas, internet, custom)
-- Split costs automatically based on usage
-- Record meter readings
-- Track loans between people
-- See who owes what
-- Dark mode UI in Polish
+- **Bill Management** - Track electricity, gas, internet, and custom bills
+- **Smart Cost Splitting** - Automatically split costs based on actual usage or equally
+- **Meter Readings** - Record consumption data for accurate billing
+- **Loan Tracking** - Keep track of money borrowed and lent between residents
+- **Balance Overview** - See who owes what at a glance
+- **Household Supplies** - Track shared supplies and reimbursements
+- **Chore Management** - Assign and rotate household tasks
+- **Multi-auth Support** - Email, username, passkeys, and optional 2FA
 
-## Tech Stack
+## Quick Start
 
-- Backend: Go + MongoDB
-- Frontend: Vue 3 + Tailwind
-- Docker for easy deployment
+**Requirements:** Docker and Docker Compose
 
-## Status
-
-Most things work. Still need to add:
-- Chores management (backend done)
-- Real-time updates
-- Export to PDF/CSV
-
-## Getting Started
-
-You need Docker installed.
-
-1. Copy `.env.example` to `.env` and set your admin email/password
-2. Run it:
 ```bash
+# Clone the repository
+git clone https://github.com/Sainaif/home-app.git
+cd home-app
+
+# Configure environment
+cp .env.example .env
+# Edit .env - set ADMIN_EMAIL, ADMIN_PASSWORD, and generate JWT secrets
+
+# Start the application
 cd deploy
 docker-compose up -d
 ```
-3. Open http://localhost:16161 and login
 
-That's it. The app creates the admin user automatically on first start.
+Open http://localhost:16161 and log in with your admin credentials.
 
-### If you want to develop locally
+> The admin account is created automatically on first startup.
 
-Backend:
+## Tech Stack
+
+| Component | Technology |
+|-----------|------------|
+| Backend | Go 1.24, Fiber v2 |
+| Database | MongoDB 8.0 |
+| Frontend | Vue 3, Vite, Tailwind CSS, Pinia |
+| Auth | JWT, Argon2id, WebAuthn, TOTP |
+| Deployment | Docker, Docker Compose |
+
+## Configuration
+
+All configuration is done via environment variables. Copy `.env.example` to `.env` and customize:
+
+### Required Settings
+
+| Variable | Description |
+|----------|-------------|
+| `JWT_SECRET` | Secret for access tokens (generate with `openssl rand -base64 32`) |
+| `JWT_REFRESH_SECRET` | Secret for refresh tokens (must be different from JWT_SECRET) |
+| `ADMIN_EMAIL` | Email for the initial admin account |
+| `ADMIN_PASSWORD` | Password for the initial admin account |
+
+### Authentication Options
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `AUTH_ALLOW_EMAIL_LOGIN` | `true` | Allow login with email |
+| `AUTH_ALLOW_USERNAME_LOGIN` | `false` | Allow login with username |
+| `AUTH_REQUIRE_USERNAME` | `false` | Require username during registration |
+| `AUTH_2FA_ENABLED` | `false` | Enable TOTP two-factor authentication |
+
+### Application Settings
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `APP_ENV` | `development` | Environment (`development` or `production`) |
+| `APP_DOMAIN` | `localhost` | Domain for WebAuthn (must match actual domain) |
+| `APP_BASE_URL` | `http://localhost:16162` | Full URL of the application |
+
+See `.env.example` for the complete list of options.
+
+## How Bill Splitting Works
+
+The app intelligently splits bills based on type:
+
+**Metered bills (electricity):**
+- Personal usage from your meter → charged to you
+- Common areas (hallway, kitchen, etc.) → split equally among all residents
+
+**Flat-rate bills (internet, gas):**
+- Split equally by default
+- Can be customized per bill
+
+## Development
+
+### Backend
+
 ```bash
 cd backend
 go mod tidy
 go run ./cmd/api
 ```
 
-Frontend:
+### Frontend
+
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-### Rebuild after changes
+### Running Tests
+
+```bash
+# Backend (requires MongoDB)
+cd backend
+go test -v -race ./...
+
+# Frontend
+cd frontend
+npm test
+```
+
+### Rebuilding Docker Images
+
 ```bash
 cd deploy
 docker-compose build && docker-compose up -d
 ```
 
-## How it works
+## Architecture
 
-### Bill allocation
-
-The app splits electricity bills in a smart way:
-- Personal usage (from your meter) gets charged to you
-- Common areas (hallway, kitchen) split equally
-- Gas/internet split equally by default
-
-Everything else is straightforward - track what you owe, what you paid, and who owes you.
+```
+├── backend/
+│   ├── cmd/api/          # Application entrypoint
+│   └── internal/
+│       ├── config/       # Environment configuration
+│       ├── database/     # MongoDB connection
+│       ├── handlers/     # HTTP route handlers
+│       ├── middleware/   # Auth, rate limiting
+│       ├── models/       # Data structures
+│       ├── services/     # Business logic
+│       └── utils/        # JWT, password hashing, TOTP
+│
+├── frontend/
+│   └── src/
+│       ├── api/          # Axios client
+│       ├── components/   # Reusable UI components
+│       ├── composables/  # Vue 3 composition functions
+│       ├── locales/      # Translations (Polish)
+│       ├── stores/       # Pinia state management
+│       └── views/        # Page components
+│
+└── deploy/               # Docker Compose files
+```
 
 ## API
 
-API runs on `http://localhost:16162`
+The API runs on port `16162` by default.
 
-## Database
+### Endpoints Overview
 
-Uses MongoDB with these main collections:
-- users (email, password, role)
-- groups (name, weight for splitting costs)
-- bills (type, amount, period, status)
-- consumptions (meter readings)
-- allocations (who owes what)
-- payments (who paid what)
-- loans (money borrowed/lent)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/auth/login` | Authenticate user |
+| `POST` | `/auth/refresh` | Refresh access token |
+| `GET` | `/auth/config` | Get auth configuration |
+| `GET` | `/users/me` | Get current user |
+| `GET` | `/bills` | List bills |
+| `POST` | `/bills` | Create bill |
+| `GET` | `/groups` | List groups |
+| `GET` | `/balance` | Get balance summary |
+
+All endpoints except `/auth/*` require authentication via Bearer token.
+
+## Database Collections
+
+| Collection | Description |
+|------------|-------------|
+| `users` | User accounts and credentials |
+| `groups` | Household groups with cost-splitting weights |
+| `bills` | Utility bills with type, amount, period |
+| `consumptions` | Meter readings per user/group |
+| `allocations` | Calculated cost splits |
+| `payments` | Payment records |
+| `loans` | Money lent/borrowed between residents |
+| `chores` | Household tasks and assignments |
+| `supplies` | Shared household supplies |
 
 ## Security
 
-- Passwords hashed with Argon2id
-- JWT tokens for auth (15min access + 30 day refresh)
-- Optional 2FA with TOTP
-- Rate limiting on login (5 attempts per 15min)
+- **Password Hashing** - Argon2id with secure parameters
+- **JWT Tokens** - Short-lived access (15min) + long-lived refresh (30 days)
+- **WebAuthn/Passkeys** - Passwordless authentication support
+- **TOTP 2FA** - Optional two-factor authentication
+- **Rate Limiting** - 5 login attempts per 15 minutes
+- **CORS** - Configurable allowed origins
+
+## License
+
+MIT

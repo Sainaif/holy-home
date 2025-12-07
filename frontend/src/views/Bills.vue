@@ -3,7 +3,7 @@
     <div class="page-header">
       <div>
         <h1 class="text-4xl font-bold gradient-text mb-2">{{ $t('bills.title') }}</h1>
-        <p class="text-gray-400">Historia rachunków i odczyty liczników</p>
+        <p class="text-gray-400">{{ $t('bills.description') }}</p>
       </div>
       <button v-if="authStore.hasPermission('bills.create') && activeTab === 'bills'" @click="showCreateModal = true" class="btn btn-primary flex items-center gap-2">
         <Plus class="w-5 h-5" />
@@ -11,7 +11,7 @@
       </button>
       <button v-if="authStore.hasPermission('bills.create') && activeTab === 'recurring'" @click="showRecurringModal = true" class="btn btn-primary flex items-center gap-2">
         <Plus class="w-5 h-5" />
-        Nowy Rachunek Cykliczny
+        {{ $t('bills.createRecurring') }}
       </button>
     </div>
 
@@ -22,7 +22,7 @@
         :class="['btn', activeTab === 'bills' ? 'btn-primary' : 'btn-outline']"
         class="flex items-center gap-2">
         <Receipt class="w-4 h-4" />
-        Rachunki
+        {{ $t('bills.tabBills') }}
       </button>
       <button
         v-if="hasMeteredBills"
@@ -30,7 +30,7 @@
         :class="['btn', activeTab === 'readings' ? 'btn-primary' : 'btn-outline']"
         class="flex items-center gap-2">
         <Gauge class="w-4 h-4" />
-        Odczyty
+        {{ $t('bills.tabReadings') }}
       </button>
       <button
         v-if="authStore.hasPermission('bills.create')"
@@ -38,7 +38,7 @@
         :class="['btn', activeTab === 'recurring' ? 'btn-primary' : 'btn-outline']"
         class="flex items-center gap-2">
         <Calendar class="w-4 h-4" />
-        Cykliczne
+        {{ $t('bills.tabRecurring') }}
       </button>
     </div>
 
@@ -46,7 +46,7 @@
     <div v-if="showCreateModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50" @click.self="showCreateModal = false">
       <div class="card max-w-lg w-full mx-4">
         <div class="flex justify-between items-center mb-6">
-          <h2 class="text-2xl font-bold gradient-text">Nowy Rachunek</h2>
+          <h2 class="text-2xl font-bold gradient-text">{{ $t('bills.createNew') }}</h2>
           <button @click="showCreateModal = false" class="text-gray-400 hover:text-white">
             <X class="w-6 h-6" />
           </button>
@@ -54,57 +54,57 @@
 
         <form @submit.prevent="createBill" class="space-y-4">
           <div>
-            <label class="block text-sm font-medium mb-2">Typ</label>
+            <label class="block text-sm font-medium mb-2">{{ $t('bills.type') }}</label>
             <select v-model="newBill.type" required class="input">
-              <option value="electricity">Prąd</option>
-              <option value="gas">Gaz</option>
-              <option value="internet">Internet</option>
-              <option value="inne">Inne</option>
+              <option value="electricity">{{ $t('bills.electricity') }}</option>
+              <option value="gas">{{ $t('bills.gas') }}</option>
+              <option value="internet">{{ $t('bills.internet') }}</option>
+              <option value="inne">{{ $t('bills.inne') }}</option>
             </select>
           </div>
 
           <div v-if="newBill.type === 'inne'">
-            <label class="block text-sm font-medium mb-2">Nazwa typu</label>
-            <input v-model="newBill.customType" type="text" required class="input" placeholder="np. Czynsz, Woda..." />
+            <label class="block text-sm font-medium mb-2">{{ $t('bills.customTypeName') }}</label>
+            <input v-model="newBill.customType" type="text" required class="input" :placeholder="$t('bills.customTypeExample')" />
           </div>
 
           <div v-if="newBill.type === 'inne'">
-            <label class="block text-sm font-medium mb-2">Sposób rozliczenia</label>
+            <label class="block text-sm font-medium mb-2">{{ $t('bills.allocationMethod') }}</label>
             <select v-model="newBill.allocationType" required class="input">
-              <option value="simple">Równy podział (jak Gaz/Internet)</option>
-              <option value="metered">Według odczytów (jak Prąd)</option>
+              <option value="simple">{{ $t('bills.allocationSimple') }}</option>
+              <option value="metered">{{ $t('bills.allocationMetered') }}</option>
             </select>
           </div>
 
           <div>
-            <label class="block text-sm font-medium mb-2">Kwota (PLN)</label>
+            <label class="block text-sm font-medium mb-2">{{ $t('bills.amount') }}</label>
             <input v-model.number="newBill.totalAmountPLN" type="number" step="0.01" required class="input" placeholder="150.00" />
           </div>
 
           <div v-if="newBill.type === 'electricity' || newBill.type === 'gas' || (newBill.type === 'inne' && newBill.allocationType === 'metered')">
-            <label class="block text-sm font-medium mb-2">Jednostki</label>
+            <label class="block text-sm font-medium mb-2">{{ $t('bills.units') }}</label>
             <input v-model.number="newBill.totalUnits" type="number" step="0.001" class="input" placeholder="100.000" />
           </div>
 
           <div class="grid grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm font-medium mb-2">Okres od</label>
+              <label class="block text-sm font-medium mb-2">{{ $t('bills.periodStart') }}</label>
               <input v-model="newBill.periodStart" type="date" required class="input" min="2000-01-01" max="2099-12-31" />
             </div>
             <div>
-              <label class="block text-sm font-medium mb-2">Okres do</label>
+              <label class="block text-sm font-medium mb-2">{{ $t('bills.periodEnd') }}</label>
               <input v-model="newBill.periodEnd" type="date" required class="input" min="2000-01-01" max="2099-12-31" />
             </div>
           </div>
 
           <div>
-            <label class="block text-sm font-medium mb-2">Termin płatności (opcjonalny)</label>
+            <label class="block text-sm font-medium mb-2">{{ $t('bills.paymentDeadline') }}</label>
             <input v-model="newBill.paymentDeadline" type="date" class="input" min="2000-01-01" max="2099-12-31" />
           </div>
 
           <div>
-            <label class="block text-sm font-medium mb-2">Notatki</label>
-            <textarea v-model="newBill.notes" class="input" rows="3" placeholder="Opcjonalne uwagi..."></textarea>
+            <label class="block text-sm font-medium mb-2">{{ $t('bills.notes') }}</label>
+            <textarea v-model="newBill.notes" class="input" rows="3" :placeholder="$t('bills.notesPlaceholder')"></textarea>
           </div>
 
           <div v-if="createError" class="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
@@ -116,10 +116,10 @@
             <button type="submit" :disabled="creating" class="btn btn-primary flex-1 flex items-center justify-center gap-2">
               <div v-if="creating" class="loading-spinner"></div>
               <Plus v-else class="w-5 h-5" />
-              {{ creating ? 'Tworzenie...' : 'Utwórz rachunek' }}
+              {{ creating ? $t('common.creating') : $t('bills.createButton') }}
             </button>
             <button type="button" @click="showCreateModal = false" class="btn btn-outline">
-              Anuluj
+              {{ $t('common.cancel') }}
             </button>
           </div>
         </form>
@@ -132,30 +132,30 @@
       <div class="card mb-6">
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
-            <label class="block text-sm font-medium mb-2">Typ</label>
+            <label class="block text-sm font-medium mb-2">{{ $t('bills.type') }}</label>
             <select v-model="filters.type" class="input">
-              <option value="">Wszystkie</option>
-              <option value="electricity">Prąd</option>
-              <option value="gas">Gaz</option>
-              <option value="internet">Internet</option>
-              <option value="inne">Inne</option>
+              <option value="">{{ $t('common.all') }}</option>
+              <option value="electricity">{{ $t('bills.electricity') }}</option>
+              <option value="gas">{{ $t('bills.gas') }}</option>
+              <option value="internet">{{ $t('bills.internet') }}</option>
+              <option value="inne">{{ $t('bills.inne') }}</option>
             </select>
           </div>
           <div>
-            <label class="block text-sm font-medium mb-2">Data od</label>
+            <label class="block text-sm font-medium mb-2">{{ $t('bills.dateFrom') }}</label>
             <input v-model="filters.dateFrom" type="date" class="input" />
           </div>
           <div>
-            <label class="block text-sm font-medium mb-2">Data do</label>
+            <label class="block text-sm font-medium mb-2">{{ $t('bills.dateTo') }}</label>
             <input v-model="filters.dateTo" type="date" class="input" />
           </div>
           <div>
-            <label class="block text-sm font-medium mb-2">Sortuj</label>
+            <label class="block text-sm font-medium mb-2">{{ $t('bills.sortBy') }}</label>
             <select v-model="filters.sortBy" class="input">
-              <option value="date-desc">Data (najnowsze)</option>
-              <option value="date-asc">Data (najstarsze)</option>
-              <option value="amount-desc">Kwota (malejąco)</option>
-              <option value="amount-asc">Kwota (rosnąco)</option>
+              <option value="date-desc">{{ $t('bills.sortDateNewest') }}</option>
+              <option value="date-asc">{{ $t('bills.sortDateOldest') }}</option>
+              <option value="amount-desc">{{ $t('bills.sortAmountDesc') }}</option>
+              <option value="amount-asc">{{ $t('bills.sortAmountAsc') }}</option>
             </select>
           </div>
         </div>
@@ -167,7 +167,7 @@
         </div>
         <div v-else-if="filteredBills.length === 0" class="text-center py-12 text-gray-500">
           <FileX class="w-16 h-16 mx-auto mb-4 opacity-50" />
-          <p class="text-lg">Brak rachunków</p>
+          <p class="text-lg">{{ $t('bills.noBills') }}</p>
         </div>
         <template v-else>
           <!-- Mobile card layout -->
@@ -208,12 +208,12 @@
               <button v-if="bill.status === 'draft'" @click="postBill(bill.id)"
                       class="btn btn-sm btn-primary flex items-center gap-1 flex-1">
                 <Send class="w-3 h-3" />
-                Opublikuj
+                {{ $t('bills.postButton') }}
               </button>
               <button v-if="bill.status === 'posted'" @click="closeBill(bill.id)"
                       class="btn btn-sm btn-secondary flex items-center gap-1 flex-1">
                 <Check class="w-3 h-3" />
-                Zamknij
+                {{ $t('bills.closeButton') }}
               </button>
               <button @click="deleteBill(bill.id)"
                       class="btn btn-sm bg-red-600/20 hover:bg-red-600/30 text-red-400 flex items-center gap-1">
@@ -232,7 +232,7 @@
                 <th>{{ $t('bills.period') }}</th>
                 <th>{{ $t('bills.amount') }}</th>
                 <th>{{ $t('bills.totalUnits') }}</th>
-                <th>Opis</th>
+                <th>{{ $t('common.description') }}</th>
                 <th>{{ $t('bills.status') }}</th>
                 <th v-if="authStore.isAdmin">{{ $t('common.actions') }}</th>
               </tr>
@@ -299,7 +299,7 @@
                     <button @click="deleteBill(bill.id)"
                             class="btn btn-sm bg-red-600/20 hover:bg-red-600/30 text-red-400 flex items-center gap-1">
                       <Trash2 class="w-3 h-3" />
-                      Usuń
+                      {{ $t('bills.deleteButton') }}
                     </button>
                   </div>
                 </td>
@@ -309,17 +309,17 @@
                 <tr v-if="expandedBills[bill.id]" class="bg-gray-800/30">
                   <td colspan="7" class="p-4">
                     <div v-if="loadingAllocations[bill.id]" class="text-center text-gray-400">
-                      Ładowanie rozliczenia...
+                      {{ $t('bills.loadingAllocation') }}
                     </div>
                     <div v-else-if="billAllocations[bill.id] && billAllocations[bill.id].length > 0" class="space-y-2">
-                      <h3 class="text-sm font-semibold text-purple-400 mb-3">Rozliczenie między użytkownikami:</h3>
+                      <h3 class="text-sm font-semibold text-purple-400 mb-3">{{ $t('bills.allocationBreakdown') }}</h3>
                       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                         <div v-for="allocation in billAllocations[bill.id]" :key="allocation.subjectId"
                              class="bg-gray-800/50 rounded-lg p-3 border border-gray-700/50">
                           <div class="flex justify-between items-start">
                             <div>
                               <p class="font-medium text-white">{{ allocation.subjectName }}</p>
-                              <p class="text-xs text-gray-400">Waga: {{ allocation.weight.toFixed(2) }}</p>
+                              <p class="text-xs text-gray-400">{{ $t('bills.weight') }} {{ allocation.weight.toFixed(2) }}</p>
                             </div>
                             <div class="text-right">
                               <p class="font-bold text-purple-400">{{ formatMoney(allocation.amount) }} PLN</p>
@@ -331,26 +331,26 @@
                           <div v-if="allocation.personalAmount !== undefined && allocation.sharedAmount !== undefined"
                                class="mt-2 pt-2 border-t border-gray-700/50 text-xs text-gray-400 space-y-1">
                             <div class="flex justify-between">
-                              <span>Osobiste:</span>
+                              <span>{{ $t('bills.personal') }}</span>
                               <span>{{ formatMoney(allocation.personalAmount) }} PLN</span>
                             </div>
                             <div class="flex justify-between">
-                              <span>Wspólne:</span>
+                              <span>{{ $t('bills.shared') }}</span>
                               <span>{{ formatMoney(allocation.sharedAmount) }} PLN</span>
                             </div>
                           </div>
                           <!-- Payment Status -->
                           <div v-if="hasUserPaid(bill.id, allocation)" class="mt-2 pt-2 border-t border-gray-700/50 text-center">
-                            <span class="text-xs text-green-400">✓ Zapłacone</span>
+                            <span class="text-xs text-green-400">✓ {{ $t('bills.paid') }}</span>
                           </div>
                           <div v-else class="mt-2 pt-2 border-t border-gray-700/50 text-center">
-                            <span class="text-xs text-yellow-400">⏳ Oczekuje na płatność</span>
+                            <span class="text-xs text-yellow-400">⏳ {{ $t('bills.pendingPayment') }}</span>
                           </div>
                         </div>
                       </div>
                     </div>
                     <div v-else class="text-center text-gray-400">
-                      Brak danych o rozliczeniu
+                      {{ $t('bills.noAllocationData') }}
                     </div>
                   </td>
                 </tr>
@@ -372,7 +372,7 @@
             <div>
               <label class="block text-sm font-medium mb-2">{{ $t('readings.bill') }}</label>
               <select v-model="form.billId" required class="input">
-                <option value="">Wybierz rachunek</option>
+                <option value="">{{ $t('common.select') }}</option>
                 <option v-for="bill in postedBills" :key="bill.id" :value="bill.id">
                   {{ $t(`bills.${bill.type}`) }} - {{ formatDate(bill.periodStart) }}
                 </option>
@@ -400,24 +400,24 @@
       <div class="card mb-6">
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label class="block text-sm font-medium mb-2">Rachunek</label>
+            <label class="block text-sm font-medium mb-2">{{ $t('readings.bill') }}</label>
             <select v-model="readingFilters.billId" class="input">
-              <option value="">Wszystkie rachunki</option>
+              <option value="">{{ $t('common.all') }}</option>
               <option v-for="bill in allBills" :key="bill.id" :value="bill.id">
                 {{ $t(`bills.${bill.type}`) }} - {{ formatDate(bill.periodStart) }}
               </option>
             </select>
           </div>
           <div>
-            <label class="block text-sm font-medium mb-2">Osoba/Grupa</label>
+            <label class="block text-sm font-medium mb-2">{{ $t('readings.personOrGroup') }}</label>
             <select v-model="readingFilters.subjectId" class="input">
-              <option value="">Wszyscy</option>
-              <optgroup label="Grupy">
+              <option value="">{{ $t('common.everyone') }}</option>
+              <optgroup :label="$t('readings.groups')">
                 <option v-for="group in groups" :key="'group-' + group.id" :value="group.id">
                   {{ group.name }}
                 </option>
               </optgroup>
-              <optgroup label="Użytkownicy">
+              <optgroup :label="$t('readings.users')">
                 <option v-for="user in users" :key="'user-' + user.id" :value="user.id">
                   {{ user.name }}
                 </option>
@@ -425,12 +425,12 @@
             </select>
           </div>
           <div>
-            <label class="block text-sm font-medium mb-2">Sortuj</label>
+            <label class="block text-sm font-medium mb-2">{{ $t('bills.sortBy') }}</label>
             <select v-model="readingFilters.sortBy" class="input">
-              <option value="date-desc">Data (najnowsze)</option>
-              <option value="date-asc">Data (najstarsze)</option>
-              <option value="value-desc">Wartość (malejąco)</option>
-              <option value="value-asc">Wartość (rosnąco)</option>
+              <option value="date-desc">{{ $t('bills.sortDateNewest') }}</option>
+              <option value="date-asc">{{ $t('bills.sortDateOldest') }}</option>
+              <option value="value-desc">{{ $t('bills.sortAmountDesc') }}</option>
+              <option value="value-asc">{{ $t('bills.sortAmountAsc') }}</option>
             </select>
           </div>
         </div>
@@ -438,9 +438,9 @@
 
       <!-- Readings List -->
       <div class="card">
-        <h2 class="text-xl font-semibold mb-4">Ostatnie odczyty</h2>
+        <h2 class="text-xl font-semibold mb-4">{{ $t('readings.recentReadings') }}</h2>
         <div v-if="loadingReadings" class="text-center py-8">{{ $t('common.loading') }}</div>
-        <div v-else-if="filteredReadings.length === 0" class="text-center py-8 text-gray-400">Brak odczytów</div>
+        <div v-else-if="filteredReadings.length === 0" class="text-center py-8 text-gray-400">{{ $t('readings.noReadings') }}</div>
         <div v-else class="space-y-3">
           <div v-for="reading in filteredReadings" :key="reading.id" class="flex justify-between items-center p-3 bg-gray-700 rounded hover:bg-gray-600 cursor-pointer transition-colors" @click="viewBill(reading.billId)">
             <div>
@@ -459,12 +459,12 @@
     <!-- Recurring Bills Tab -->
     <div v-show="activeTab === 'recurring'">
       <div class="card">
-        <h2 class="text-xl font-semibold mb-4">Cykliczne Rachunki</h2>
+        <h2 class="text-xl font-semibold mb-4">{{ $t('bills.recurringBills') }}</h2>
         <div v-if="loadingRecurring" class="text-center py-8">{{ $t('common.loading') }}</div>
         <div v-else-if="recurringTemplates.length === 0" class="text-center py-8 text-gray-400">
           <FileX class="w-12 h-12 mx-auto mb-3 opacity-50" />
-          <p>Brak cyklicznych rachunków</p>
-          <p class="text-sm mt-2">Kliknij "Nowy Rachunek Cykliczny" aby dodać pierwszy</p>
+          <p>{{ $t('bills.noRecurring') }}</p>
+          <p class="text-sm mt-2">{{ $t('bills.createFirstRecurring') }}</p>
         </div>
         <div v-else class="space-y-3">
           <div v-for="template in recurringTemplates" :key="template.id" class="p-4 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors">
@@ -473,7 +473,7 @@
                 <div class="flex items-center gap-3 mb-2">
                   <h3 class="text-lg font-semibold">{{ template.customType }}</h3>
                   <span :class="['px-2 py-1 rounded text-xs', template.isActive ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400']">
-                    {{ template.isActive ? 'Aktywny' : 'Nieaktywny' }}
+                    {{ template.isActive ? $t('bills.active') : $t('bills.inactive') }}
                   </span>
                   <span class="px-2 py-1 rounded text-xs bg-purple-500/20 text-purple-400">
                     {{ formatFrequency(template.frequency) }}
@@ -481,24 +481,24 @@
                 </div>
                 <div class="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <span class="text-gray-400">Kwota:</span>
+                    <span class="text-gray-400">{{ $t('bills.recurringAmount') }}</span>
                     <span class="ml-2 font-medium">{{ formatAmount(template.amount) }} PLN</span>
                   </div>
                   <div>
-                    <span class="text-gray-400">Dzień miesiąca:</span>
+                    <span class="text-gray-400">{{ $t('bills.dayOfMonth') }}</span>
                     <span class="ml-2 font-medium">{{ template.dayOfMonth }}</span>
                   </div>
                   <div>
-                    <span class="text-gray-400">Następny termin:</span>
+                    <span class="text-gray-400">{{ $t('bills.nextDueDate') }}</span>
                     <span class="ml-2 font-medium">{{ formatDate(template.nextDueDate) }}</span>
                   </div>
                   <div v-if="template.lastGeneratedAt">
-                    <span class="text-gray-400">Ostatnio wygenerowany:</span>
+                    <span class="text-gray-400">{{ $t('bills.lastGenerated') }}</span>
                     <span class="ml-2 font-medium">{{ formatDate(template.lastGeneratedAt) }}</span>
                   </div>
                 </div>
                 <div v-if="template.allocations && template.allocations.length > 0" class="mt-3">
-                  <span class="text-gray-400 text-sm">Podział:</span>
+                  <span class="text-gray-400 text-sm">{{ $t('bills.allocation') }}</span>
                   <div class="flex flex-wrap gap-2 mt-1">
                     <span v-for="(alloc, idx) in template.allocations" :key="idx" class="px-2 py-1 bg-gray-600 rounded text-xs">
                       {{ getAllocationLabel(alloc) }}
@@ -511,7 +511,7 @@
               </div>
               <div class="flex gap-2 ml-4">
                 <button @click="editRecurringTemplate(template)" class="btn btn-sm btn-outline">
-                  Edytuj
+                  {{ $t('common.edit') }}
                 </button>
                 <button v-if="authStore.hasPermission('bills.delete')" @click="deleteRecurringTemplate(template.id)" class="btn btn-sm btn-outline text-red-400 hover:text-red-300">
                   <Trash2 class="w-4 h-4" />
@@ -527,7 +527,7 @@
     <div v-if="showRecurringModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50" @click.self="closeRecurringModal">
       <div class="card max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
         <div class="flex justify-between items-center mb-6">
-          <h2 class="text-2xl font-bold gradient-text">{{ editingRecurring ? 'Edytuj' : 'Nowy' }} Rachunek Cykliczny</h2>
+          <h2 class="text-2xl font-bold gradient-text">{{ editingRecurring ? $t('common.edit') : $t('common.create') }} {{ $t('bills.recurringModalTitle') }}</h2>
           <button @click="closeRecurringModal" class="text-gray-400 hover:text-white">
             <X class="w-6 h-6" />
           </button>
@@ -535,49 +535,49 @@
 
         <form @submit.prevent="saveRecurringTemplate" class="space-y-4">
           <div>
-            <label class="block text-sm font-medium mb-2">Nazwa rachunku</label>
-            <input v-model="newRecurring.customType" type="text" required class="input" placeholder="np. Netflix, Czynsz, Woda..." />
+            <label class="block text-sm font-medium mb-2">{{ $t('bills.recurringName') }}</label>
+            <input v-model="newRecurring.customType" type="text" required class="input" :placeholder="$t('bills.recurringNameExample')" />
           </div>
 
           <div class="grid grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm font-medium mb-2">Kwota (PLN)</label>
+              <label class="block text-sm font-medium mb-2">{{ $t('bills.amount') }}</label>
               <input v-model.number="newRecurring.amount" type="number" step="0.01" required class="input" placeholder="150.00" />
             </div>
             <div>
-              <label class="block text-sm font-medium mb-2">Częstotliwość</label>
+              <label class="block text-sm font-medium mb-2">{{ $t('bills.frequency') }}</label>
               <select v-model="newRecurring.frequency" required class="input">
-                <option value="monthly">Miesięcznie</option>
-                <option value="quarterly">Kwartalnie</option>
-                <option value="yearly">Rocznie</option>
+                <option value="monthly">{{ $t('bills.monthly') }}</option>
+                <option value="quarterly">{{ $t('bills.quarterly') }}</option>
+                <option value="yearly">{{ $t('bills.yearly') }}</option>
               </select>
             </div>
           </div>
 
           <div class="grid grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm font-medium mb-2">Dzień miesiąca (termin płatności)</label>
+              <label class="block text-sm font-medium mb-2">{{ $t('bills.dayOfMonthLabel') }}</label>
               <input v-model.number="newRecurring.dayOfMonth" type="number" min="1" max="31" required class="input" placeholder="15" />
-              <p class="text-xs text-gray-400 mt-1">Dzień miesiąca kiedy rachunek jest płatny (1-31)</p>
+              <p class="text-xs text-gray-400 mt-1">{{ $t('bills.dayOfMonthHint') }}</p>
             </div>
             <div>
-              <label class="block text-sm font-medium mb-2">Data rozpoczęcia *</label>
+              <label class="block text-sm font-medium mb-2">{{ $t('bills.startDate') }}</label>
               <input v-model="newRecurring.startDate" type="date" class="input" min="2000-01-01" max="2099-12-31" required />
-              <p class="text-xs text-gray-400 mt-1">Miesiąc i rok pierwszego rachunku (wymagane)</p>
+              <p class="text-xs text-gray-400 mt-1">{{ $t('bills.startDateHint') }}</p>
             </div>
           </div>
 
           <div>
-            <label class="block text-sm font-medium mb-2">Podział kosztów</label>
+            <label class="block text-sm font-medium mb-2">{{ $t('bills.costAllocation') }}</label>
             <div class="space-y-3">
               <div v-for="(alloc, idx) in newRecurring.allocations" :key="idx" class="p-3 bg-gray-700 rounded-lg space-y-2">
                 <div class="flex gap-2">
                   <select v-model="alloc.subjectType" class="input flex-1" @change="alloc.subjectId = ''">
-                    <option value="user">Użytkownik</option>
-                    <option value="group">Grupa</option>
+                    <option value="user">{{ $t('common.user') }}</option>
+                    <option value="group">{{ $t('common.group') }}</option>
                   </select>
                   <select v-model="alloc.subjectId" required class="input flex-1">
-                    <option value="">Wybierz...</option>
+                    <option value="">{{ $t('common.select') }}</option>
                     <option v-if="alloc.subjectType === 'user'" v-for="user in users" :key="user.id" :value="user.id">
                       {{ user.name || user.email }}
                     </option>
@@ -591,9 +591,9 @@
                 </div>
                 <div class="flex gap-2 items-center">
                   <select v-model="alloc.allocationType" class="input w-32">
-                    <option value="percentage">Procent</option>
-                    <option value="fraction">Ułamek</option>
-                    <option value="fixed">Stała kwota</option>
+                    <option value="percentage">{{ $t('bills.percentage') }}</option>
+                    <option value="fraction">{{ $t('bills.fraction') }}</option>
+                    <option value="fixed">{{ $t('bills.fixedAmount') }}</option>
                   </select>
 
                   <!-- Percentage input -->
@@ -618,7 +618,7 @@
               </div>
               <button type="button" @click="addAllocation" class="btn btn-sm btn-outline w-full">
                 <Plus class="w-4 h-4 mr-2" />
-                Dodaj podział
+                {{ $t('bills.addAllocation') }}
               </button>
               <p v-if="!isAllocationValid" class="text-xs text-yellow-400">
                 {{ allocationValidationMessage }}
@@ -627,8 +627,8 @@
           </div>
 
           <div>
-            <label class="block text-sm font-medium mb-2">Notatki (opcjonalne)</label>
-            <textarea v-model="newRecurring.notes" class="input" rows="2" placeholder="Opcjonalne uwagi..."></textarea>
+            <label class="block text-sm font-medium mb-2">{{ $t('bills.recurringNotes') }}</label>
+            <textarea v-model="newRecurring.notes" class="input" rows="2" :placeholder="$t('bills.notesPlaceholder')"></textarea>
           </div>
 
           <div v-if="recurringError" class="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
@@ -638,10 +638,10 @@
 
           <div class="flex gap-3 justify-end pt-4">
             <button type="button" @click="closeRecurringModal" class="btn btn-outline">
-              Anuluj
+              {{ $t('common.cancel') }}
             </button>
             <button type="submit" :disabled="savingRecurring || !isAllocationValid" class="btn btn-primary">
-              {{ savingRecurring ? 'Zapisywanie...' : (editingRecurring ? 'Zapisz zmiany' : 'Utwórz') }}
+              {{ savingRecurring ? $t('common.saving') : (editingRecurring ? $t('bills.saveChanges') : $t('common.create')) }}
             </button>
           </div>
         </form>
@@ -653,6 +653,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '../stores/auth'
 import api from '../api/client'
 import {
@@ -661,6 +662,7 @@ import {
 } from 'lucide-vue-next'
 
 const router = useRouter()
+const { t, locale } = useI18n()
 const authStore = useAuthStore()
 const activeTab = ref('bills')
 
@@ -748,7 +750,7 @@ const isAllocationValid = computed(() => {
 })
 
 const allocationValidationMessage = computed(() => {
-  if (newRecurring.value.allocations.length === 0) return 'Dodaj przynajmniej jeden podział'
+  if (newRecurring.value.allocations.length === 0) return t('bills.addAllocationRequired')
 
   let total = 0
   let hasNonFixed = false
@@ -766,7 +768,7 @@ const allocationValidationMessage = computed(() => {
   }
 
   if (hasNonFixed) {
-    return `Suma: ${(total * 100).toFixed(2)}% (powinno być 100%)`
+    return t('bills.allocationTotal', { total: (total * 100).toFixed(2) })
   }
 
   return ''
@@ -911,27 +913,29 @@ async function createBill() {
     // Validate dates
     const startDate = new Date(newBill.value.periodStart)
     const endDate = new Date(newBill.value.periodEnd)
+    const currentYear = new Date().getFullYear()
+    const maxYear = currentYear + 2 // Allow bills up to 2 years in the future
 
     if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-      createError.value = 'Nieprawidłowe daty'
+      createError.value = t('errors.invalidDates')
       creating.value = false
       return
     }
 
-    if (startDate.getFullYear() < 2000 || startDate.getFullYear() > 2100) {
-      createError.value = 'Data rozpoczęcia musi być między 2000 a 2100'
+    if (startDate.getFullYear() < 2000 || startDate.getFullYear() > maxYear) {
+      createError.value = t('errors.startDateRange', { maxYear })
       creating.value = false
       return
     }
 
-    if (endDate.getFullYear() < 2000 || endDate.getFullYear() > 2100) {
-      createError.value = 'Data zakończenia musi być między 2000 a 2100'
+    if (endDate.getFullYear() < 2000 || endDate.getFullYear() > maxYear) {
+      createError.value = t('errors.endDateRange', { maxYear })
       creating.value = false
       return
     }
 
     if (endDate <= startDate) {
-      createError.value = 'Data zakończenia musi być późniejsza niż data rozpoczęcia'
+      createError.value = t('errors.endBeforeStart')
       creating.value = false
       return
     }
@@ -965,7 +969,7 @@ async function createBill() {
       notes: ''
     }
   } catch (err) {
-    createError.value = err.response?.data?.error || 'Nie udało się utworzyć rachunku'
+    createError.value = err.response?.data?.error || t('errors.createBillFailed')
   } finally {
     creating.value = false
   }
@@ -991,7 +995,7 @@ async function closeBill(billId) {
 }
 
 async function deleteBill(billId) {
-  if (!confirm('Czy na pewno chcesz usunąć ten rachunek? To usunie również wszystkie powiązane odczyty.')) {
+  if (!confirm(t('bills.confirmDelete'))) {
     return
   }
 
@@ -1001,7 +1005,7 @@ async function deleteBill(billId) {
     await loadReadingsData()
   } catch (err) {
     console.error('Failed to delete bill:', err)
-    alert('Błąd podczas usuwania: ' + (err.response?.data?.error || err.message))
+    alert(t('errors.deleteFailed') + ' ' + (err.response?.data?.error || err.message))
   }
 }
 
@@ -1010,7 +1014,7 @@ async function submitReading() {
   try {
     const units = parseFloat(form.value.meterReading)
     if (isNaN(units) || units <= 0) {
-      throw new Error('Podaj dodatnią wartość zużycia')
+      throw new Error(t('errors.invalidConsumption'))
     }
 
     await api.post('/consumptions', {
@@ -1024,7 +1028,7 @@ async function submitReading() {
     await loadReadingsData()
   } catch (err) {
     console.error('Failed to submit reading:', err)
-    alert('Nie udało się zapisać odczytu: ' + (err.response?.data?.error || err.message))
+    alert(t('errors.saveReadingFailed') + ' ' + (err.response?.data?.error || err.message))
   } finally {
     loadingReading.value = false
   }
@@ -1050,7 +1054,9 @@ function formatMeterValue(value) {
 
 function formatDate(date) {
   if (!date) return '-'
-  return new Date(date).toLocaleDateString('pl-PL', { day: 'numeric', month: 'short', year: 'numeric' })
+  const localeMap = { 'pl': 'pl-PL', 'en': 'en-US' }
+  const dateLocale = localeMap[locale.value] || 'en-US'
+  return new Date(date).toLocaleDateString(dateLocale, { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
 async function loadBillAllocation(billId) {
@@ -1087,7 +1093,9 @@ async function toggleBillExpansion(billId) {
 
 function formatDateTime(date) {
   if (!date) return '-'
-  return new Date(date).toLocaleString('pl-PL')
+  const localeMap = { 'pl': 'pl-PL', 'en': 'en-US' }
+  const dateLocale = localeMap[locale.value] || 'en-US'
+  return new Date(date).toLocaleString(dateLocale)
 }
 
 function getUnit(type) {
@@ -1098,17 +1106,17 @@ function getUnit(type) {
 
 function getUnitForBill(billId) {
   const bill = allBills.value.find(b => b.id === billId)
-  if (!bill) return 'jednostek'
-  return getUnit(bill.type) || 'jednostek'
+  if (!bill) return t('common.units')
+  return getUnit(bill.type) || t('common.units')
 }
 
 function getSubjectName(subjectId, subjectType) {
   if (subjectType === 'group') {
     const group = groups.value.find(g => g.id === subjectId)
-    return group ? group.name : 'Nieznana grupa'
+    return group ? group.name : t('errors.unknownGroup')
   } else {
     const user = users.value.find(u => u.id === subjectId)
-    return user ? user.name : 'Nieznany'
+    return user ? user.name : t('errors.unknown')
   }
 }
 
@@ -1116,8 +1124,7 @@ function getBillInfo(billId) {
   const bill = allBills.value.find(b => b.id === billId)
   if (!bill) return ''
 
-  const typeLabel = bill.type === 'electricity' ? 'Prąd' :
-                    bill.type === 'gas' ? 'Gaz' : bill.type
+  const typeLabel = t(`bills.${bill.type}`, bill.type)
   const dateRange = `${formatDate(bill.periodStart)} - ${formatDate(bill.periodEnd)}`
   return `${typeLabel}: ${dateRange}`
 }
@@ -1228,7 +1235,7 @@ async function saveRecurringTemplate() {
     await loadRecurringTemplates()
     closeRecurringModal()
   } catch (err) {
-    recurringError.value = err.response?.data?.error || 'Nie udało się zapisać szablonu'
+    recurringError.value = err.response?.data?.error || t('errors.saveTemplateFailed')
   } finally {
     savingRecurring.value = false
   }
@@ -1257,7 +1264,7 @@ function editRecurringTemplate(template) {
 }
 
 async function deleteRecurringTemplate(templateId) {
-  if (!confirm('Czy na pewno chcesz usunąć ten szablon cyklicznego rachunku?')) {
+  if (!confirm(t('bills.confirmDeleteRecurring'))) {
     return
   }
 
@@ -1266,17 +1273,12 @@ async function deleteRecurringTemplate(templateId) {
     await loadRecurringTemplates()
   } catch (err) {
     console.error('Failed to delete recurring template:', err)
-    alert('Nie udało się usunąć szablonu')
+    alert(t('errors.deleteTemplateFailed'))
   }
 }
 
 function formatFrequency(frequency) {
-  const map = {
-    monthly: 'Miesięcznie',
-    quarterly: 'Kwartalnie',
-    yearly: 'Rocznie'
-  }
-  return map[frequency] || frequency
+  return t(`bills.${frequency}`, frequency)
 }
 
 function formatAmount(amountString) {
@@ -1292,7 +1294,7 @@ function getAllocationLabel(alloc) {
     ? users.value.find(u => u.id === alloc.subjectId)
     : groups.value.find(g => g.id === alloc.subjectId)
 
-  const name = subject ? (subject.name || subject.email) : 'Nieznany'
+  const name = subject ? (subject.name || subject.email) : t('errors.unknown')
 
   let value = ''
   if (alloc.allocationType === 'percentage') {

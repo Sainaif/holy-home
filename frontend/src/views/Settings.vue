@@ -222,8 +222,89 @@
       </div>
     </div>
 
+    <!-- Language Preference Section (for all users) -->
+    <div class="card mt-6">
+      <div class="mb-4">
+        <div class="flex items-center gap-2">
+          <Globe class="w-5 h-5 text-purple-400" />
+          <h2 class="text-xl font-semibold">{{ $t('settings.language') }}</h2>
+        </div>
+        <p class="text-sm text-gray-400 mt-1">{{ $t('settings.languageDescription') }}</p>
+      </div>
+
+      <div class="flex flex-wrap gap-3">
+        <button
+          v-for="loc in locales"
+          :key="loc.code"
+          @click="changeLocale(loc.code)"
+          :class="[
+            'flex items-center gap-2 px-4 py-3 rounded-xl border transition-all',
+            locale === loc.code
+              ? 'border-purple-500 bg-purple-600/20 text-white'
+              : 'border-gray-700 bg-gray-800 hover:bg-gray-700 text-gray-300'
+          ]">
+          <span class="text-xl">{{ loc.flag }}</span>
+          <span class="font-medium">{{ loc.name }}</span>
+          <svg v-if="locale === loc.code" class="w-4 h-4 text-purple-400" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+          </svg>
+        </button>
+      </div>
+    </div>
+
     <!-- Admin Section -->
-    <div class="mt-8 space-y-6">
+    <div v-if="authStore.isAdmin" class="mt-8 space-y-6">
+      <!-- App Customization -->
+      <div class="card">
+        <div class="mb-4">
+          <h2 class="text-xl font-semibold mb-1">{{ $t('settings.appCustomization') }}</h2>
+          <p class="text-sm text-gray-400">{{ $t('settings.appCustomizationDescription') }}</p>
+        </div>
+
+        <form @submit.prevent="updateAppSettings" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium mb-2">{{ $t('settings.appName') }}</label>
+            <input v-model="appSettingsForm.appName" required class="input" placeholder="Holy Home" />
+            <p class="text-xs text-gray-400 mt-1">{{ $t('settings.appNameDescription') }}</p>
+          </div>
+
+          <!-- Language Settings (Admin) -->
+          <div class="pt-4 border-t border-gray-700">
+            <h3 class="text-lg font-medium mb-3">{{ $t('settings.languageSettings') }}</h3>
+
+            <div class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium mb-2">{{ $t('settings.defaultLanguage') }}</label>
+                <select v-model="appSettingsForm.defaultLanguage" class="input">
+                  <option v-for="loc in locales" :key="loc.code" :value="loc.code">
+                    {{ loc.flag }} {{ loc.name }}
+                  </option>
+                </select>
+                <p class="text-xs text-gray-400 mt-1">{{ $t('settings.defaultLanguageDescription') }}</p>
+              </div>
+
+              <label class="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  v-model="appSettingsForm.disableAutoDetect"
+                  class="w-5 h-5 rounded border-gray-600 bg-gray-700 text-purple-600 focus:ring-purple-500" />
+                <div>
+                  <span class="font-medium">{{ $t('settings.disableAutoDetect') }}</span>
+                  <p class="text-xs text-gray-400">{{ $t('settings.disableAutoDetectDescription') }}</p>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <div v-if="appSettingsError" class="text-red-500 text-sm">{{ appSettingsError }}</div>
+          <div v-if="appSettingsSuccess" class="text-green-500 text-sm">{{ appSettingsSuccess }}</div>
+
+          <button type="submit" :disabled="savingAppSettings" class="btn btn-primary">
+            {{ savingAppSettings ? 'Zapisywanie...' : 'Zapisz ustawienia' }}
+          </button>
+        </form>
+      </div>
+
       <!-- Users Management -->
       <div class="card">
         <div class="flex justify-between items-center mb-4">
@@ -739,6 +820,18 @@
             <label class="block text-sm font-medium mb-2">Email</label>
             <input v-model="newUser.email" type="email" required class="input" />
           </div>
+          <div v-if="authStore.authConfig.allowUsernameLogin || authStore.authConfig.requireUsername">
+            <label class="block text-sm font-medium mb-2">
+              Nazwa użytkownika
+              <span v-if="!authStore.authConfig.requireUsername" class="text-gray-400 text-xs ml-1">(opcjonalnie)</span>
+            </label>
+            <input
+              v-model="newUser.username"
+              :required="authStore.authConfig.requireUsername"
+              class="input"
+              placeholder="np. jan_kowalski"
+            />
+          </div>
           <div>
             <label class="block text-sm font-medium mb-2">Hasło</label>
             <input v-model="newUser.password" type="password" required class="input" />
@@ -1007,18 +1100,24 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '../stores/auth'
+import { useAppSettingsStore } from '../stores/appSettings'
 import { usePasskey } from '../composables/usePasskey'
+import { useLocale } from '../composables/useLocale'
 import { useDataEvents, DATA_EVENTS } from '../composables/useDataEvents'
 import api from '../api/client'
-import { UserPlus, Users, Edit, Trash, X, Key, Shield, ShieldOff, Download, Upload, RefreshCw, CheckSquare, Gauge, ShoppingCart, Search } from 'lucide-vue-next'
+import { UserPlus, Users, Edit, Trash, X, Key, Shield, ShieldOff, Download, Upload, RefreshCw, CheckSquare, Gauge, ShoppingCart, Search, Globe } from 'lucide-vue-next'
 
 const router = useRouter()
+const { t } = useI18n()
 const authStore = useAuthStore()
+const appSettingsStore = useAppSettingsStore()
 const { checkSupport, listPasskeys, register: registerPasskey, deletePasskey: removePasskey } = usePasskey()
 const { emit } = useDataEvents()
+const { locale, currentLocale, locales, changeLocale } = useLocale()
 
 const profileForm = ref({
   name: authStore.user?.name || '',
@@ -1053,6 +1152,12 @@ const backupSuccess = ref('')
 const showExportBackup = ref(false)
 const showImportBackup = ref(false)
 
+// App settings state
+const appSettingsForm = ref({ appName: '' })
+const savingAppSettings = ref(false)
+const appSettingsError = ref('')
+const appSettingsSuccess = ref('')
+
 // Modals
 const showCreateUserModal = ref(false)
 const showEditUserModal = ref(false)
@@ -1073,6 +1178,7 @@ const resetLinkInput = ref(null)
 const newUser = ref({
   name: '',
   email: '',
+  username: '',
   password: '',
   role: 'RESIDENT'
 })
@@ -1160,8 +1266,17 @@ onMounted(async () => {
     email: authStore.user?.email || ''
   }
 
+  // Fetch auth config for username registration settings
+  await authStore.fetchAuthConfig()
+
   if (authStore.isAdmin) {
     await Promise.all([loadUsers(), loadGroups(), loadRoles(), loadPermissions(), loadApprovals(), loadAuditLogs()])
+    // Initialize app settings form
+    appSettingsForm.value = {
+      appName: appSettingsStore.appName,
+      defaultLanguage: appSettingsStore.defaultLanguage,
+      disableAutoDetect: appSettingsStore.disableAutoDetect
+    }
   } else {
     // Load groups for regular users too so they can see group options
     await loadGroups()
@@ -1201,6 +1316,21 @@ async function updateProfile() {
     profileError.value = err.response?.data?.error || 'Błąd aktualizacji profilu'
   } finally {
     updatingProfile.value = false
+  }
+}
+
+async function updateAppSettings() {
+  savingAppSettings.value = true
+  appSettingsError.value = ''
+  appSettingsSuccess.value = ''
+
+  try {
+    await appSettingsStore.updateSettings(appSettingsForm.value)
+    appSettingsSuccess.value = 'Ustawienia zapisane'
+  } catch (err) {
+    appSettingsError.value = err.response?.data?.error || 'Nie udało się zapisać ustawień'
+  } finally {
+    savingAppSettings.value = false
   }
 }
 
@@ -1257,15 +1387,20 @@ async function createUser() {
   userError.value = ''
 
   try {
-    await api.post('/users', {
+    const payload = {
       name: newUser.value.name,
       email: newUser.value.email,
       tempPassword: newUser.value.password,
       role: newUser.value.role
-    })
+    }
+    // Include username if provided
+    if (newUser.value.username?.trim()) {
+      payload.username = newUser.value.username.trim()
+    }
+    await api.post('/users', payload)
 
     showCreateUserModal.value = false
-    newUser.value = { name: '', email: '', password: '', role: 'RESIDENT' }
+    newUser.value = { name: '', email: '', username: '', password: '', role: 'RESIDENT' }
     await loadUsers()
     emit(DATA_EVENTS.USER_CREATED)
   } catch (err) {

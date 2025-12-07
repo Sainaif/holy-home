@@ -10,6 +10,7 @@ import (
 type User struct {
 	ID                 primitive.ObjectID  `bson:"_id,omitempty" json:"id"`
 	Email              string              `bson:"email" json:"email"`
+	Username           string              `bson:"username,omitempty" json:"username,omitempty"` // Optional unique username for login
 	Name               string              `bson:"name" json:"name"`
 	PasswordHash       string              `bson:"password_hash" json:"-"`
 	Role               string              `bson:"role" json:"role"` // ADMIN, RESIDENT
@@ -200,6 +201,15 @@ type SupplySettings struct {
 	IsActive              bool                 `bson:"is_active" json:"isActive"`
 	CreatedAt             time.Time            `bson:"created_at" json:"createdAt"`
 	UpdatedAt             time.Time            `bson:"updated_at" json:"updatedAt"`
+}
+
+// AppSettings represents application branding/customization settings (singleton)
+type AppSettings struct {
+	ID                primitive.ObjectID `bson:"_id,omitempty" json:"id"`
+	AppName           string             `bson:"app_name" json:"appName"`
+	DefaultLanguage   string             `bson:"default_language" json:"defaultLanguage"`      // Default locale code (e.g., "en", "pl")
+	DisableAutoDetect bool               `bson:"disable_auto_detect" json:"disableAutoDetect"` // If true, always use default language
+	UpdatedAt         time.Time          `bson:"updated_at" json:"updatedAt"`
 }
 
 // SupplyItem represents a household supply with inventory tracking

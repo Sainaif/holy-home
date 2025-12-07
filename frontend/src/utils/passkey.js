@@ -156,16 +156,12 @@ export async function registerPasskey(creationOptions) {
  * @returns {Promise<Object>} Formatted credential for server
  */
 export async function authenticateWithPasskey(assertionOptions, conditional = false, signal = null) {
-  console.log('[Passkey] Starting authentication', { conditional, assertionOptions })
-
   if (!isPasskeySupported()) {
     throw new Error('Passkeys nie są obsługiwane w tej przeglądarce')
   }
 
   try {
-    console.log('[Passkey] Preparing assertion options...')
     const options = prepareAssertionOptions(assertionOptions)
-    console.log('[Passkey] Prepared options:', options)
 
     const credentialRequestOptions = {
       publicKey: options
@@ -173,7 +169,6 @@ export async function authenticateWithPasskey(assertionOptions, conditional = fa
 
     // Add conditional mediation for auto-login (non-modal UI)
     if (conditional) {
-      console.log('[Passkey] Using conditional mediation')
       credentialRequestOptions.mediation = 'conditional'
     }
 
@@ -182,25 +177,14 @@ export async function authenticateWithPasskey(assertionOptions, conditional = fa
       credentialRequestOptions.signal = signal
     }
 
-    console.log('[Passkey] Calling navigator.credentials.get with:', credentialRequestOptions)
     const credential = await navigator.credentials.get(credentialRequestOptions)
-    console.log('[Passkey] Got credential:', credential)
 
     if (!credential) {
       throw new Error('Nie udało się pobrać passkey')
     }
 
-    console.log('[Passkey] Formatting credential for server...')
-    const formatted = formatCredentialForServer(credential)
-    console.log('[Passkey] Formatted credential:', formatted)
-    return formatted
+    return formatCredentialForServer(credential)
   } catch (err) {
-    console.error('[Passkey] Authentication failed with error:', {
-      name: err.name,
-      message: err.message,
-      stack: err.stack,
-      err
-    })
 
     if (err.name === 'AbortError') {
       throw new Error('Uwierzytelnianie passkey zostało przerwane')

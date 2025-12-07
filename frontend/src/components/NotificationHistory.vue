@@ -5,12 +5,12 @@
         <div class="w-full max-w-md bg-gray-800 shadow-2xl flex flex-col h-full">
           <!-- Header -->
           <div class="p-4 border-b border-gray-700 flex items-center justify-between">
-            <h2 class="text-xl font-bold text-white">Powiadomienia</h2>
+            <h2 class="text-xl font-bold text-white">{{ $t('notifications.title') }}</h2>
             <div class="flex items-center gap-2">
               <button
                 @click="$emit('openPreferences')"
                 class="p-2 hover:bg-gray-700 rounded-lg transition-colors"
-                title="Ustawienia">
+                :title="$t('notifications.settings')">
                 <Settings class="w-5 h-5 text-gray-400" />
               </button>
               <button
@@ -29,7 +29,7 @@
                 :disabled="notificationStore.unreadCount === 0"
                 class="btn btn-secondary btn-sm flex-1 disabled:opacity-50 disabled:cursor-not-allowed">
                 <CheckCheck class="w-4 h-4" />
-                Oznacz wszystkie jako przeczytane
+                {{ $t('notifications.markAllRead') }}
               </button>
             </div>
 
@@ -37,12 +37,12 @@
               <select
                 v-model="filterType"
                 class="flex-1 bg-gray-700 text-white rounded-lg px-3 py-2 text-sm border border-gray-600">
-                <option value="all">Wszystkie</option>
-                <option value="bill">Rachunki</option>
-                <option value="chore">Obowiązki</option>
-                <option value="supply">Zaopatrzenie</option>
-                <option value="loan">Pożyczki</option>
-                <option value="permission">Uprawnienia</option>
+                <option value="all">{{ $t('notifications.all') }}</option>
+                <option value="bill">{{ $t('notifications.bills') }}</option>
+                <option value="chore">{{ $t('notifications.chores') }}</option>
+                <option value="supply">{{ $t('notifications.supplies') }}</option>
+                <option value="loan">{{ $t('notifications.loans') }}</option>
+                <option value="permission">{{ $t('notifications.permissions') }}</option>
               </select>
 
             </div>
@@ -52,7 +52,7 @@
           <div class="flex-1 overflow-y-auto">
             <div v-if="filteredNotifications.length === 0" class="p-8 text-center text-gray-400">
               <Bell class="w-12 h-12 mx-auto mb-3 opacity-50" />
-              <p>Brak powiadomień</p>
+              <p>{{ $t('notifications.none') }}</p>
             </div>
 
             <div
@@ -107,8 +107,11 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useNotificationStore } from '../stores/notification'
 import { X, Bell, CheckCheck, Trash2, Settings, FileText, CheckSquare, ShoppingCart, DollarSign, UserPlus } from 'lucide-vue-next'
+
+const { t, locale } = useI18n()
 
 const props = defineProps({
   isOpen: Boolean
@@ -164,22 +167,27 @@ function formatTimestamp(timestamp) {
   const then = new Date(timestamp)
   const diffInSeconds = Math.floor((now - then) / 1000)
 
-  if (diffInSeconds < 60) return 'Przed chwilą'
+  if (diffInSeconds < 60) return t('notifications.justNow')
   if (diffInSeconds < 3600) {
     const mins = Math.floor(diffInSeconds / 60)
-    return `${mins} ${mins === 1 ? 'minutę' : mins < 5 ? 'minuty' : 'minut'} temu`
+    const key = mins === 1 ? 'minuteAgo' : mins < 5 ? 'minutesAgo' : 'manyMinutesAgo'
+    return t(`notifications.${key}`, { count: mins })
   }
   if (diffInSeconds < 86400) {
     const hours = Math.floor(diffInSeconds / 3600)
-    return `${hours} ${hours === 1 ? 'godzinę' : hours < 5 ? 'godziny' : 'godzin'} temu`
+    const key = hours === 1 ? 'hourAgo' : hours < 5 ? 'hoursAgo' : 'manyHoursAgo'
+    return t(`notifications.${key}`, { count: hours })
   }
 
   const days = Math.floor(diffInSeconds / 86400)
   if (days < 7) {
-    return `${days} ${days === 1 ? 'dzień' : 'dni'} temu`
+    const key = days === 1 ? 'dayAgo' : 'daysAgo'
+    return t(`notifications.${key}`, { count: days })
   }
 
-  return then.toLocaleDateString('pl-PL')
+  const localeMap = { 'pl': 'pl-PL', 'en': 'en-US' }
+  const dateLocale = localeMap[locale.value] || 'en-US'
+  return then.toLocaleDateString(dateLocale)
 }
 
 function getIcon(type) {

@@ -39,66 +39,66 @@
     <!-- Add Loan/Payment Forms (Permission-based) -->
     <div v-if="authStore.hasPermission('loans.create') || authStore.hasPermission('loan-payments.create')" class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
       <div v-if="authStore.hasPermission('loans.create')" class="card">
-        <h2 class="text-xl font-semibold mb-4">Dodaj pożyczkę</h2>
+        <h2 class="text-xl font-semibold mb-4">{{ $t('balance.addLoan') }}</h2>
         <form @submit.prevent="createLoan" class="space-y-4">
           <div>
-            <label class="block text-sm font-medium mb-2">Pożyczkodawca</label>
+            <label class="block text-sm font-medium mb-2">{{ $t('balance.lender') }}</label>
             <select v-model="loanForm.lenderId" required class="input">
-              <option value="">Wybierz użytkownika</option>
+              <option value="">{{ $t('common.select') }}</option>
               <option v-for="user in users" :key="user.id" :value="user.id">{{ user.name }}</option>
             </select>
           </div>
           <div>
-            <label class="block text-sm font-medium mb-2">Pożyczkobiorca</label>
+            <label class="block text-sm font-medium mb-2">{{ $t('balance.borrower') }}</label>
             <select v-model="loanForm.borrowerId" required class="input">
-              <option value="">Wybierz użytkownika</option>
+              <option value="">{{ $t('common.select') }}</option>
               <option v-for="user in users" :key="user.id" :value="user.id">{{ user.name }}</option>
             </select>
           </div>
           <div>
-            <label class="block text-sm font-medium mb-2">Kwota (PLN)</label>
+            <label class="block text-sm font-medium mb-2">{{ $t('balance.amount') }} (PLN)</label>
             <input v-model.number="loanForm.amount" type="number" step="0.01" required class="input" />
           </div>
           <div>
-            <label class="block text-sm font-medium mb-2">Notatka (opcjonalnie)</label>
+            <label class="block text-sm font-medium mb-2">{{ $t('common.noteOptional') }}</label>
             <input v-model="loanForm.note" type="text" class="input" />
           </div>
           <div>
-            <label class="block text-sm font-medium mb-2">Termin spłaty (opcjonalnie)</label>
+            <label class="block text-sm font-medium mb-2">{{ $t('balance.dueDate') }}</label>
             <input v-model="loanForm.dueDate" type="date" class="input" />
           </div>
           <button type="submit" :disabled="creatingLoan" class="btn btn-primary w-full">
-            {{ creatingLoan ? 'Dodawanie...' : 'Dodaj pożyczkę' }}
+            {{ creatingLoan ? $t('common.adding') : $t('balance.addLoan') }}
           </button>
         </form>
       </div>
 
       <div v-if="authStore.hasPermission('loan-payments.create')" class="card">
-        <h2 class="text-xl font-semibold mb-4">Dodaj spłatę</h2>
+        <h2 class="text-xl font-semibold mb-4">{{ $t('balance.addPayment') }}</h2>
         <form @submit.prevent="createPayment" class="space-y-4">
           <div>
-            <label class="block text-sm font-medium mb-2">Pożyczka</label>
+            <label class="block text-sm font-medium mb-2">{{ $t('balance.loan') }}</label>
             <select v-model="paymentForm.loanId" required class="input">
-              <option value="">Wybierz pożyczkę</option>
+              <option value="">{{ $t('common.select') }}</option>
               <option v-for="loan in openLoans" :key="loan.id" :value="loan.id">
                 {{ getLoanDescription(loan) }}
               </option>
             </select>
           </div>
           <div>
-            <label class="block text-sm font-medium mb-2">Kwota (PLN)</label>
+            <label class="block text-sm font-medium mb-2">{{ $t('balance.amount') }} (PLN)</label>
             <input v-model.number="paymentForm.amount" type="number" step="0.01" required class="input" />
           </div>
           <div>
-            <label class="block text-sm font-medium mb-2">Data spłaty</label>
+            <label class="block text-sm font-medium mb-2">{{ $t('balance.paymentDate') }}</label>
             <input v-model="paymentForm.paidAt" type="datetime-local" required class="input" />
           </div>
           <div>
-            <label class="block text-sm font-medium mb-2">Notatka (opcjonalnie)</label>
+            <label class="block text-sm font-medium mb-2">{{ $t('common.noteOptional') }}</label>
             <input v-model="paymentForm.note" type="text" class="input" />
           </div>
           <button type="submit" :disabled="creatingPayment" class="btn btn-primary w-full">
-            {{ creatingPayment ? 'Dodawanie...' : 'Dodaj spłatę' }}
+            {{ creatingPayment ? $t('common.adding') : $t('balance.addPayment') }}
           </button>
         </form>
       </div>
@@ -106,13 +106,13 @@
 
     <div class="card mt-6">
       <div class="space-y-3 mb-4">
-        <h2 class="text-xl font-semibold">Historia pożyczek</h2>
+        <h2 class="text-xl font-semibold">{{ $t('balance.loanHistory') }}</h2>
 
         <!-- Filter by user -->
         <div>
-          <label class="block text-sm font-medium mb-2">Filtruj po użytkowniku</label>
+          <label class="block text-sm font-medium mb-2">{{ $t('balance.filterByUser') }}</label>
           <select v-model="userFilter" class="input mb-3">
-            <option value="">Wszyscy użytkownicy</option>
+            <option value="">{{ $t('balance.allUsers') }}</option>
             <option v-for="user in users" :key="user.id" :value="user.id">
               {{ user.name }}
             </option>
@@ -125,72 +125,72 @@
             @click="statusFilter = 'all'"
             :class="statusFilter === 'all' ? 'btn-primary' : 'btn-outline'"
             class="btn btn-sm">
-            Wszystkie
+            {{ $t('common.all') }}
           </button>
           <button
             @click="statusFilter = 'open'"
             :class="statusFilter === 'open' ? 'btn-primary' : 'btn-outline'"
             class="btn btn-sm">
-            Niespłacone
+            {{ $t('balance.unpaid') }}
           </button>
           <button
             @click="statusFilter = 'partial'"
             :class="statusFilter === 'partial' ? 'btn-primary' : 'btn-outline'"
             class="btn btn-sm">
-            Częściowo
+            {{ $t('balance.partial') }}
           </button>
           <button
             @click="statusFilter = 'settled'"
             :class="statusFilter === 'settled' ? 'btn-primary' : 'btn-outline'"
             class="btn btn-sm">
-            Spłacone
+            {{ $t('balance.settled') }}
           </button>
         </div>
 
         <!-- Sorting and pagination controls -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div>
-            <label class="block text-sm font-medium mb-2">Sortuj według</label>
+            <label class="block text-sm font-medium mb-2">{{ $t('balance.sortBy') }}</label>
             <select v-model="sortBy" @change="loadLoans" class="input">
-              <option value="createdAt">Data utworzenia</option>
-              <option value="amountPLN">Kwota</option>
-              <option value="status">Status</option>
-              <option value="remainingPLN">Pozostała kwota</option>
+              <option value="createdAt">{{ $t('balance.createdDate') }}</option>
+              <option value="amountPLN">{{ $t('balance.amount') }}</option>
+              <option value="status">{{ $t('common.status') }}</option>
+              <option value="remainingPLN">{{ $t('balance.remaining') }}</option>
             </select>
           </div>
           <div>
-            <label class="block text-sm font-medium mb-2">Kolejność</label>
+            <label class="block text-sm font-medium mb-2">{{ $t('balance.order') }}</label>
             <select v-model="sortOrder" @change="loadLoans" class="input">
-              <option value="desc">Malejąco</option>
-              <option value="asc">Rosnąco</option>
+              <option value="desc">{{ $t('common.descending') }}</option>
+              <option value="asc">{{ $t('common.ascending') }}</option>
             </select>
           </div>
           <div>
-            <label class="block text-sm font-medium mb-2">Wyświetl</label>
+            <label class="block text-sm font-medium mb-2">{{ $t('balance.show') }}</label>
             <select v-model="pageLimit" @change="loadLoans" class="input">
               <option :value="10">10</option>
               <option :value="25">25</option>
               <option :value="50">50</option>
               <option :value="100">100</option>
-              <option :value="0">Wszystkie</option>
+              <option :value="0">{{ $t('common.all') }}</option>
             </select>
           </div>
         </div>
       </div>
       <div v-if="loading" class="text-center py-8">{{ $t('common.loading') }}</div>
-      <div v-else-if="filteredLoans.length === 0" class="text-center py-8 text-gray-400">Brak historii</div>
+      <div v-else-if="filteredLoans.length === 0" class="text-center py-8 text-gray-400">{{ $t('balance.noHistory') }}</div>
       <div v-else class="overflow-x-auto">
         <table class="w-full">
           <thead class="border-b border-gray-700">
             <tr class="text-left">
-              <th class="pb-3">Od</th>
-              <th class="pb-3">Do</th>
-              <th class="pb-3">Kwota</th>
-              <th class="pb-3">Pozostało</th>
-              <th class="pb-3">Opis</th>
-              <th class="pb-3">Status</th>
-              <th class="pb-3">Data</th>
-              <th v-if="authStore.hasPermission('loans.delete')" class="pb-3">Akcje</th>
+              <th class="pb-3">{{ $t('balance.from') }}</th>
+              <th class="pb-3">{{ $t('balance.to') }}</th>
+              <th class="pb-3">{{ $t('balance.amount') }}</th>
+              <th class="pb-3">{{ $t('balance.remaining') }}</th>
+              <th class="pb-3">{{ $t('common.description') }}</th>
+              <th class="pb-3">{{ $t('common.status') }}</th>
+              <th class="pb-3">{{ $t('common.date') }}</th>
+              <th v-if="authStore.hasPermission('loans.delete')" class="pb-3">{{ $t('common.actions') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -224,7 +224,7 @@
                   <button
                     @click="confirmDeleteLoan(loan.id)"
                     class="btn btn-sm btn-secondary"
-                    title="Usuń pożyczkę">
+                    :title="$t('balance.deleteLoan')">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                       <path d="M3 6h18"/>
                       <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
@@ -236,9 +236,9 @@
               <tr v-if="expandedLoanId === loan.id" class="border-b border-gray-700 bg-gray-800">
                 <td :colspan="authStore.hasPermission('loans.delete') ? 8 : 7" class="py-3 px-6">
                   <div class="ml-8">
-                    <h4 class="text-sm font-semibold mb-3 text-purple-300">Historia spłat</h4>
+                    <h4 class="text-sm font-semibold mb-3 text-purple-300">{{ $t('balance.paymentHistory') }}</h4>
                     <div v-if="!loanPayments[loan.id] || loanPayments[loan.id].length === 0" class="text-gray-400 text-sm italic">
-                      Brak spłat
+                      {{ $t('balance.noPayments') }}
                     </div>
                     <div v-else class="space-y-2">
                       <div v-for="payment in loanPayments[loan.id]" :key="payment.id"
@@ -252,7 +252,7 @@
                           <span class="text-gray-400">•</span>
                           <span class="text-gray-300">{{ formatDate(payment.paidAt) }}</span>
                           <span v-if="payment.note === 'Kompensacja grupowa'" class="px-2 py-1 bg-purple-600 text-purple-100 text-xs rounded-full font-medium">
-                            Kompensacja
+                            {{ $t('balance.compensation') }}
                           </span>
                         </div>
                         <div v-if="payment.note && payment.note !== 'Kompensacja grupowa'" class="text-gray-400 italic text-xs">
@@ -274,10 +274,12 @@
 <script setup>
 // @version 2.0.0 - Fixed array filter checks
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '../stores/auth'
 import { useEventStream } from '../composables/useEventStream'
 import api from '../api/client'
 
+const { t, locale } = useI18n()
 const authStore = useAuthStore()
 const balances = ref([])
 const loans = ref([])
@@ -454,7 +456,7 @@ async function createLoan() {
     await loadData()
   } catch (err) {
     console.error('Failed to create loan:', err)
-    alert('Błąd tworzenia pożyczki: ' + (err.response?.data?.error || err.message))
+    alert(t('errors.createLoanFailed') + ' ' + (err.response?.data?.error || err.message))
   } finally {
     creatingLoan.value = false
   }
@@ -482,7 +484,7 @@ async function createPayment() {
     await loadData()
   } catch (err) {
     console.error('Failed to create payment:', err)
-    alert('Błąd tworzenia spłaty: ' + (err.response?.data?.error || err.message))
+    alert(t('errors.createPaymentFailed') + ' ' + (err.response?.data?.error || err.message))
   } finally {
     creatingPayment.value = false
   }
@@ -495,7 +497,7 @@ function getLoanDescription(loan) {
   const remaining = loan.remainingPLN ? formatMoney(loan.remainingPLN) : totalAmount
 
   if (loan.status === 'partial') {
-    return `${lender?.name || '?'} → ${borrower?.name || '?'} (pozostało: ${remaining} PLN z ${totalAmount} PLN)`
+    return `${lender?.name || '?'} → ${borrower?.name || '?'} (${t('balance.remainingOf', { remaining, total: totalAmount })})`
   }
   return `${lender?.name || '?'} → ${borrower?.name || '?'} (${totalAmount} PLN)`
 }
@@ -507,16 +509,18 @@ function formatMoney(decimal128) {
 }
 
 function formatDate(date) {
-  return new Date(date).toLocaleDateString('pl-PL')
+  const localeMap = { 'pl': 'pl-PL', 'en': 'en-US' }
+  const dateLocale = localeMap[locale.value] || 'en-US'
+  return new Date(date).toLocaleDateString(dateLocale)
 }
 
 function translateStatus(status) {
-  const translations = {
-    'open': 'Niespłacona',
-    'partial': 'Częściowo spłacona',
-    'settled': 'Spłacona'
+  const statusMap = {
+    'open': 'balance.statusOpen',
+    'partial': 'balance.statusPartial',
+    'settled': 'balance.statusSettled'
   }
-  return translations[status] || status
+  return statusMap[status] ? t(statusMap[status]) : status
 }
 
 function getStatusColorClass(status) {
@@ -554,7 +558,7 @@ async function toggleLoanExpansion(loanId) {
 }
 
 async function confirmDeleteLoan(loanId) {
-  if (!confirm('Czy na pewno chcesz usunąć tę pożyczkę?')) return
+  if (!confirm(t('balance.confirmDelete'))) return
 
   try {
     await api.delete(`/loans/${loanId}`)
@@ -563,7 +567,7 @@ async function confirmDeleteLoan(loanId) {
     await loadData()
   } catch (err) {
     console.error('Failed to delete loan:', err)
-    alert('Błąd usuwania pożyczki: ' + (err.response?.data?.error || err.message))
+    alert(t('errors.deleteLoanFailed') + ' ' + (err.response?.data?.error || err.message))
   }
 }
 </script>

@@ -2,12 +2,12 @@
   <div>
     <div class="mb-8">
       <div v-if="route.params.userId" class="mb-4">
-        <button @click="router.push('/')" class="btn btn-secondary">← Powrót do mojego dashboardu</button>
+        <button @click="router.push('/')" class="btn btn-secondary">← {{ $t('dashboard.backButton') }}</button>
       </div>
       <h1 class="text-4xl font-bold gradient-text mb-2">
-        {{ route.params.userId ? `Dashboard użytkownika: ${viewingUser?.name || 'Ładowanie...'}` : $t('dashboard.welcome', { name: authStore.user?.name }) }}
+        {{ route.params.userId ? `${$t('dashboard.title')}: ${viewingUser?.name || $t('common.loading')}` : $t('dashboard.welcome', { name: authStore.user?.name }) }}
       </h1>
-      <p class="text-gray-400">Przegląd {{ route.params.userId ? 'użytkownika' : 'Twojego' }} gospodarstwa domowego</p>
+      <p class="text-gray-400">{{ $t('dashboard.overview') }}</p>
     </div>
 
     <!-- Stats Overview -->
@@ -15,7 +15,7 @@
       <div class="stat-card cursor-pointer hover:scale-105 transition-transform" @click="router.push('/bills')">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-gray-400 text-sm mb-1">Rachunki tego miesiąca</p>
+            <p class="text-gray-400 text-sm mb-1">{{ $t('dashboard.billsThisMonth') }}</p>
             <p class="text-3xl font-bold">{{ bills.length }}</p>
           </div>
           <div class="w-12 h-12 rounded-xl bg-purple-600/20 flex items-center justify-center">
@@ -27,7 +27,7 @@
       <div class="stat-card cursor-pointer hover:scale-105 transition-transform" @click="router.push('/chores')">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-gray-400 text-sm mb-1">Oczekujące obowiązki</p>
+            <p class="text-gray-400 text-sm mb-1">{{ $t('dashboard.pendingChores') }}</p>
             <p class="text-3xl font-bold">{{ chores.length }}</p>
           </div>
           <div class="w-12 h-12 rounded-xl bg-pink-600/20 flex items-center justify-center">
@@ -39,7 +39,7 @@
       <div class="stat-card cursor-pointer hover:scale-105 transition-transform" @click="router.push('/balance')">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-gray-400 text-sm mb-1">Twój bilans</p>
+            <p class="text-gray-400 text-sm mb-1">{{ $t('dashboard.yourBalance') }}</p>
             <p class="text-3xl font-bold" :class="totalBalanceNumber < 0 ? 'text-red-400' : 'text-green-400'">{{ totalBalance }} PLN</p>
           </div>
           <div class="w-12 h-12 rounded-xl" :class="totalBalanceNumber < 0 ? 'bg-red-600/20' : 'bg-green-600/20'">
@@ -52,17 +52,17 @@
     <!-- Pending Bills to Pay -->
     <div v-if="pendingAllocations.length > 0" class="card mb-6">
       <div class="card-header">
-        <h2 class="card-title">Rachunki do zapłaty</h2>
+        <h2 class="card-title">{{ $t('dashboard.pendingBills') }}</h2>
         <div class="text-yellow-400 font-bold">{{ totalPendingAmount.toFixed(2) }} PLN</div>
       </div>
       <div class="overflow-x-auto">
         <table class="w-full">
           <thead class="border-b border-gray-700">
             <tr class="text-left">
-              <th class="pb-3">Rachunek</th>
-              <th class="pb-3">Okres</th>
-              <th class="pb-3">Twoje zużycie</th>
-              <th class="pb-3">Do zapłaty</th>
+              <th class="pb-3">{{ $t('dashboard.bill') }}</th>
+              <th class="pb-3">{{ $t('dashboard.period') }}</th>
+              <th class="pb-3">{{ $t('dashboard.yourConsumption') }}</th>
+              <th class="pb-3">{{ $t('dashboard.amountDue') }}</th>
               <th class="pb-3"></th>
             </tr>
           </thead>
@@ -74,7 +74,7 @@
               <td class="py-3 font-bold text-yellow-400">{{ formatMoney(item.allocation.amountPLN) }} PLN</td>
               <td class="py-3">
                 <button @click="viewBill(item.bill.id)" class="text-blue-400 hover:text-blue-300 text-sm">
-                  Szczegóły →
+                  {{ $t('dashboard.details') }} →
                 </button>
               </td>
             </tr>
@@ -97,7 +97,7 @@
         </div>
         <div v-else-if="bills.length === 0" class="text-center py-8 text-gray-500">
           <FileX class="w-12 h-12 mx-auto mb-2 opacity-50" />
-          <p>Brak rachunków</p>
+          <p>{{ $t('dashboard.noBills') }}</p>
         </div>
         <div v-else class="space-y-3">
           <div v-for="bill in bills.slice(0, 5)" :key="bill.id"
@@ -120,7 +120,7 @@
         </div>
 
         <router-link to="/bills" class="btn btn-outline w-full mt-4 flex items-center justify-center gap-2">
-          Zobacz wszystkie
+          {{ $t('common.viewAll') }}
           <ArrowRight class="w-4 h-4" />
         </router-link>
       </div>
@@ -137,7 +137,7 @@
         </div>
         <div v-else-if="chores.length === 0" class="text-center py-8 text-gray-500">
           <CheckCircle class="w-12 h-12 mx-auto mb-2 opacity-50" />
-          <p>Brak obowiązków</p>
+          <p>{{ $t('dashboard.noChores') }}</p>
         </div>
         <div v-else class="space-y-3">
           <div v-for="chore in chores.slice(0, 5)" :key="chore.id"
@@ -157,7 +157,7 @@
         </div>
 
         <router-link to="/chores" class="btn btn-outline w-full mt-4 flex items-center justify-center gap-2">
-          Zobacz wszystkie
+          {{ $t('common.viewAll') }}
           <ArrowRight class="w-4 h-4" />
         </router-link>
       </div>
@@ -174,7 +174,7 @@
         </div>
         <div v-else-if="balances.length === 0" class="text-center py-8 text-gray-500">
           <BadgeCheck class="w-12 h-12 mx-auto mb-2 opacity-50" />
-          <p>Brak zobowiązań</p>
+          <p>{{ $t('dashboard.noDebts') }}</p>
         </div>
         <div v-else class="space-y-3">
           <div v-for="bal in balances.slice(0, 5)" :key="`${bal.fromUserId}-${bal.toUserId}`"
@@ -186,7 +186,7 @@
               </div>
               <div>
                 <p class="font-medium">{{ bal.fromUserName }}</p>
-                <p class="text-xs text-gray-400">dla {{ bal.toUserName }}</p>
+                <p class="text-xs text-gray-400">{{ $t('common.for') }} {{ bal.toUserName }}</p>
               </div>
             </div>
             <span class="font-bold text-red-400">{{ formatMoney(bal.netAmount) }} PLN</span>
@@ -194,7 +194,7 @@
         </div>
 
         <router-link to="/balance" class="btn btn-outline w-full mt-4 flex items-center justify-center gap-2">
-          Zobacz szczegóły
+          {{ $t('common.viewDetails') }}
           <ArrowRight class="w-4 h-4" />
         </router-link>
       </div>
@@ -203,12 +203,23 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useEventStream } from '../composables/useEventStream'
 import { useDataEvents, DATA_EVENTS } from '../composables/useDataEvents'
 import api from '../api/client'
+
+// AbortController for cancelling pending requests on unmount/navigation
+let abortController = null
+
+function createAbortController() {
+  if (abortController) {
+    abortController.abort()
+  }
+  abortController = new AbortController()
+  return abortController.signal
+}
 import {
   Receipt, CheckSquare, Wallet, Zap, Flame, Wifi, Users,
   ArrowRight, FileX, CheckCircle, ClipboardList, BadgeCheck, TrendingDown
@@ -305,6 +316,14 @@ onMounted(async () => {
   onDataEvent(DATA_EVENTS.CHORE_ASSIGNMENT_UPDATED, () => loadChores())
 })
 
+// Cleanup on unmount - abort any pending requests
+onUnmounted(() => {
+  if (abortController) {
+    abortController.abort()
+    abortController = null
+  }
+})
+
 // Watch for userId changes
 watch(targetUserId, () => {
   loadDashboardData()
@@ -312,14 +331,15 @@ watch(targetUserId, () => {
 
 async function loadDashboardData() {
   loading.value = true
+  const signal = createAbortController()
   try {
     const userId = targetUserId.value
     const isViewingOther = route.params.userId
 
     // First, load chore definitions and users for enrichment
     const [allChoresRes, usersRes] = await Promise.all([
-      api.get('/chores'),
-      api.get('/users')
+      api.get('/chores', { signal }),
+      api.get('/users', { signal })
     ])
 
     const allChoresData = allChoresRes.data || []
@@ -327,13 +347,13 @@ async function loadDashboardData() {
 
     // Then load dashboard data
     const [billsRes, choresRes, balanceRes] = await Promise.all([
-      api.get('/bills'),
+      api.get('/bills', { signal }),
       isViewingOther
-        ? api.get(`/chore-assignments?userId=${userId}&status=pending`)
-        : api.get('/chore-assignments/me?status=pending'),
+        ? api.get(`/chore-assignments?userId=${userId}&status=pending`, { signal })
+        : api.get('/chore-assignments/me?status=pending', { signal }),
       isViewingOther
-        ? api.get(`/loans/balances/user/${userId}`)
-        : api.get('/loans/balances/me')
+        ? api.get(`/loans/balances/user/${userId}`, { signal })
+        : api.get('/loans/balances/me', { signal })
     ])
 
     bills.value = billsRes.data || []
@@ -356,8 +376,12 @@ async function loadDashboardData() {
     balances.value = Array.isArray(balanceRes.data) ? balanceRes.data : (balanceRes.data?.balances || [])
 
     // Load pending allocations (posted bills user hasn't paid yet)
-    await loadPendingAllocations()
+    await loadPendingAllocations(signal)
   } catch (err) {
+    // Ignore abort errors (expected on navigation/unmount)
+    if (err.name === 'AbortError' || err.name === 'CanceledError') {
+      return
+    }
     console.error('Failed to load dashboard data:', err)
     bills.value = []
     chores.value = []
@@ -367,7 +391,7 @@ async function loadDashboardData() {
   }
 }
 
-async function loadPendingAllocations() {
+async function loadPendingAllocations(signal) {
   try {
     const userId = targetUserId.value
 
@@ -378,11 +402,11 @@ async function loadPendingAllocations() {
     }
 
     // Get all posted bills
-    const billsRes = await api.get('/bills?status=posted')
+    const billsRes = await api.get('/bills?status=posted', { signal })
     const postedBills = billsRes.data || []
 
     // Get user's payments
-    const paymentsRes = await api.get('/payments/me')
+    const paymentsRes = await api.get('/payments/me', { signal })
     const userPayments = paymentsRes.data || []
 
     // For each posted bill, get user's allocations
@@ -394,7 +418,7 @@ async function loadPendingAllocations() {
           return null
         }
 
-        const allocRes = await api.get(`/bills/${bill.id}/allocation`)
+        const allocRes = await api.get(`/bills/${bill.id}/allocation`, { signal })
         const allocations = allocRes.data || []
 
         // Find user's allocation (either direct user or through group)
@@ -421,6 +445,10 @@ async function loadPendingAllocations() {
           return mapped
         }
       } catch (err) {
+        // Rethrow abort errors to be handled by outer catch
+        if (err.name === 'AbortError' || err.name === 'CanceledError') {
+          throw err
+        }
         console.error(`Failed to load allocations for bill ${bill.id}:`, err)
       }
       return null
@@ -429,6 +457,10 @@ async function loadPendingAllocations() {
     const results = await Promise.all(allocationsPromises)
     pendingAllocations.value = results.filter(r => r !== null)
   } catch (err) {
+    // Ignore abort errors (expected on navigation/unmount)
+    if (err.name === 'AbortError' || err.name === 'CanceledError') {
+      return
+    }
     console.error('Failed to load pending allocations:', err)
     pendingAllocations.value = []
   }

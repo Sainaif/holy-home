@@ -65,7 +65,8 @@ describe('Auth Store', () => {
       await authStore.login('test@example.com', 'password123')
 
       expect(api.post).toHaveBeenCalledWith('/auth/login', {
-        email: 'test@example.com',
+        identifier: 'test@example.com',
+        email: 'test@example.com', // Backward compatibility
         password: 'password123'
       })
       expect(api.get).toHaveBeenCalledWith('/users/me', {

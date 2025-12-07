@@ -86,6 +86,9 @@ func (s *PermissionService) InitializeDefaultPermissions(ctx context.Context) er
 		// Backup management
 		{ID: primitive.NewObjectID(), Name: "backup.export", Description: "Eksportuj kopię zapasową", Category: "backup"},
 		{ID: primitive.NewObjectID(), Name: "backup.import", Description: "Importuj kopię zapasową", Category: "backup"},
+
+		// App settings
+		{ID: primitive.NewObjectID(), Name: "settings.app.update", Description: "Zmień ustawienia aplikacji", Category: "settings"},
 	}
 
 	// Insert or update permissions (upsert missing ones)
@@ -158,6 +161,7 @@ func (s *RoleService) InitializeDefaultRoles(ctx context.Context) error {
 		"loan-payments.create", "loan-payments.read", "loan-payments.update", "loan-payments.delete",
 		"readings.delete",
 		"backup.export", "backup.import",
+		"settings.app.update",
 	}
 
 	// MIESZKANIEC role with limited permissions

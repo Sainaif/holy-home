@@ -22,6 +22,9 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const props = defineProps({
   show: {
@@ -34,10 +37,10 @@ const props = defineProps({
   }
 })
 
-const title = computed(() => 'Aktualizacja')
+const title = computed(() => t('app.updateTitle'))
 
 const message = computed(() =>
-  props.isUpdating ? 'Strona za chwilę się odświeży...' : 'Wykryto nową wersję, ładowanie...'
+  props.isUpdating ? t('app.updateRefreshing') : t('app.updateDetected')
 )
 </script>
 

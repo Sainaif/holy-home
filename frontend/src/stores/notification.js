@@ -1,6 +1,8 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import apiClient from '../api';
+import apiClient from '../api/client';
+
+const MAX_HISTORY_LENGTH = 100; // Limit notification history to prevent memory leaks
 
 export const useNotificationStore = defineStore('notification', () => {
   const history = ref([]);
@@ -44,7 +46,28 @@ export const useNotificationStore = defineStore('notification', () => {
   }
 
   function addNotification(notification) {
-    history.value.unshift(notification);
+    // Add timestamp if not present
+    const notificationWithTimestamp = {
+      ...notification,
+      timestamp: notification.timestamp || new Date().toISOString(),
+    };
+    history.value.unshift(notificationWithTimestamp);
+
+    // Enforce history limit to prevent memory leaks
+    if (history.value.length > MAX_HISTORY_LENGTH) {
+      history.value = history.value.slice(0, MAX_HISTORY_LENGTH);
+    }
+  }
+
+  // Check if a notification should be shown based on user preferences
+  function shouldShowNotification(notification) {
+    if (!notification || !notification.type) return true;
+
+    // Extract category from notification type (e.g., 'bill.created' -> 'bill')
+    const category = notification.type.split('.')[0];
+
+    // Check if user has enabled notifications for this category
+    return preferences.value[category] !== false;
   }
 
   async function subscribe() {
@@ -92,5 +115,6 @@ export const useNotificationStore = defineStore('notification', () => {
     subscribe,
     fetchPreferences,
     updatePreferences,
+    shouldShowNotification,
   };
 });

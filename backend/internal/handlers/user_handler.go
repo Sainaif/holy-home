@@ -1,8 +1,6 @@
 package handlers
 
 import (
-	"log"
-
 	"github.com/gofiber/fiber/v2"
 	"github.com/sainaif/holy-home/internal/config"
 	"github.com/sainaif/holy-home/internal/middleware"
@@ -116,15 +114,6 @@ func (h *UserHandler) UpdateUser(c *fiber.Ctx) error {
 		})
 	}
 
-	// Debug logging
-	log.Printf("[DEBUG] UpdateUser request for user %s: Email=%v, Name=%v, Role=%v, GroupID=%v, IsActive=%v",
-		userID.Hex(),
-		req.Email,
-		req.Name,
-		req.Role,
-		req.GroupID,
-		req.IsActive)
-
 	// Get target user before update for audit
 	targetUser, _ := h.userService.GetUser(c.Context(), userID)
 
@@ -168,17 +157,12 @@ func (h *UserHandler) ChangePassword(c *fiber.Ctx) error {
 	}
 
 	if err := c.BodyParser(&req); err != nil {
-		log.Printf("[ChangePassword] Failed to parse request body: %v", err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "Invalid request body",
 		})
 	}
 
-	log.Printf("[ChangePassword] Request from user %s: oldPassword length=%d, newPassword length=%d",
-		userID.Hex(), len(req.OldPassword), len(req.NewPassword))
-
 	if err := h.userService.ChangePassword(c.Context(), userID, req.OldPassword, req.NewPassword); err != nil {
-		log.Printf("[ChangePassword] Service error for user %s: %v", userID.Hex(), err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": err.Error(),
 		})

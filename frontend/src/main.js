@@ -1,25 +1,39 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
-import { createI18n } from 'vue-i18n'
 import router from './router'
 import './style.css'
 import App from './App.vue'
-import pl from './locales/pl.json'
+import i18n, { initLocale } from './locales'
 import { register as registerServiceWorker } from './registerServiceWorker'
 
-const i18n = createI18n({
-  locale: 'pl',
-  fallbackLocale: 'pl',
-  messages: { pl }
-})
+// Fetch app settings and initialize locale before mounting
+async function bootstrap() {
+  const pinia = createPinia()
+  const app = createApp(App)
 
-const app = createApp(App)
-app.use(createPinia())
-app.use(router)
-app.use(i18n)
-app.mount('#app')
+  app.use(pinia)
+  app.use(router)
+  app.use(i18n)
 
-// Register service worker for PWA
-if (import.meta.env.PROD) {
-  registerServiceWorker()
+  // Import appSettings store after pinia is installed
+  const { useAppSettingsStore } = await import('./stores/appSettings')
+  const appSettingsStore = useAppSettingsStore()
+
+  // Fetch app settings and initialize locale
+  try {
+    const settings = await appSettingsStore.fetchSettings()
+    initLocale(settings)
+  } catch (err) {
+    console.warn('Failed to fetch app settings, using locale defaults')
+    initLocale(null)
+  }
+
+  app.mount('#app')
+
+  // Register service worker for PWA
+  if (import.meta.env.PROD) {
+    registerServiceWorker()
+  }
 }
+
+bootstrap()

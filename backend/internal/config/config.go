@@ -22,12 +22,13 @@ type VAPIDConfig struct {
 }
 
 type AppConfig struct {
-	Name    string
-	Env     string
-	Host    string
-	Port    string
-	BaseURL string
-	Domain  string // For WebAuthn (e.g., "localhost" or "holyhome.app")
+	Name           string
+	Env            string
+	Host           string
+	Port           string
+	BaseURL        string
+	Domain         string // For WebAuthn (e.g., "localhost" or "holyhome.app")
+	AllowedOrigins string // CORS allowed origins, defaults to "*" if not set
 }
 
 type JWTConfig struct {
@@ -45,6 +46,11 @@ type AdminConfig struct {
 type AuthConfig struct {
 	TwoFAEnabled      bool
 	TOTPEncryptionKey string // 32-byte key for AES-256 encryption of TOTP secrets
+	// Login identifier options
+	AllowEmailLogin    bool // Allow login with email (default: true)
+	AllowUsernameLogin bool // Allow login with username (default: false)
+	// Registration options
+	RequireUsername bool // Require username during registration (default: false)
 }
 
 type MongoConfig struct {
@@ -70,12 +76,13 @@ func Load() (*Config, error) {
 
 	return &Config{
 		App: AppConfig{
-			Name:    getEnv("APP_NAME", "Holy Home"),
-			Env:     getEnv("APP_ENV", "production"),
-			Host:    getEnv("APP_HOST", "0.0.0.0"),
-			Port:    getEnv("APP_PORT", "8080"),
-			BaseURL: getEnv("APP_BASE_URL", "http://localhost:8080"),
-			Domain:  getEnv("APP_DOMAIN", "localhost"),
+			Name:           getEnv("APP_NAME", "Holy Home"),
+			Env:            getEnv("APP_ENV", "production"),
+			Host:           getEnv("APP_HOST", "0.0.0.0"),
+			Port:           getEnv("APP_PORT", "8080"),
+			BaseURL:        getEnv("APP_BASE_URL", "http://localhost:8080"),
+			Domain:         getEnv("APP_DOMAIN", "localhost"),
+			AllowedOrigins: getEnv("ALLOWED_ORIGINS", "*"),
 		},
 		JWT: JWTConfig{
 			AccessTTL:     accessTTL,
@@ -88,8 +95,11 @@ func Load() (*Config, error) {
 			PasswordHash: getEnv("ADMIN_PASSWORD_HASH", getEnv("ADMIN_PASSWORD", "")),
 		},
 		Auth: AuthConfig{
-			TwoFAEnabled:      getEnv("AUTH_2FA_ENABLED", "false") == "true",
-			TOTPEncryptionKey: getEnv("TOTP_ENCRYPTION_KEY", ""),
+			TwoFAEnabled:       getEnv("AUTH_2FA_ENABLED", "false") == "true",
+			TOTPEncryptionKey:  getEnv("TOTP_ENCRYPTION_KEY", ""),
+			AllowEmailLogin:    getEnv("AUTH_ALLOW_EMAIL_LOGIN", "true") == "true",
+			AllowUsernameLogin: getEnv("AUTH_ALLOW_USERNAME_LOGIN", "false") == "true",
+			RequireUsername:    getEnv("AUTH_REQUIRE_USERNAME", "false") == "true",
 		},
 		Mongo: MongoConfig{
 			URI:      getEnv("MONGO_URI", "mongodb://localhost:27017"),

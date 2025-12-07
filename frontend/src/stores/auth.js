@@ -2,12 +2,31 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import api from '../api/client'
 
+// Safe JSON parse helper - returns default value if parsing fails
+function safeJsonParse(value, defaultValue) {
+  if (!value) return defaultValue
+  try {
+    return JSON.parse(value)
+  } catch (e) {
+    console.warn('Failed to parse localStorage value:', e)
+    return defaultValue
+  }
+}
+
 // Auth store - handles login, logout, and user permissions
 export const useAuthStore = defineStore('auth', () => {
   const accessToken = ref(localStorage.getItem('accessToken'))
   const refreshToken = ref(localStorage.getItem('refreshToken'))
-  const user = ref(JSON.parse(localStorage.getItem('user') || 'null'))
-  const permissions = ref(JSON.parse(localStorage.getItem('permissions') || '[]'))
+  const user = ref(safeJsonParse(localStorage.getItem('user'), null))
+  const permissions = ref(safeJsonParse(localStorage.getItem('permissions'), []))
+
+  // Auth configuration from server
+  const authConfig = ref({
+    allowEmailLogin: true,
+    allowUsernameLogin: false,
+    requireUsername: false,
+    twoFAEnabled: false
+  })
 
   const isAuthenticated = computed(() => !!accessToken.value)
   const isAdmin = computed(() => user.value?.role === 'ADMIN')
@@ -17,10 +36,22 @@ export const useAuthStore = defineStore('auth', () => {
     return permissions.value.includes(permission)
   }
 
-  // login with email and password
-  async function login(email, password) {
+  // fetchAuthConfig gets auth configuration from server
+  async function fetchAuthConfig() {
+    try {
+      const response = await api.get('/auth/config')
+      authConfig.value = response.data
+    } catch (error) {
+      console.warn('Failed to fetch auth config, using defaults:', error)
+    }
+    return authConfig.value
+  }
+
+  // login with identifier (email or username) and password
+  async function login(identifier, password) {
     const response = await api.post('/auth/login', {
-      email,
+      identifier,
+      email: identifier, // Backward compatibility with older backends
       password
     })
 
@@ -121,9 +152,11 @@ export const useAuthStore = defineStore('auth', () => {
     refreshToken,
     user,
     permissions,
+    authConfig,
     isAuthenticated,
     isAdmin,
     hasPermission,
+    fetchAuthConfig,
     login,
     refresh,
     logout,

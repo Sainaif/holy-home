@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/sainaif/holy-home/internal/middleware"
 	"github.com/sainaif/holy-home/internal/models"
 	"github.com/sainaif/holy-home/internal/services"
 	"github.com/sainaif/holy-home/internal/utils"
@@ -36,8 +37,18 @@ func NewRecurringBillHandler(recurringBillService *services.RecurringBillService
 
 // CreateRecurringBillTemplate creates a new recurring bill template (ADMIN only)
 func (h *RecurringBillHandler) CreateRecurringBillTemplate(c *fiber.Ctx) error {
-	userID := c.Locals("userId").(primitive.ObjectID)
-	userEmail := c.Locals("userEmail").(string)
+	userID, err := middleware.GetUserID(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
+	userEmail, err := middleware.GetUserEmail(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
 
 	var req RecurringBillTemplateRequest
 	if err := c.BodyParser(&req); err != nil {
@@ -126,8 +137,18 @@ func (h *RecurringBillHandler) GetRecurringBillTemplate(c *fiber.Ctx) error {
 
 // UpdateRecurringBillTemplate updates an existing template (ADMIN only)
 func (h *RecurringBillHandler) UpdateRecurringBillTemplate(c *fiber.Ctx) error {
-	userID := c.Locals("userId").(primitive.ObjectID)
-	userEmail := c.Locals("userEmail").(string)
+	userID, err := middleware.GetUserID(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
+	userEmail, err := middleware.GetUserEmail(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
 
 	id := c.Params("id")
 	templateID, err := primitive.ObjectIDFromHex(id)
@@ -181,8 +202,18 @@ func (h *RecurringBillHandler) UpdateRecurringBillTemplate(c *fiber.Ctx) error {
 
 // DeleteRecurringBillTemplate deletes a template (ADMIN only)
 func (h *RecurringBillHandler) DeleteRecurringBillTemplate(c *fiber.Ctx) error {
-	userID := c.Locals("userId").(primitive.ObjectID)
-	userEmail := c.Locals("userEmail").(string)
+	userID, err := middleware.GetUserID(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
+	userEmail, err := middleware.GetUserEmail(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
 
 	id := c.Params("id")
 	templateID, err := primitive.ObjectIDFromHex(id)
@@ -210,8 +241,18 @@ func (h *RecurringBillHandler) DeleteRecurringBillTemplate(c *fiber.Ctx) error {
 
 // GenerateRecurringBills manually triggers generation of bills from templates (ADMIN only)
 func (h *RecurringBillHandler) GenerateRecurringBills(c *fiber.Ctx) error {
-	userID := c.Locals("userId").(primitive.ObjectID)
-	userEmail := c.Locals("userEmail").(string)
+	userID, err := middleware.GetUserID(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
+	userEmail, err := middleware.GetUserEmail(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
 
 	if err := h.recurringBillService.GenerateBillsFromTemplates(c.Context()); err != nil {
 		h.auditService.LogAction(c.Context(), userID, userEmail, userEmail, "generate_recurring_bills", "recurring_bill_template", nil,

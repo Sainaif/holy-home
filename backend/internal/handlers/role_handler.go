@@ -153,8 +153,18 @@ func (h *RoleHandler) UpdateRole(c *fiber.Ctx) error {
 
 // DeleteRole deletes a custom role (ADMIN only)
 func (h *RoleHandler) DeleteRole(c *fiber.Ctx) error {
-	userID := c.Locals("userId").(primitive.ObjectID)
-	userEmail := c.Locals("userEmail").(string)
+	userID, err := middleware.GetUserID(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
+	userEmail, err := middleware.GetUserEmail(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
 
 	id := c.Params("id")
 	roleID, err := primitive.ObjectIDFromHex(id)

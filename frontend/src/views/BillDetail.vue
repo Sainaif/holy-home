@@ -2,8 +2,8 @@
   <div>
     <div class="flex items-center justify-between mb-6">
       <div class="flex items-center">
-        <button @click="$router.back()" class="btn btn-secondary mr-4">← Powrót</button>
-        <h1 class="text-3xl font-bold">Szczegóły rachunku</h1>
+        <button @click="$router.back()" class="btn btn-secondary mr-4">← {{ $t('common.back') }}</button>
+        <h1 class="text-3xl font-bold">{{ $t('bills.billDetails') }}</h1>
       </div>
       <!-- Reopen button for admins -->
       <button
@@ -12,47 +12,47 @@
         class="btn btn-outline flex items-center gap-2"
       >
         <RotateCcw class="w-4 h-4" />
-        Zmień status rachunku
+        {{ $t('bills.changeStatus') }}
       </button>
     </div>
 
-    <div v-if="loading" class="text-center py-8">Ładowanie...</div>
-    <div v-else-if="!bill" class="text-center py-8 text-red-400">Nie znaleziono rachunku</div>
+    <div v-if="loading" class="text-center py-8">{{ $t('common.loading') }}</div>
+    <div v-else-if="!bill" class="text-center py-8 text-red-400">{{ $t('errors.billNotFound') }}</div>
     <div v-else>
       <!-- Bill Info Card -->
       <div class="card mb-6">
-        <h2 class="text-xl font-semibold mb-4">Informacje o rachunku</h2>
+        <h2 class="text-xl font-semibold mb-4">{{ $t('bills.billInfo') }}</h2>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <span class="text-gray-400">Typ:</span>
+            <span class="text-gray-400">{{ $t('bills.type') }}:</span>
             <span class="ml-2 font-medium">{{ getBillType(bill) }}</span>
           </div>
           <div>
-            <span class="text-gray-400">Status:</span>
+            <span class="text-gray-400">{{ $t('common.status') }}:</span>
             <span class="ml-2 font-medium">{{ bill.status }}</span>
           </div>
           <div>
-            <span class="text-gray-400">Okres:</span>
+            <span class="text-gray-400">{{ $t('bills.period') }}:</span>
             <span class="ml-2 font-medium">{{ formatDate(bill.periodStart) }} - {{ formatDate(bill.periodEnd) }}</span>
           </div>
           <div>
-            <span class="text-gray-400">Całkowita kwota:</span>
+            <span class="text-gray-400">{{ $t('bills.totalAmount') }}:</span>
             <span class="ml-2 font-medium">{{ formatMoney(bill.totalAmountPLN) }} PLN</span>
           </div>
           <div v-if="bill.totalUnits">
-            <span class="text-gray-400">Całkowite zużycie:</span>
+            <span class="text-gray-400">{{ $t('bills.totalConsumption') }}</span>
             <span class="ml-2 font-medium">{{ formatMeterValue(bill.totalUnits) }} {{ getUnit(bill.type) }}</span>
           </div>
           <div v-if="bill.paymentDeadline">
-            <span class="text-gray-400">Termin płatności:</span>
+            <span class="text-gray-400">{{ $t('bills.paymentDeadline') }}:</span>
             <span class="ml-2 font-medium">{{ formatDate(bill.paymentDeadline) }}</span>
           </div>
           <div v-if="bill.reopenedAt">
-            <span class="text-gray-400">Ponownie otwarty:</span>
+            <span class="text-gray-400">{{ $t('bills.reopened') }}</span>
             <span class="ml-2 font-medium">{{ formatDateTime(bill.reopenedAt) }}</span>
           </div>
           <div v-if="bill.reopenReason" class="md:col-span-2">
-            <span class="text-gray-400">Powód ponownego otwarcia:</span>
+            <span class="text-gray-400">{{ $t('bills.reopenReason') }}</span>
             <span class="ml-2 font-medium">{{ bill.reopenReason }}</span>
           </div>
         </div>
@@ -62,7 +62,7 @@
       <div v-if="showReopenModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50" @click.self="showReopenModal = false">
         <div class="card max-w-md w-full mx-4">
           <div class="flex justify-between items-center mb-6">
-            <h2 class="text-2xl font-bold gradient-text">Zmień status rachunku</h2>
+            <h2 class="text-2xl font-bold gradient-text">{{ $t('bills.changeStatus') }}</h2>
             <button @click="showReopenModal = false" class="text-gray-400 hover:text-white">
               <X class="w-6 h-6" />
             </button>
@@ -70,21 +70,21 @@
 
           <form @submit.prevent="reopenBill" class="space-y-4">
             <div>
-              <label class="block text-sm font-medium mb-2">Status docelowy</label>
+              <label class="block text-sm font-medium mb-2">{{ $t('bills.targetStatus') }}</label>
               <select v-model="reopenData.targetStatus" required class="input">
-                <option value="draft">Szkic (draft)</option>
-                <option value="posted" v-if="bill.status === 'closed'">Zamieszczony (posted)</option>
+                <option value="draft">{{ $t('bills.statusDraft') }}</option>
+                <option value="posted" v-if="bill.status === 'closed'">{{ $t('bills.statusPosted') }}</option>
               </select>
             </div>
 
             <div>
-              <label class="block text-sm font-medium mb-2">Powód ponownego otwarcia *</label>
+              <label class="block text-sm font-medium mb-2">{{ $t('bills.reopenReasonLabel') }}</label>
               <textarea
                 v-model="reopenData.reason"
                 required
                 class="input"
                 rows="3"
-                placeholder="Np. Poprawka odczytu, błąd w alokacji..."
+                :placeholder="$t('bills.reopenReasonExample')"
               ></textarea>
             </div>
 
@@ -97,10 +97,10 @@
               <button type="submit" :disabled="reopening" class="btn btn-primary flex-1 flex items-center justify-center gap-2">
                 <div v-if="reopening" class="loading-spinner"></div>
                 <RotateCcw v-else class="w-5 h-5" />
-                {{ reopening ? 'Zmiana...' : 'Zmień status' }}
+                {{ reopening ? $t('common.changing') : $t('bills.changeStatusButton') }}
               </button>
               <button type="button" @click="showReopenModal = false" class="btn btn-outline">
-                Anuluj
+                {{ $t('common.cancel') }}
               </button>
             </div>
           </form>
@@ -109,16 +109,16 @@
 
       <!-- Allocation Card -->
       <div v-if="bill.status === 'posted' || bill.status === 'closed'" class="card mb-6">
-        <h2 class="text-xl font-semibold mb-4">Alokacja kosztów</h2>
-        <div v-if="loadingAllocations" class="text-center py-4">Ładowanie alokacji...</div>
-        <div v-else-if="allocations.length === 0" class="text-center py-4 text-gray-400">Brak danych o alokacji</div>
+        <h2 class="text-xl font-semibold mb-4">{{ $t('bills.costAllocationSection') }}</h2>
+        <div v-if="loadingAllocations" class="text-center py-4">{{ $t('bills.loadingAllocationFull') }}</div>
+        <div v-else-if="allocations.length === 0" class="text-center py-4 text-gray-400">{{ $t('bills.noAllocationData') }}</div>
         <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           <div v-for="allocation in allocations" :key="allocation.subjectId"
                class="bg-gray-800/50 rounded-lg p-3 border border-gray-700/50">
             <div class="flex justify-between items-start">
               <div>
                 <p class="font-medium text-white">{{ allocation.subjectName }}</p>
-                <p class="text-xs text-gray-400">Waga: {{ allocation.weight.toFixed(2) }}</p>
+                <p class="text-xs text-gray-400">{{ $t('bills.weight') }} {{ allocation.weight.toFixed(2) }}</p>
               </div>
               <div class="text-right">
                 <p class="font-bold text-purple-400">{{ formatMoney(allocation.amount) }} PLN</p>
@@ -130,11 +130,11 @@
             <div v-if="allocation.personalAmount !== undefined && allocation.sharedAmount !== undefined"
                  class="mt-2 pt-2 border-t border-gray-700/50 text-xs text-gray-400 space-y-1">
               <div class="flex justify-between">
-                <span>Osobiste:</span>
+                <span>{{ $t('bills.personal') }}</span>
                 <span>{{ formatMoney(allocation.personalAmount) }} PLN</span>
               </div>
               <div class="flex justify-between">
-                <span>Wspólne:</span>
+                <span>{{ $t('bills.shared') }}</span>
                 <span>{{ formatMoney(allocation.sharedAmount) }} PLN</span>
               </div>
             </div>
@@ -143,16 +143,16 @@
               <!-- Current user's allocation (or current user's group allocation) - show button or paid status -->
               <div v-if="isUserAllocation(allocation)">
                 <button v-if="!isUserPaid" @click="markAsPaid(allocation.amount)" class="btn btn-primary w-full text-xs py-1">
-                  Oznacz jako zapłacone
+                  {{ $t('bills.markPaid') }}
                 </button>
                 <div v-else class="text-center text-xs text-green-400">
-                  ✓ Zapłacone
+                  ✓ {{ $t('bills.paid') }}
                 </div>
               </div>
               <!-- Other allocations - show payment status only -->
               <div v-else-if="allocation.subjectType === 'user'" class="text-center text-xs">
-                <span v-if="hasAllocationBeenPaid(allocation)" class="text-green-400">✓ Zapłacone</span>
-                <span v-else class="text-yellow-400">⏳ Oczekuje na płatność</span>
+                <span v-if="hasAllocationBeenPaid(allocation)" class="text-green-400">✓ {{ $t('bills.paid') }}</span>
+                <span v-else class="text-yellow-400">⏳ {{ $t('bills.pendingPayment') }}</span>
               </div>
             </div>
           </div>
@@ -161,18 +161,18 @@
 
       <!-- Readings Card -->
       <div v-if="bill.type === 'electricity' || (bill.type === 'inne' && bill.allocationType === 'metered')" class="card mb-6">
-        <h2 class="text-xl font-semibold mb-4">Odczyty liczników</h2>
-        <div v-if="loadingReadings" class="text-center py-4">Ładowanie odczytów...</div>
-        <div v-else-if="readings.length === 0" class="text-center py-4 text-gray-400">Brak odczytów</div>
+        <h2 class="text-xl font-semibold mb-4">{{ $t('readings.title') }}</h2>
+        <div v-if="loadingReadings" class="text-center py-4">{{ $t('readings.loading') }}</div>
+        <div v-else-if="readings.length === 0" class="text-center py-4 text-gray-400">{{ $t('readings.noReadings') }}</div>
         <div v-else class="overflow-x-auto">
           <table class="w-full">
             <thead class="border-b border-gray-700">
               <tr class="text-left">
-                <th class="pb-3">Użytkownik</th>
-                <th class="pb-3">Odczyt</th>
-                <th class="pb-3">Zużycie</th>
-                <th class="pb-3">Data</th>
-                <th class="pb-3">Źródło</th>
+                <th class="pb-3">{{ $t('common.user') }}</th>
+                <th class="pb-3">{{ $t('readings.reading') }}</th>
+                <th class="pb-3">{{ $t('readings.consumption') }}</th>
+                <th class="pb-3">{{ $t('common.date') }}</th>
+                <th class="pb-3">{{ $t('readings.source') }}</th>
               </tr>
             </thead>
             <tbody>
@@ -198,12 +198,14 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useDataEvents, DATA_EVENTS } from '../composables/useDataEvents'
 import { RotateCcw, X, AlertCircle } from 'lucide-vue-next'
 import api from '../api/client'
 
+const { t, locale } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
@@ -279,9 +281,9 @@ onMounted(async () => {
 })
 
 function getBillType(b) {
-  if (b.type === 'electricity') return 'Prąd'
-  if (b.type === 'gas') return 'Gaz'
-  if (b.type === 'internet') return 'Internet'
+  if (b.type === 'electricity') return t('bills.electricity')
+  if (b.type === 'gas') return t('bills.gas')
+  if (b.type === 'internet') return t('bills.internet')
   if (b.type === 'inne' && b.customType) return b.customType
   return b.type
 }
@@ -289,16 +291,16 @@ function getBillType(b) {
 function getUnit(type) {
   if (type === 'electricity') return 'kWh'
   if (type === 'gas') return 'm³'
-  return 'jednostek'
+  return t('readings.units')
 }
 
 function getSubjectName(subjectId, subjectType) {
   if (subjectType === 'group') {
     const group = groups.value.find(g => g.id === subjectId)
-    return group ? group.name : 'Nieznana grupa'
+    return group ? group.name : t('errors.unknownGroup')
   } else {
     const user = users.value.find(u => u.id === subjectId)
-    return user ? user.name : 'Nieznany'
+    return user ? user.name : t('errors.unknown')
   }
 }
 
@@ -315,12 +317,16 @@ function formatMeterValue(value) {
 
 function formatDate(date) {
   if (!date) return '-'
-  return new Date(date).toLocaleDateString('pl-PL')
+  const localeMap = { 'pl': 'pl-PL', 'en': 'en-US' }
+  const dateLocale = localeMap[locale.value] || 'en-US'
+  return new Date(date).toLocaleDateString(dateLocale)
 }
 
 function formatDateTime(date) {
   if (!date) return '-'
-  return new Date(date).toLocaleString('pl-PL')
+  const localeMap = { 'pl': 'pl-PL', 'en': 'en-US' }
+  const dateLocale = localeMap[locale.value] || 'en-US'
+  return new Date(date).toLocaleString(dateLocale)
 }
 
 const PAYMENT_MATCH_EPSILON = 0.01
@@ -436,7 +442,7 @@ async function markAsPaid(amount) {
     })
 
     // Show success message
-    alert('Płatność zarejestrowana pomyślnie!')
+    alert(t('errors.paymentSuccess'))
 
     // Reload bill data to show updated payment status
     const billRes = await api.get(`/bills/${billId}`)
@@ -451,7 +457,7 @@ async function markAsPaid(amount) {
     allPayments.value = paymentsRes.data || []
   } catch (err) {
     console.error('Failed to mark as paid:', err)
-    alert('Nie udało się zapisać płatności')
+    alert(t('errors.paymentFailed'))
   }
 }
 
@@ -469,7 +475,7 @@ async function reopenBill() {
     showReopenModal.value = false
     reopenData.value = { targetStatus: 'draft', reason: '' }
   } catch (err) {
-    reopenError.value = err.response?.data?.error || 'Nie udało się ponownie otworzyć rachunku'
+    reopenError.value = err.response?.data?.error || t('errors.reopenFailed')
   } finally {
     reopening.value = false
   }

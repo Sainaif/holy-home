@@ -1,0 +1,32 @@
+# Holy Home - Test Runner
+# Usage:
+#   docker-compose -f docker-compose-test.yml up -d mongo
+#   docker-compose -f docker-compose-test.yml run --rm test
+
+services:
+  mongo:
+    image: mongo:8.0
+    ports:
+      - "27017:27017"
+    tmpfs:
+      - /data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.runCommand({ping:1}).ok"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+
+  test:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+      target: builder
+    environment:
+      MONGODB_URI: mongodb://mongo:27017
+    depends_on:
+      mongo:
+        condition: service_healthy
+    working_dir: /src
+    command: go test -v -race ./...
+    volumes:
+      - ../backend:/src

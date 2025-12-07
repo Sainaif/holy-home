@@ -66,43 +66,7 @@ func TestEmailValidation(t *testing.T) {
 	}
 }
 
-// isValidEmail is a simple email validation helper for testing
-// In production, this would be in a utils package
-func isValidEmail(email string) bool {
-	if len(email) == 0 {
-		return false
-	}
-
-	// Basic check: must contain @ and have text before and after
-	atIndex := -1
-	for i, c := range email {
-		if c == '@' {
-			if atIndex != -1 {
-				return false // Multiple @ signs
-			}
-			atIndex = i
-		}
-		if c == ' ' {
-			return false // No spaces allowed
-		}
-	}
-
-	if atIndex <= 0 || atIndex >= len(email)-1 {
-		return false // @ must have text before and after
-	}
-
-	// Check for dot in domain part
-	domainPart := email[atIndex+1:]
-	hasDot := false
-	for _, c := range domainPart {
-		if c == '.' {
-			hasDot = true
-			break
-		}
-	}
-
-	return hasDot
-}
+// isValidEmail is now defined in auth_service.go
 
 // TestUserRoleValidation tests user role validation
 func TestUserRoleValidation(t *testing.T) {

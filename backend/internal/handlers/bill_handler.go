@@ -29,8 +29,18 @@ func NewBillHandler(billService *services.BillService, consumptionService *servi
 
 // CreateBill creates a new bill (ADMIN only)
 func (h *BillHandler) CreateBill(c *fiber.Ctx) error {
-	userID := c.Locals("userId").(primitive.ObjectID)
-	userEmail := c.Locals("userEmail").(string)
+	userID, err := middleware.GetUserID(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
+	userEmail, err := middleware.GetUserEmail(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
 
 	var req services.CreateBillRequest
 	if err := c.BodyParser(&req); err != nil {
@@ -127,8 +137,18 @@ func (h *BillHandler) GetBill(c *fiber.Ctx) error {
 
 // PostBill changes status to posted (ADMIN only)
 func (h *BillHandler) PostBill(c *fiber.Ctx) error {
-	userID := c.Locals("userId").(primitive.ObjectID)
-	userEmail := c.Locals("userEmail").(string)
+	userID, err := middleware.GetUserID(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
+	userEmail, err := middleware.GetUserEmail(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
 
 	id := c.Params("id")
 	billID, err := primitive.ObjectIDFromHex(id)
@@ -139,7 +159,12 @@ func (h *BillHandler) PostBill(c *fiber.Ctx) error {
 	}
 
 	// Get bill info for audit
-	bill, _ := h.billService.GetBill(c.Context(), billID)
+	bill, err := h.billService.GetBill(c.Context(), billID)
+	if err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"error": "Bill not found",
+		})
+	}
 
 	if err := h.billService.PostBill(c.Context(), billID); err != nil {
 		h.auditService.LogAction(c.Context(), userID, userEmail, userEmail, "post_bill", "bill", &billID,
@@ -180,8 +205,18 @@ func (h *BillHandler) PostBill(c *fiber.Ctx) error {
 
 // CloseBill changes status to closed (ADMIN only)
 func (h *BillHandler) CloseBill(c *fiber.Ctx) error {
-	userID := c.Locals("userId").(primitive.ObjectID)
-	userEmail := c.Locals("userEmail").(string)
+	userID, err := middleware.GetUserID(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
+	userEmail, err := middleware.GetUserEmail(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
 
 	id := c.Params("id")
 	billID, err := primitive.ObjectIDFromHex(id)
@@ -192,7 +227,12 @@ func (h *BillHandler) CloseBill(c *fiber.Ctx) error {
 	}
 
 	// Get bill info for audit
-	bill, _ := h.billService.GetBill(c.Context(), billID)
+	bill, err := h.billService.GetBill(c.Context(), billID)
+	if err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"error": "Bill not found",
+		})
+	}
 
 	if err := h.billService.CloseBill(c.Context(), billID); err != nil {
 		h.auditService.LogAction(c.Context(), userID, userEmail, userEmail, "close_bill", "bill", &billID,
@@ -266,7 +306,12 @@ func (h *BillHandler) CreateConsumption(c *fiber.Ctx) error {
 		})
 	}
 
-	userEmail := c.Locals("userEmail").(string)
+	userEmail, err := middleware.GetUserEmail(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
 
 	var req services.CreateConsumptionRequest
 	if err := c.BodyParser(&req); err != nil {
@@ -286,7 +331,12 @@ func (h *BillHandler) CreateConsumption(c *fiber.Ctx) error {
 	}
 
 	// Get bill info for audit
-	bill, _ := h.billService.GetBill(c.Context(), req.BillID)
+	bill, err := h.billService.GetBill(c.Context(), req.BillID)
+	if err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"error": "Bill not found",
+		})
+	}
 
 	consumption, err := h.consumptionService.CreateConsumption(c.Context(), req, source)
 	if err != nil {
@@ -341,8 +391,18 @@ func (h *BillHandler) GetConsumptions(c *fiber.Ctx) error {
 
 // DeleteBill deletes a bill (ADMIN only)
 func (h *BillHandler) DeleteBill(c *fiber.Ctx) error {
-	userID := c.Locals("userId").(primitive.ObjectID)
-	userEmail := c.Locals("userEmail").(string)
+	userID, err := middleware.GetUserID(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
+	userEmail, err := middleware.GetUserEmail(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
 
 	id := c.Params("id")
 	billID, err := primitive.ObjectIDFromHex(id)

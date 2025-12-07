@@ -5,14 +5,14 @@
         <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-600 to-pink-600 mb-4">
           <Key class="w-8 h-8 text-white" />
         </div>
-        <h1 class="text-4xl font-bold gradient-text mb-2">Resetowanie hasła</h1>
-        <p class="text-gray-400">Ustaw nowe hasło dla swojego konta</p>
+        <h1 class="text-4xl font-bold gradient-text mb-2">{{ $t('auth.resetPasswordTitle') }}</h1>
+        <p class="text-gray-400">{{ $t('auth.resetPasswordDescription') }}</p>
       </div>
 
       <!-- Loading state -->
       <div v-if="validatingToken" class="text-center py-8">
         <div class="loading-spinner mx-auto mb-4"></div>
-        <p class="text-gray-400">Sprawdzanie linku resetowania...</p>
+        <p class="text-gray-400">{{ $t('auth.validatingToken') }}</p>
       </div>
 
       <!-- Invalid/Expired token state -->
@@ -20,12 +20,12 @@
         <div class="flex items-center gap-2 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400">
           <AlertCircle class="w-5 h-5" />
           <div>
-            <p class="font-medium">Link resetowania jest nieprawidłowy lub wygasł</p>
+            <p class="font-medium">{{ $t('auth.invalidOrExpiredToken') }}</p>
             <p class="text-sm mt-1">{{ tokenError }}</p>
           </div>
         </div>
         <button @click="goToLogin" class="btn btn-outline w-full">
-          Wróć do logowania
+          {{ $t('auth.backToLogin') }}
         </button>
       </div>
 
@@ -34,7 +34,7 @@
         <div>
           <label class="block text-sm font-medium mb-2 text-gray-300">
             <Lock class="w-4 h-4 inline mr-2" />
-            Nowe hasło
+            {{ $t('auth.newPassword') }}
           </label>
           <input
             v-model="newPassword"
@@ -44,13 +44,13 @@
             class="input"
             placeholder="••••••••"
           />
-          <p class="text-xs text-gray-400 mt-1">Minimum 8 znaków</p>
+          <p class="text-xs text-gray-400 mt-1">{{ $t('auth.minPasswordLength') }}</p>
         </div>
 
         <div>
           <label class="block text-sm font-medium mb-2 text-gray-300">
             <Lock class="w-4 h-4 inline mr-2" />
-            Potwierdź nowe hasło
+            {{ $t('auth.confirmNewPassword') }}
           </label>
           <input
             v-model="confirmPassword"
@@ -86,8 +86,8 @@
           <div class="flex items-center gap-2 p-4 rounded-xl bg-green-500/10 border border-green-500/30 text-green-400">
             <CheckCircle class="w-5 h-5" />
             <div class="flex-1">
-              <p class="font-medium">Hasło zostało zmienione!</p>
-              <p class="text-sm mt-1">Możesz teraz przejść do panelu.</p>
+              <p class="font-medium">{{ $t('auth.passwordChanged') }}</p>
+              <p class="text-sm mt-1">{{ $t('auth.redirectToDashboard') }}</p>
             </div>
           </div>
 
@@ -97,7 +97,7 @@
             class="btn btn-outline w-full flex items-center justify-center gap-2"
           >
             <Copy class="w-5 h-5" />
-            {{ passwordCopied ? 'Skopiowano!' : 'Skopiuj hasło' }}
+            {{ passwordCopied ? $t('common.copied') : $t('auth.copyPassword') }}
           </button>
 
           <button
@@ -105,7 +105,7 @@
             @click="goToDashboard"
             class="btn btn-primary w-full"
           >
-            Przejdź do panelu
+            {{ $t('auth.goToDashboard') }}
           </button>
         </div>
 
@@ -117,7 +117,7 @@
         >
           <div v-if="loading" class="loading-spinner"></div>
           <Key v-else class="w-5 h-5" />
-          {{ loading ? 'Resetowanie...' : 'Resetuj hasło' }}
+          {{ loading ? $t('common.resetting') : $t('auth.resetButton') }}
         </button>
 
         <button
@@ -126,7 +126,7 @@
           @click="goToLogin"
           class="btn btn-outline w-full"
         >
-          Anuluj
+          {{ $t('common.cancel') }}
         </button>
       </form>
     </div>
@@ -136,9 +136,12 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '../stores/auth'
 import api from '../api/client'
 import { Key, Lock, AlertCircle, CheckCircle, Copy } from 'lucide-vue-next'
+
+const { t } = useI18n()
 
 const router = useRouter()
 const route = useRoute()
@@ -192,10 +195,10 @@ function getStrengthTextColor(strength) {
 }
 
 function getStrengthText(strength) {
-  if (strength <= 1) return 'Słabe hasło'
-  if (strength === 2) return 'Średnie hasło'
-  if (strength === 3) return 'Dobre hasło'
-  return 'Silne hasło'
+  if (strength <= 1) return t('auth.weakPassword')
+  if (strength === 2) return t('auth.mediumPassword')
+  if (strength === 3) return t('auth.goodPassword')
+  return t('auth.strongPassword')
 }
 
 onMounted(async () => {
@@ -203,7 +206,7 @@ onMounted(async () => {
   token.value = route.query.token
 
   if (!token.value) {
-    tokenError.value = 'Brak tokenu w linku resetowania'
+    tokenError.value = t('errors.noTokenInUrl')
     validatingToken.value = false
     return
   }
@@ -214,19 +217,19 @@ onMounted(async () => {
     validatingToken.value = false
   } catch (err) {
     console.error('Token validation failed:', err)
-    tokenError.value = err.response?.data?.error || 'Token jest nieprawidłowy lub wygasł'
+    tokenError.value = err.response?.data?.error || t('errors.invalidOrExpiredToken')
     validatingToken.value = false
   }
 })
 
 async function handleResetPassword() {
   if (!passwordsMatch.value) {
-    error.value = 'Hasła nie są identyczne'
+    error.value = t('errors.passwordsMismatch')
     return
   }
 
   if (newPassword.value.length < 8) {
-    error.value = 'Hasło musi mieć co najmniej 8 znaków'
+    error.value = t('errors.passwordTooShort')
     return
   }
 
@@ -248,7 +251,7 @@ async function handleResetPassword() {
     success.value = true
   } catch (err) {
     console.error('Password reset failed:', err)
-    error.value = err.response?.data?.error || 'Nie udało się zresetować hasła'
+    error.value = err.response?.data?.error || t('errors.resetPasswordFailed')
   } finally {
     loading.value = false
   }

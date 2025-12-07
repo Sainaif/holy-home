@@ -1,26 +1,33 @@
 <template>
-  <div class="min-h-screen flex items-center justify-center px-4">
+  <div class="min-h-screen flex items-center justify-center px-4 relative">
+    <!-- Language Switcher in top-right corner -->
+    <div class="absolute top-4 right-4">
+      <LanguageSwitcher :showLabel="false" />
+    </div>
+
     <div class="card max-w-md w-full">
       <div class="text-center mb-8">
         <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-600 to-pink-600 mb-4">
           <Home class="w-8 h-8 text-white" />
         </div>
-        <h1 class="text-4xl font-bold gradient-text mb-2">Holy Home</h1>
-        <p class="text-gray-400">Zarządzanie gospodarstwem domowym</p>
+        <h1 class="text-4xl font-bold gradient-text mb-2">{{ appName }}</h1>
+        <p class="text-gray-400">{{ $t('dashboard.overview') }}</p>
       </div>
 
       <form @submit.prevent="handleLogin" class="space-y-5">
         <div>
           <label class="block text-sm font-medium mb-2 text-gray-300">
-            <Mail class="w-4 h-4 inline mr-2" />
-            {{ $t('auth.email') }}
+            <Mail v-if="authConfig.allowEmailLogin && !authConfig.allowUsernameLogin" class="w-4 h-4 inline mr-2" />
+            <User v-else-if="!authConfig.allowEmailLogin && authConfig.allowUsernameLogin" class="w-4 h-4 inline mr-2" />
+            <AtSign v-else class="w-4 h-4 inline mr-2" />
+            {{ identifierLabel }}
           </label>
           <input
-            v-model="email"
-            type="email"
+            v-model="identifier"
+            :type="authConfig.allowEmailLogin && !authConfig.allowUsernameLogin ? 'email' : 'text'"
             required
             class="input"
-            placeholder="admin@example.pl"
+            :placeholder="identifierPlaceholder"
           />
         </div>
 
@@ -55,7 +62,7 @@
             <div class="w-full border-t border-gray-700"></div>
           </div>
           <div class="relative flex justify-center text-sm">
-            <span class="px-2 bg-gray-800 text-gray-400">lub</span>
+            <span class="px-2 bg-gray-800 text-gray-400">{{ $t('auth.or') }}</span>
           </div>
         </div>
 
@@ -67,7 +74,7 @@
           class="btn btn-outline w-full flex items-center justify-center gap-2">
           <div v-if="loading" class="loading-spinner"></div>
           <Key v-else class="w-5 h-5" />
-          {{ loading ? 'Logowanie...' : 'Zaloguj się passkey' }}
+          {{ loading ? $t('common.loading') : $t('auth.passkeyLogin') }}
         </button>
       </form>
     </div>
@@ -75,23 +82,51 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '../stores/auth'
+import { useAppSettingsStore } from '../stores/appSettings'
 import { usePasskey } from '../composables/usePasskey'
-import { Home, Mail, Lock, LogIn, AlertCircle, Key } from 'lucide-vue-next'
+import { Home, Mail, Lock, LogIn, AlertCircle, Key, User, AtSign } from 'lucide-vue-next'
+import LanguageSwitcher from '../components/LanguageSwitcher.vue'
 
 const router = useRouter()
+const { t } = useI18n()
 const authStore = useAuthStore()
+const appSettingsStore = useAppSettingsStore()
 const { checkSupport, loginWithConditionalUI } = usePasskey()
+const authConfig = computed(() => authStore.authConfig)
+const appName = computed(() => appSettingsStore.appName)
 
-const email = ref('')
+const identifier = ref('')
 const password = ref('')
 const loading = ref(false)
 const error = ref('')
 const passkeySupported = ref(false)
 
+const identifierLabel = computed(() => {
+  if (authConfig.value.allowEmailLogin && !authConfig.value.allowUsernameLogin) {
+    return t('auth.email')
+  } else if (!authConfig.value.allowEmailLogin && authConfig.value.allowUsernameLogin) {
+    return t('auth.username')
+  }
+  return t('auth.emailOrUsername')
+})
+
+const identifierPlaceholder = computed(() => {
+  if (authConfig.value.allowEmailLogin && !authConfig.value.allowUsernameLogin) {
+    return 'john@example.com'
+  } else if (!authConfig.value.allowEmailLogin && authConfig.value.allowUsernameLogin) {
+    return 'john_doe'
+  }
+  return t('auth.identifierPlaceholder')
+})
+
 onMounted(async () => {
+  // Fetch auth configuration
+  await authStore.fetchAuthConfig()
+
   const support = await checkSupport()
   passkeySupported.value = support.supported
 
@@ -112,10 +147,10 @@ async function handleLogin() {
   error.value = ''
 
   try {
-    await authStore.login(email.value, password.value)
+    await authStore.login(identifier.value, password.value)
     router.push('/')
   } catch (err) {
-    error.value = err.response?.data?.error || 'Błąd logowania'
+    error.value = err.response?.data?.error || t('auth.loginError')
   } finally {
     loading.value = false
   }
@@ -136,7 +171,7 @@ async function handlePasskeyLogin() {
     await authStore.loadUser()
     router.push('/')
   } catch (err) {
-    error.value = err.message || 'Błąd logowania passkey'
+    error.value = err.message || t('auth.loginError')
   } finally {
     loading.value = false
   }

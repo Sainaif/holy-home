@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -20,13 +21,30 @@ import (
 	"github.com/sainaif/holy-home/internal/utils"
 )
 
+// webAuthnSession wraps session data with expiry time for TTL-based cleanup
+type webAuthnSession struct {
+	data      *webauthn.SessionData
+	expiresAt time.Time
+}
+
+const webAuthnSessionTTL = 5 * time.Minute // Sessions expire after 5 minutes
+
+// emailRegex validates email format (RFC 5322 simplified)
+var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`)
+
+// isValidEmail checks if the email format is valid
+func isValidEmail(email string) bool {
+	return emailRegex.MatchString(email)
+}
+
 type AuthService struct {
 	db             *mongo.Database
 	cfg            *config.Config
 	webAuthn       *webauthn.WebAuthn
-	sessions       map[string]*webauthn.SessionData // In-memory session storage (use Redis in production)
-	sessionsMu     sync.RWMutex                     // Mutex to protect concurrent access to sessions map
+	sessions       map[string]*webAuthnSession // In-memory session storage with TTL
+	sessionsMu     sync.RWMutex                // Mutex to protect concurrent access to sessions map
 	sessionService *SessionService
+	stopCleanup    chan struct{} // Signal to stop cleanup goroutine
 }
 
 func NewAuthService(db *mongo.Database, cfg *config.Config, sessionService *SessionService) *AuthService {
@@ -41,19 +59,54 @@ func NewAuthService(db *mongo.Database, cfg *config.Config, sessionService *Sess
 		fmt.Printf("Warning: Failed to initialize WebAuthn: %v\n", err)
 	}
 
-	return &AuthService{
+	service := &AuthService{
 		db:             db,
 		cfg:            cfg,
 		webAuthn:       wa,
-		sessions:       make(map[string]*webauthn.SessionData),
+		sessions:       make(map[string]*webAuthnSession),
 		sessionService: sessionService,
+		stopCleanup:    make(chan struct{}),
+	}
+
+	// Start session cleanup goroutine
+	go service.cleanupExpiredSessions()
+
+	return service
+}
+
+// cleanupExpiredSessions periodically removes expired WebAuthn sessions
+func (s *AuthService) cleanupExpiredSessions() {
+	ticker := time.NewTicker(1 * time.Minute)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			s.sessionsMu.Lock()
+			now := time.Now()
+			for key, session := range s.sessions {
+				if now.After(session.expiresAt) {
+					delete(s.sessions, key)
+				}
+			}
+			s.sessionsMu.Unlock()
+		case <-s.stopCleanup:
+			return
+		}
 	}
 }
 
+// Close stops the cleanup goroutine (call on shutdown)
+func (s *AuthService) Close() {
+	close(s.stopCleanup)
+}
+
 type LoginRequest struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
-	TOTPCode string `json:"totpCode,omitempty"` // Required if 2FA is enabled for the user
+	Email      string `json:"email"`              // Email for login (if email login is enabled)
+	Username   string `json:"username,omitempty"` // Username for login (if username login is enabled)
+	Identifier string `json:"identifier"`         // Generic identifier - can be email or username
+	Password   string `json:"password"`
+	TOTPCode   string `json:"totpCode,omitempty"` // Required if 2FA is enabled for the user
 }
 
 type TokenResponse struct {
@@ -65,15 +118,42 @@ type TokenResponse struct {
 
 // Login authenticates a user and returns JWT tokens
 func (s *AuthService) Login(ctx context.Context, req LoginRequest, ipAddress, userAgent string) (*TokenResponse, error) {
-	email := strings.TrimSpace(req.Email)
-	if email == "" {
+	// Determine the identifier to use for login
+	// Priority: identifier > email > username
+	identifier := strings.TrimSpace(req.Identifier)
+	if identifier == "" {
+		identifier = strings.TrimSpace(req.Email)
+	}
+	if identifier == "" {
+		identifier = strings.TrimSpace(req.Username)
+	}
+	if identifier == "" {
 		return nil, errors.New("invalid credentials")
 	}
 
-	// Find user by email
+	// Find user by email or username based on config
 	var user models.User
-	findOpts := options.FindOne().SetCollation(caseInsensitiveEmailCollation)
-	err := s.db.Collection("users").FindOne(ctx, bson.M{"email": email}, findOpts).Decode(&user)
+	var err error
+
+	// Check if identifier looks like an email
+	isEmail := isValidEmail(identifier)
+
+	if isEmail && s.cfg.Auth.AllowEmailLogin {
+		// Try to find by email
+		findOpts := options.FindOne().SetCollation(caseInsensitiveEmailCollation)
+		err = s.db.Collection("users").FindOne(ctx, bson.M{"email": identifier}, findOpts).Decode(&user)
+	} else if !isEmail && s.cfg.Auth.AllowUsernameLogin {
+		// Try to find by username (case-insensitive)
+		findOpts := options.FindOne().SetCollation(&options.Collation{Locale: "en", Strength: 2})
+		err = s.db.Collection("users").FindOne(ctx, bson.M{"username": identifier}, findOpts).Decode(&user)
+	} else if isEmail && !s.cfg.Auth.AllowEmailLogin {
+		return nil, errors.New("email login is disabled")
+	} else if !isEmail && !s.cfg.Auth.AllowUsernameLogin {
+		return nil, errors.New("username login is disabled")
+	} else {
+		return nil, errors.New("invalid credentials")
+	}
+
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return nil, errors.New("invalid credentials")
@@ -107,7 +187,10 @@ func (s *AuthService) Login(ctx context.Context, req LoginRequest, ipAddress, us
 		if s.cfg.Auth.TOTPEncryptionKey != "" {
 			decrypted, err := utils.DecryptTOTPSecret(user.TOTPSecret, s.cfg.Auth.TOTPEncryptionKey)
 			if err != nil {
-				// If decryption fails, assume it's an old unencrypted secret
+				// Decryption failed - this could be a legacy unencrypted secret
+				// In production with encryption enabled, this should not happen for new secrets
+				// Log the error for monitoring but allow fallback for migration period
+				fmt.Printf("Warning: TOTP decryption failed for user %s (may be legacy unencrypted secret): %v\n", user.Email, err)
 				decryptedSecret = user.TOTPSecret
 			} else {
 				decryptedSecret = decrypted
@@ -299,9 +382,12 @@ func (s *AuthService) BeginPasskeyRegistration(ctx context.Context, userID primi
 		return nil, fmt.Errorf("failed to begin registration: %w", err)
 	}
 
-	// Store session (in production, use Redis or similar)
+	// Store session with TTL
 	s.sessionsMu.Lock()
-	s.sessions[userID.Hex()] = session
+	s.sessions[userID.Hex()] = &webAuthnSession{
+		data:      session,
+		expiresAt: time.Now().Add(webAuthnSessionTTL),
+	}
 	s.sessionsMu.Unlock()
 
 	return options, nil
@@ -315,11 +401,15 @@ func (s *AuthService) FinishPasskeyRegistration(ctx context.Context, userID prim
 
 	// Get session
 	s.sessionsMu.Lock()
-	session, exists := s.sessions[userID.Hex()]
-	if !exists {
+	sessionWrapper, exists := s.sessions[userID.Hex()]
+	if !exists || time.Now().After(sessionWrapper.expiresAt) {
+		if exists {
+			delete(s.sessions, userID.Hex())
+		}
 		s.sessionsMu.Unlock()
-		return errors.New("session not found")
+		return errors.New("session not found or expired")
 	}
+	session := sessionWrapper.data
 	delete(s.sessions, userID.Hex())
 	s.sessionsMu.Unlock()
 
@@ -388,7 +478,7 @@ func (s *AuthService) BeginPasskeyLogin(ctx context.Context, email string) (*pro
 	}
 
 	if len(user.PasskeyCredentials) == 0 {
-		return nil, errors.New("no passkeys registered")
+		return nil, errors.New("invalid credentials")
 	}
 
 	// Wrap user for WebAuthn
@@ -400,9 +490,12 @@ func (s *AuthService) BeginPasskeyLogin(ctx context.Context, email string) (*pro
 		return nil, fmt.Errorf("failed to begin login: %w", err)
 	}
 
-	// Store session
+	// Store session with TTL
 	s.sessionsMu.Lock()
-	s.sessions[user.ID.Hex()] = session
+	s.sessions[user.ID.Hex()] = &webAuthnSession{
+		data:      session,
+		expiresAt: time.Now().Add(webAuthnSessionTTL),
+	}
 	s.sessionsMu.Unlock()
 
 	return options, nil
@@ -420,10 +513,13 @@ func (s *AuthService) BeginPasskeyDiscoverableLogin(ctx context.Context) (*proto
 		return nil, fmt.Errorf("failed to begin discoverable login: %w", err)
 	}
 
-	// Store session with a temporary key (we'll update it when we know the user)
+	// Store session with a temporary key and TTL
 	sessionKey := fmt.Sprintf("discoverable_%d", time.Now().UnixNano())
 	s.sessionsMu.Lock()
-	s.sessions[sessionKey] = session
+	s.sessions[sessionKey] = &webAuthnSession{
+		data:      session,
+		expiresAt: time.Now().Add(webAuthnSessionTTL),
+	}
 	s.sessionsMu.Unlock()
 
 	// Store the session key in the response (we'll need it to retrieve the session)
@@ -451,11 +547,15 @@ func (s *AuthService) FinishPasskeyLogin(ctx context.Context, email string, resp
 
 	// Get session
 	s.sessionsMu.Lock()
-	session, exists := s.sessions[user.ID.Hex()]
-	if !exists {
+	sessionWrapper, exists := s.sessions[user.ID.Hex()]
+	if !exists || time.Now().After(sessionWrapper.expiresAt) {
+		if exists {
+			delete(s.sessions, user.ID.Hex())
+		}
 		s.sessionsMu.Unlock()
-		return nil, errors.New("session not found")
+		return nil, errors.New("session not found or expired")
 	}
+	session := sessionWrapper.data
 	delete(s.sessions, user.ID.Hex())
 	s.sessionsMu.Unlock()
 
@@ -544,7 +644,7 @@ func (s *AuthService) FinishPasskeyDiscoverableLogin(ctx context.Context, respon
 	s.sessionsMu.Lock()
 	for key, sess := range s.sessions {
 		if len(key) > 13 && key[:13] == "discoverable_" {
-			session = sess
+			session = sess.data
 			sessionKey = key
 			break
 		}

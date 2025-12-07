@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/sainaif/holy-home/internal/middleware"
 	"github.com/sainaif/holy-home/internal/models"
 	"github.com/sainaif/holy-home/internal/services"
 	"github.com/sainaif/holy-home/internal/utils"
@@ -35,8 +36,18 @@ type RecordPaymentRequest struct {
 
 // RecordPayment records a payment made by the current user for a bill
 func (h *PaymentHandler) RecordPayment(c *fiber.Ctx) error {
-	userID := c.Locals("userId").(primitive.ObjectID)
-	userEmail := c.Locals("userEmail").(string)
+	userID, err := middleware.GetUserID(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
+	userEmail, err := middleware.GetUserEmail(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
 
 	var req RecordPaymentRequest
 	if err := c.BodyParser(&req); err != nil {
@@ -159,7 +170,12 @@ func (h *PaymentHandler) GetBillPayments(c *fiber.Ctx) error {
 
 // GetUserPayments returns all payments made by the current user
 func (h *PaymentHandler) GetUserPayments(c *fiber.Ctx) error {
-	userID := c.Locals("userId").(primitive.ObjectID)
+	userID, err := middleware.GetUserID(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
 
 	cursor, err := h.db.Collection("payments").Find(c.Context(), bson.M{"payer_user_id": userID})
 	if err != nil {

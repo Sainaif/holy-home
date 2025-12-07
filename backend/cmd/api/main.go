@@ -90,7 +90,7 @@ func main() {
 	})
 
 	app.Use(cors.New(cors.Config{
-		AllowOrigins:  "*",
+		AllowOrigins:  cfg.App.AllowedOrigins,
 		AllowMethods:  "GET,POST,PUT,PATCH,DELETE,OPTIONS",
 		AllowHeaders:  "Origin, Content-Type, Accept, Authorization, Idempotency-Key, X-Request-ID",
 		ExposeHeaders: "Cache-Control, Pragma, Expires",
@@ -132,6 +132,7 @@ func main() {
 	permissionService := services.NewPermissionService(db.Database)
 	roleService := services.NewRoleService(db.Database)
 	approvalService := services.NewApprovalService(db.Database)
+	appSettingsService := services.NewAppSettingsService(db.Database)
 
 	// Initialize default permissions and roles
 	if err := permissionService.InitializeDefaultPermissions(context.Background()); err != nil {
@@ -143,7 +144,7 @@ func main() {
 	log.Println("Permissions and roles initialized")
 
 	// Initialize handlers
-	authHandler := handlers.NewAuthHandler(authService, userService, auditService)
+	authHandler := handlers.NewAuthHandler(authService, userService, auditService, cfg)
 	sessionHandler := handlers.NewSessionHandler(sessionService)
 	userHandler := handlers.NewUserHandler(userService, auditService, roleService, cfg)
 	groupHandler := handlers.NewGroupHandler(groupService, auditService)
@@ -154,6 +155,7 @@ func main() {
 	supplyHandler := handlers.NewSupplyHandler(supplyService, auditService, eventService)
 	backupHandler := handlers.NewBackupHandler(backupService)
 	eventHandler := handlers.NewEventHandler(eventService)
+	wsHandler := handlers.NewWebSocketHandler(eventService, cfg)
 	exportHandler := handlers.NewExportHandler(exportService)
 	auditHandler := handlers.NewAuditHandler(auditService)
 	roleHandler := handlers.NewRoleHandler(roleService, permissionService, auditService, eventService, userService)
@@ -161,12 +163,14 @@ func main() {
 	notificationHandler := handlers.NewNotificationHandler(notificationService)
 	webPushHandler := handlers.NewWebPushHandler(webPushService)
 	notificationPreferenceHandler := handlers.NewNotificationPreferenceHandler(notificationPreferenceService)
+	appSettingsHandler := handlers.NewAppSettingsHandler(appSettingsService)
 
 	// Helper function to provide RoleService to middleware
 	getRoleService := func() interface{} { return roleService }
 
 	// Authentication routes
 	auth := app.Group("/auth")
+	auth.Get("/config", authHandler.GetAuthConfig) // Public endpoint for auth configuration
 	auth.Post("/login", middleware.RateLimitMiddleware(5, 15*time.Minute), authHandler.Login)
 	auth.Post("/refresh", middleware.RateLimitMiddleware(10, 15*time.Minute), authHandler.Refresh)
 	auth.Post("/enable-2fa", middleware.AuthMiddleware(cfg), authHandler.Enable2FA)
@@ -309,9 +313,14 @@ func main() {
 	// Stats
 	supplies.Get("/stats", middleware.AuthMiddleware(cfg), supplyHandler.GetStats)
 
-	// Events/SSE route
+	// Events/SSE route (legacy - token in URL)
 	events := app.Group("/events")
 	events.Get("/stream", middleware.AuthMiddleware(cfg), eventHandler.StreamEvents)
+
+	// WebSocket route (secure - token sent after connection)
+	ws := app.Group("/ws")
+	ws.Use(wsHandler.UpgradeMiddleware())
+	ws.Get("/events", wsHandler.HandleWebSocket())
 
 	// Export routes
 	exports := app.Group("/exports")
@@ -359,6 +368,12 @@ func main() {
 	exports.Get("/balances", middleware.AuthMiddleware(cfg), exportHandler.ExportBalances)
 	exports.Get("/chores", middleware.AuthMiddleware(cfg), exportHandler.ExportChores)
 	exports.Get("/consumptions", middleware.AuthMiddleware(cfg), exportHandler.ExportConsumptions)
+
+	// App settings routes
+	appSettings := app.Group("/app-settings")
+	appSettings.Get("/", appSettingsHandler.GetSettings)                    // Public - no auth required for branding
+	appSettings.Get("/languages", appSettingsHandler.GetSupportedLanguages) // Public - get supported languages
+	appSettings.Patch("/", middleware.AuthMiddleware(cfg), middleware.RequirePermission("settings.app.update", getRoleService), appSettingsHandler.UpdateSettings)
 
 	// Start password reset token cleanup job
 	go func() {
@@ -513,6 +528,17 @@ func validateConfig(cfg *config.Config) error {
 		if len(cfg.Admin.PasswordHash) < 12 {
 			return fmt.Errorf("ADMIN_PASSWORD is too short (minimum 12 characters required). Use a strong password with letters, numbers, and symbols")
 		}
+	}
+
+	// Validate TOTP encryption key if provided
+	if cfg.Auth.TOTPEncryptionKey != "" {
+		if len(cfg.Auth.TOTPEncryptionKey) != 32 {
+			return fmt.Errorf("TOTP_ENCRYPTION_KEY must be exactly 32 characters (256 bits). Current length: %d. Generate with: openssl rand -base64 24 | head -c 32", len(cfg.Auth.TOTPEncryptionKey))
+		}
+	} else {
+		// Warn if 2FA could be enabled without encryption
+		log.Println("WARNING: TOTP_ENCRYPTION_KEY is not set. TOTP secrets will be stored in PLAINTEXT.")
+		log.Println("WARNING: For production, set TOTP_ENCRYPTION_KEY with: openssl rand -base64 24 | head -c 32")
 	}
 
 	log.Println("Configuration validation passed")

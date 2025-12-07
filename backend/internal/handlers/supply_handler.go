@@ -119,8 +119,12 @@ func (h *SupplyHandler) CreateItem(c *fiber.Ctx) error {
 			"error": "Unauthorized",
 		})
 	}
-
-	userEmail := c.Locals("userEmail").(string)
+	userEmail, err := middleware.GetUserEmail(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
 
 	var req struct {
 		Name            string  `json:"name"`
@@ -175,8 +179,18 @@ func (h *SupplyHandler) CreateItem(c *fiber.Ctx) error {
 
 // UpdateItem updates item details
 func (h *SupplyHandler) UpdateItem(c *fiber.Ctx) error {
-	userID, _ := middleware.GetUserID(c)
-	userEmail := c.Locals("userEmail").(string)
+	userID, err := middleware.GetUserID(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
+	userEmail, err := middleware.GetUserEmail(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
 
 	id := c.Params("id")
 	itemID, err := primitive.ObjectIDFromHex(id)
@@ -235,8 +249,12 @@ func (h *SupplyHandler) RestockItem(c *fiber.Ctx) error {
 			"error": "Unauthorized",
 		})
 	}
-
-	userEmail := c.Locals("userEmail").(string)
+	userEmail, err := middleware.GetUserEmail(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
 
 	var req struct {
 		QuantityToAdd int      `json:"quantityToAdd"`
@@ -353,8 +371,18 @@ func (h *SupplyHandler) MarkAsRefunded(c *fiber.Ctx) error {
 
 // DeleteItem deletes an item
 func (h *SupplyHandler) DeleteItem(c *fiber.Ctx) error {
-	userID, _ := middleware.GetUserID(c)
-	userEmail := c.Locals("userEmail").(string)
+	userID, err := middleware.GetUserID(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
+	userEmail, err := middleware.GetUserEmail(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
 
 	id := c.Params("id")
 	itemID, err := primitive.ObjectIDFromHex(id)

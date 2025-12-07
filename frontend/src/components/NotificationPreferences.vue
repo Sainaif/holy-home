@@ -8,7 +8,7 @@
           <!-- Header -->
           <div class="p-6 border-b border-gray-700">
             <div class="flex items-center justify-between">
-              <h2 class="text-xl font-bold text-white">Ustawienia powiadomień</h2>
+              <h2 class="text-xl font-bold text-white">{{ $t('notifications.settings') }}</h2>
               <button
                 @click="close"
                 class="p-2 hover:bg-gray-700 rounded-lg transition-colors">
@@ -20,7 +20,7 @@
           <!-- Content -->
           <div class="p-6 space-y-4">
             <p class="text-sm text-gray-400 mb-4">
-              Wybierz, które typy powiadomień chcesz otrzymywać
+              {{ $t('notifications.selectTypes') }}
             </p>
 
             <!-- Notification Type Toggles -->
@@ -56,13 +56,13 @@
                 @click="enableAll"
                 class="btn btn-secondary btn-sm flex-1">
                 <Check class="w-4 h-4" />
-                Włącz wszystkie
+                {{ $t('notifications.enableAll') }}
               </button>
               <button
                 @click="disableAll"
                 class="btn btn-outline btn-sm flex-1">
                 <X class="w-4 h-4" />
-                Wyłącz wszystkie
+                {{ $t('notifications.disableAll') }}
               </button>
             </div>
           </div>
@@ -70,11 +70,11 @@
           <!-- Footer -->
           <div class="p-6 border-t border-gray-700 flex justify-end gap-3">
             <button @click="close" class="btn btn-outline">
-              Anuluj
+              {{ $t('common.cancel') }}
             </button>
             <button @click="save" class="btn btn-primary">
               <Save class="w-4 h-4" />
-              Zapisz
+              {{ $t('common.save') }}
             </button>
           </div>
         </div>
@@ -84,9 +84,12 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useNotificationStore } from '../stores/notification'
 import { X, Check, Save, FileText, CheckSquare, ShoppingCart, DollarSign } from 'lucide-vue-next'
+
+const { t } = useI18n()
 
 const props = defineProps({
   isOpen: Boolean
@@ -97,28 +100,28 @@ const emit = defineEmits(['close'])
 const notificationStore = useNotificationStore()
 const localPreferences = ref({ ...notificationStore.preferences })
 
-const notificationTypes = {
+const notificationTypes = computed(() => ({
   bill: {
-    label: 'Rachunki',
-    description: 'Nowe rachunki i odczyty',
+    label: t('notifications.bills'),
+    description: t('notifications.billsDescription'),
     icon: FileText
   },
   chore: {
-    label: 'Obowiązki',
-    description: 'Nowe i zaktualizowane obowiązki',
+    label: t('notifications.chores'),
+    description: t('notifications.choresDescription'),
     icon: CheckSquare
   },
   supply: {
-    label: 'Zaopatrzenie',
-    description: 'Nowe pozycje i zakupy',
+    label: t('notifications.supplies'),
+    description: t('notifications.suppliesDescription'),
     icon: ShoppingCart
   },
   loan: {
-    label: 'Pożyczki',
-    description: 'Nowe pożyczki i spłaty',
+    label: t('notifications.loans'),
+    description: t('notifications.loansDescription'),
     icon: DollarSign
   }
-}
+}))
 
 // Watch for modal opening to reset local state
 watch(() => props.isOpen, (isOpen) => {

@@ -16,29 +16,29 @@
         <div class="flex items-center justify-between h-16">
           <router-link to="/" class="flex items-center space-x-2 hover:opacity-80 transition-opacity">
             <Home class="w-6 h-6 text-purple-400" />
-            <span class="text-xl font-bold gradient-text">Holy Home</span>
+            <span class="text-xl font-bold gradient-text">{{ appSettingsStore.appName }}</span>
           </router-link>
 
           <div class="flex items-center space-x-1">
             <router-link to="/" class="nav-link">
               <LayoutDashboard class="w-4 h-4" />
-              Home
+              {{ $t('nav.home') }}
             </router-link>
             <router-link to="/bills" class="nav-link">
               <Receipt class="w-4 h-4" />
-              Rachunki
+              {{ $t('nav.bills') }}
             </router-link>
             <router-link to="/balance" class="nav-link">
               <Wallet class="w-4 h-4" />
-              Bilans
+              {{ $t('nav.balance') }}
             </router-link>
             <router-link to="/chores" class="nav-link">
               <CheckSquare class="w-4 h-4" />
-              Obowiązki
+              {{ $t('nav.chores') }}
             </router-link>
             <router-link to="/supplies" class="nav-link">
               <ShoppingCart class="w-4 h-4" />
-              Zakupy
+              {{ $t('nav.supplies') }}
             </router-link>
           </div>
 
@@ -72,7 +72,7 @@
             <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center shadow-lg">
               <Home class="w-5 h-5 text-white" />
             </div>
-            <span class="text-lg font-bold gradient-text">Holy Home</span>
+            <span class="text-lg font-bold gradient-text">{{ appSettingsStore.appName }}</span>
           </router-link>
           <div class="flex items-center gap-2">
             <button
@@ -98,6 +98,9 @@
       <router-view />
     </main>
 
+    <!-- Footer -->
+    <AppFooter v-if="authStore.isAuthenticated" class="mb-16 md:mb-0" />
+
     <!-- Mobile Bottom Navigation -->
     <nav
       v-if="authStore.isAuthenticated"
@@ -105,25 +108,25 @@
       role="navigation"
       aria-label="Primary navigation">
       <div class="grid grid-cols-5 px-1 py-1.5">
-        <router-link to="/" class="mobile-nav-link" aria-label="Dashboard">
+        <router-link to="/" class="mobile-nav-link" :aria-label="$t('nav.dashboard')">
           <LayoutDashboard class="w-6 h-6" aria-hidden="true" />
-          <span>Home</span>
+          <span>{{ $t('nav.home') }}</span>
         </router-link>
-        <router-link to="/bills" class="mobile-nav-link" aria-label="Bills">
+        <router-link to="/bills" class="mobile-nav-link" :aria-label="$t('nav.bills')">
           <Receipt class="w-6 h-6" aria-hidden="true" />
-          <span>Rachunki</span>
+          <span>{{ $t('nav.bills') }}</span>
         </router-link>
-        <router-link to="/balance" class="mobile-nav-link" aria-label="Balance overview">
+        <router-link to="/balance" class="mobile-nav-link" :aria-label="$t('nav.balance')">
           <Wallet class="w-6 h-6" aria-hidden="true" />
-          <span>Bilans</span>
+          <span>{{ $t('nav.balance') }}</span>
         </router-link>
-        <router-link to="/chores" class="mobile-nav-link" aria-label="Chores">
+        <router-link to="/chores" class="mobile-nav-link" :aria-label="$t('nav.chores')">
           <CheckSquare class="w-6 h-6" aria-hidden="true" />
-          <span>Obowiązki</span>
+          <span>{{ $t('nav.chores') }}</span>
         </router-link>
-        <router-link to="/supplies" class="mobile-nav-link" aria-label="Supplies">
+        <router-link to="/supplies" class="mobile-nav-link" :aria-label="$t('nav.supplies')">
           <ShoppingCart class="w-6 h-6" aria-hidden="true" />
-          <span>Zakupy</span>
+          <span>{{ $t('nav.supplies') }}</span>
         </router-link>
       </div>
     </nav>
@@ -133,19 +136,24 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from './stores/auth'
 import { useNotificationStore } from './stores/notification'
+import { useAppSettingsStore } from './stores/appSettings'
 import { useVersionCheck } from './composables/useVersionCheck'
 import { useEventStream } from './composables/useEventStream'
 import UpdateBanner from './components/UpdateBanner.vue'
 import NotificationToast from './components/NotificationToast.vue'
 import NotificationHistory from './components/NotificationHistory.vue'
 import NotificationPreferences from './components/NotificationPreferences.vue'
+import AppFooter from './components/AppFooter.vue'
 import { Home, LayoutDashboard, Receipt, Wallet, CheckSquare, ShoppingCart, Settings, LogOut, Bell } from 'lucide-vue-next'
 
 const router = useRouter()
+const { t, locale } = useI18n()
 const authStore = useAuthStore()
 const notificationStore = useNotificationStore()
+const appSettingsStore = useAppSettingsStore()
 const { hasNewVersion, isUpdating } = useVersionCheck()
 const eventStream = useEventStream()
 
@@ -196,133 +204,132 @@ async function handlePermissionUpdate() {
   }
 }
 
-// Translate event types to Polish messages
+// Translate event types using i18n
 function translateEvent(eventType, data) {
+  const billType = translateBillType(data.type || data.billType)
+
   const translations = {
     'bill.created': {
       type: 'bill',
-      title: 'Nowy rachunek',
-      message: `${data.createdBy} dodał rachunek: ${translateBillType(data.type)} - ${data.amount} PLN`,
+      title: t('events.billCreated.title'),
+      message: t('events.billCreatedMessage', { createdBy: data.createdBy, type: billType, amount: data.amount }),
       resourceId: data.billId,
       resourceType: 'bill'
     },
     'bill.posted': {
       type: 'bill',
-      title: 'Opublikowano rachunek',
-      message: `${translateBillType(data.type)} (${data.periodEnd}) - ${formatAmount(data.amount)} PLN - gotowy do rozliczenia`,
+      title: t('events.billPosted.title'),
+      message: t('events.billPostedMessage', { type: billType, periodEnd: data.periodEnd, amount: formatAmount(data.amount) }),
       resourceId: data.billId,
       resourceType: 'bill'
     },
     'consumption.created': {
       type: 'bill',
-      title: 'Nowy odczyt',
-      message: `${data.createdBy} dodał odczyt dla ${translateBillType(data.billType)}: ${data.meterValue}`,
+      title: t('events.consumptionCreated.title'),
+      message: t('events.consumptionCreatedMessage', { createdBy: data.createdBy, billType: translateBillType(data.billType), meterValue: data.meterValue }),
       resourceId: data.billId,
       resourceType: 'bill'
     },
     'chore.updated': {
       type: 'chore',
-      title: data.action === 'created' ? 'Nowy obowiązek' : 'Zaktualizowano obowiązek',
+      title: data.action === 'created' ? t('events.choreCreated.title') : t('events.choreUpdated.title'),
       message: data.name,
       resourceId: data.choreId,
       resourceType: 'chore'
     },
     'chore.assigned': {
       type: 'chore',
-      title: 'Przydzielono obowiązek',
-      message: `Masz nowy obowiązek: ${data.choreName}. Termin: ${formatDueDate(data.dueDate)}`,
+      title: t('events.choreAssigned.title'),
+      message: t('events.choreAssignedMessage', { choreName: data.choreName, dueDate: formatDueDate(data.dueDate) }),
       resourceId: data.choreId,
       resourceType: 'chore'
     },
     'supply.item.added': {
       type: 'supply',
-      title: 'Nowa pozycja',
-      message: `${data.addedBy} dodał: ${data.name} (${data.category})`,
+      title: t('events.supplyItemAdded.title'),
+      message: t('events.supplyItemAddedMessage', { addedBy: data.addedBy, name: data.name, category: data.category }),
       resourceId: data.itemId,
       resourceType: 'supply'
     },
     'loan.created': {
       type: 'loan',
-      title: 'Nowa pożyczka',
-      message: data.message || 'Dodano nową pożyczkę',
+      title: t('events.loanCreated.title'),
+      message: data.message || t('events.loanCreatedMessage'),
       resourceId: data.loanId,
       resourceType: 'loan'
     },
     'loan.payment.created': {
       type: 'loan',
-      title: 'Spłata pożyczki',
-      message: data.message || 'Zarejestrowano spłatę',
+      title: t('events.loanPaymentCreated.title'),
+      message: data.message || t('events.loanPaymentCreatedMessage'),
       resourceId: data.loanId,
       resourceType: 'loan'
     },
     'loan.deleted': {
       type: 'loan',
-      title: 'Usunięto pożyczkę',
-      message: data.message || 'Pożyczka została usunięta',
+      title: t('events.loanDeleted.title'),
+      message: data.message || t('events.loanDeletedMessage'),
       resourceType: 'loan'
     },
     'supply.item.bought': {
       type: 'supply',
-      title: 'Zakupiono produkt',
-      message: `${data.boughtBy} kupił: ${data.name}`,
+      title: t('events.supplyItemBought.title'),
+      message: t('events.supplyItemBoughtMessage', { boughtBy: data.boughtBy, name: data.name }),
       resourceId: data.itemId,
       resourceType: 'supply'
     },
     'supply.budget.contributed': {
       type: 'supply',
-      title: 'Wpłata na budżet',
-      message: `${data.contributedBy} wpłacił ${data.amount} PLN`,
+      title: t('events.supplyBudgetContributed.title'),
+      message: t('events.supplyBudgetContributedMessage', { contributedBy: data.contributedBy, amount: data.amount }),
       resourceType: 'supply'
     },
     'supply.budget.low': {
       type: 'supply',
-      title: 'Niski budżet',
-      message: `Budżet wynosi ${data.currentBudget} PLN`,
+      title: t('events.supplyBudgetLow.title'),
+      message: t('events.supplyBudgetLowMessage', { currentBudget: data.currentBudget }),
       resourceType: 'supply'
     },
     'payment.created': {
       type: 'bill',
-      title: 'Nowa wpłata',
-      message: data.message || 'Zarejestrowano wpłatę',
+      title: t('events.paymentCreated.title'),
+      message: data.message || t('events.paymentCreatedMessage'),
       resourceId: data.billId,
       resourceType: 'bill'
     },
     'balance.updated': {
       type: 'loan',
-      title: 'Zaktualizowano bilans',
-      message: data.message || 'Bilans został zaktualizowany',
+      title: t('events.balanceUpdated.title'),
+      message: data.message || t('events.balanceUpdatedMessage'),
       resourceType: 'loan'
     },
     'permissions.updated': {
       type: 'system',
-      title: 'System',
-      message: data.message || 'Zaktualizowano uprawnienia',
+      title: t('events.permissions.title'),
+      message: data.message || t('events.permissionsUpdatedMessage'),
       skipNotification: true // Don't show this as a notification
     }
   }
 
   return translations[eventType] || {
     type: 'info',
-    title: 'Nowe zdarzenie',
+    title: t('events.unknown.title'),
     message: eventType
   }
 }
 
 function translateBillType(type) {
-  const types = {
-    'electricity': 'Prąd',
-    'gas': 'Gaz',
-    'internet': 'Internet',
-    'water': 'Woda',
-    'inne': 'Inne'
-  }
-  return types[type] || type
+  if (!type) return ''
+  const key = type === 'inne' ? 'other' : type
+  return t(`billTypes.${key}`, type)
 }
 
 function formatDueDate(dateString) {
   if (!dateString) return ''
   const date = new Date(dateString)
-  return date.toLocaleDateString('pl-PL', { day: 'numeric', month: 'short', year: 'numeric' })
+  const localeMap = { 'pl': 'pl-PL', 'en': 'en-US' }
+  const dateLocale = localeMap[locale.value] || 'en-US'
+  return date.toLocaleDateString(dateLocale, { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
 function formatAmount(amountString) {
@@ -415,6 +422,9 @@ function handleSSEEvent(event) {
 }
 
 onMounted(async () => {
+  // Fetch app settings (public, works even when not logged in)
+  await appSettingsStore.fetchSettings()
+
   // Refresh permissions when window gains focus
   window.addEventListener('focus', refreshPermissionsIfNeeded)
 

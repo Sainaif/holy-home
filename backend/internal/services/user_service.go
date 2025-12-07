@@ -33,13 +33,15 @@ func NewUserService(db *mongo.Database, cfg *config.Config) *UserService {
 type CreateUserRequest struct {
 	Name         string              `json:"name"`
 	Email        string              `json:"email"`
-	Role         string              `json:"role"` // ADMIN, RESIDENT
+	Username     string              `json:"username,omitempty"` // Optional username for login
+	Role         string              `json:"role"`               // ADMIN, RESIDENT
 	GroupID      *primitive.ObjectID `json:"groupId,omitempty"`
 	TempPassword *string             `json:"tempPassword,omitempty"`
 }
 
 type UpdateUserRequest struct {
 	Email    *string             `json:"email,omitempty"`
+	Username *string             `json:"username,omitempty"`
 	Name     *string             `json:"name,omitempty"`
 	Role     *string             `json:"role,omitempty"`
 	GroupID  *primitive.ObjectID `json:"groupId,omitempty"`
@@ -53,6 +55,12 @@ func (s *UserService) CreateUser(ctx context.Context, req CreateUserRequest) (*m
 		return nil, errors.New("email is required")
 	}
 	req.Email = email
+
+	// Handle username
+	username := strings.TrimSpace(req.Username)
+	if s.config.Auth.RequireUsername && username == "" {
+		return nil, errors.New("username is required")
+	}
 
 	// Validate role exists
 	roleCount, err := s.db.Collection("roles").CountDocuments(ctx, bson.M{"name": req.Role})
@@ -71,6 +79,18 @@ func (s *UserService) CreateUser(ctx context.Context, req CreateUserRequest) (*m
 	}
 	if count > 0 {
 		return nil, errors.New("user with this email already exists")
+	}
+
+	// Check if username already exists (case-insensitive) if provided
+	if username != "" {
+		usernameCollation := options.Count().SetCollation(&options.Collation{Locale: "en", Strength: 2})
+		usernameCount, err := s.db.Collection("users").CountDocuments(ctx, bson.M{"username": username}, usernameCollation)
+		if err != nil {
+			return nil, fmt.Errorf("database error: %w", err)
+		}
+		if usernameCount > 0 {
+			return nil, errors.New("user with this username already exists")
+		}
 	}
 
 	// Generate password hash
@@ -92,6 +112,7 @@ func (s *UserService) CreateUser(ctx context.Context, req CreateUserRequest) (*m
 	user := models.User{
 		ID:                 primitive.NewObjectID(),
 		Email:              req.Email,
+		Username:           username,
 		Name:               name,
 		PasswordHash:       passwordHash,
 		Role:               req.Role,

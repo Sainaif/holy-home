@@ -614,6 +614,14 @@ func (s *AuthService) DeletePasskey(ctx context.Context, userID primitive.Object
 	return nil
 }
 
+// Logout revokes the session associated with the refresh token
+func (s *AuthService) Logout(ctx context.Context, refreshToken string) error {
+	if s.sessionService != nil {
+		return s.sessionService.RevokeSession(ctx, refreshToken)
+	}
+	return nil
+}
+
 // BootstrapAdmin creates the admin user if it doesn't exist
 func (s *AuthService) BootstrapAdmin(ctx context.Context) error {
 	// Check if admin already exists

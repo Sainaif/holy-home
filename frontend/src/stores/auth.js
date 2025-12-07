@@ -63,8 +63,18 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // logout clears everything
-  function logout() {
+  // logout clears everything and revokes session on server
+  async function logout() {
+    // Try to revoke session on server (fire and forget)
+    if (refreshToken.value) {
+      try {
+        await api.post('/auth/logout', { refreshToken: refreshToken.value })
+      } catch (err) {
+        // Ignore errors - we're logging out anyway
+        console.warn('Failed to revoke session on server:', err)
+      }
+    }
+
     accessToken.value = null
     refreshToken.value = null
     user.value = null

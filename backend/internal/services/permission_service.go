@@ -192,7 +192,7 @@ func (s *RoleService) InitializeDefaultRoles(ctx context.Context) error {
 		return err
 	}
 
-	// Upsert MIESZKANIEC role - only create once, never update
+	// Upsert MIESZKANIEC role - always update permissions to include new ones
 	residentFilter := bson.M{"name": "MIESZKANIEC"}
 	residentUpdate := bson.M{
 		"$setOnInsert": bson.M{
@@ -201,8 +201,10 @@ func (s *RoleService) InitializeDefaultRoles(ctx context.Context) error {
 			"displayName": "Mieszkaniec",
 			"isSystem":    true,
 			"createdAt":   now,
-			"updatedAt":   now,
+		},
+		"$set": bson.M{
 			"permissions": residentPermissions,
+			"updatedAt":   now,
 		},
 	}
 	residentOpts := options.Update().SetUpsert(true)

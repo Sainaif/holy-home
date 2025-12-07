@@ -246,6 +246,13 @@
                 class="btn btn-sm btn-primary">
                 Oznacz jako ukończone
               </button>
+              <button
+                v-if="authStore.hasPermission('chores.delete')"
+                @click="deleteChore(assignment.chore?.id)"
+                :disabled="deletingChoreId === assignment.chore?.id"
+                class="btn btn-sm btn-error">
+                {{ deletingChoreId === assignment.chore?.id ? 'Usuwanie...' : 'Usuń' }}
+              </button>
             </div>
           </div>
         </div>
@@ -270,6 +277,7 @@ const userStats = ref(null)
 const loading = ref(false)
 const loadingLeaderboard = ref(false)
 const creatingChore = ref(false)
+const deletingChoreId = ref(null)
 const showLeaderboard = ref(false)
 const showCreateForm = ref(false)
 
@@ -503,6 +511,28 @@ async function updateStatus(assignmentId, status) {
   } catch (err) {
     console.error('Failed to update chore status:', err)
     alert('Błąd aktualizacji statusu: ' + (err.response?.data?.error || err.message))
+  }
+}
+
+async function deleteChore(choreId) {
+  if (!choreId) return
+  if (!confirm('Czy na pewno chcesz usunąć ten obowiązek? Wszystkie powiązane przypisania również zostaną usunięte.')) return
+
+  deletingChoreId.value = choreId
+  try {
+    const response = await api.delete(`/chores/${choreId}`)
+    if (response.data?.requiresApproval) {
+      alert('Prośba o usunięcie została wysłana do zatwierdzenia.')
+    } else {
+      await loadChores()
+      await loadAssignments()
+      emit(DATA_EVENTS.CHORE_DELETED, { choreId })
+    }
+  } catch (err) {
+    console.error('Failed to delete chore:', err)
+    alert('Błąd usuwania obowiązku: ' + (err.response?.data?.error || err.message))
+  } finally {
+    deletingChoreId.value = null
   }
 }
 

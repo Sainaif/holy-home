@@ -107,3 +107,33 @@ func (h *SessionHandler) DeleteSession(c *fiber.Ctx) error {
 		"message": "Session deleted successfully",
 	})
 }
+
+// DeleteAllSessions deletes all sessions for the current user
+func (h *SessionHandler) DeleteAllSessions(c *fiber.Ctx) error {
+	userID, err := middleware.GetUserID(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
+
+	// Optional: keep current session if specified
+	currentSessionID := c.Query("keepCurrent")
+	var exceptSessionID *primitive.ObjectID
+
+	if currentSessionID != "" {
+		if objID, err := primitive.ObjectIDFromHex(currentSessionID); err == nil {
+			exceptSessionID = &objID
+		}
+	}
+
+	if err := h.sessionService.RevokeAllUserSessions(c.Context(), userID, exceptSessionID); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to revoke sessions",
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"message": "All sessions revoked successfully",
+	})
+}

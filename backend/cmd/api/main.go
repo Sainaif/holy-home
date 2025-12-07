@@ -184,9 +184,13 @@ func main() {
 	auth.Get("/validate-reset-token", authHandler.ValidateResetToken)
 	auth.Post("/reset-password", middleware.RateLimitMiddleware(5, 15*time.Minute), authHandler.ResetPasswordWithToken)
 
+	// Logout route
+	auth.Post("/logout", authHandler.Logout)
+
 	// Session routes
 	sessions := app.Group("/sessions")
 	sessions.Get("/", middleware.AuthMiddleware(cfg), sessionHandler.GetSessions)
+	sessions.Delete("/", middleware.AuthMiddleware(cfg), sessionHandler.DeleteAllSessions)
 	sessions.Patch("/:id", middleware.AuthMiddleware(cfg), sessionHandler.RenameSession)
 	sessions.Delete("/:id", middleware.AuthMiddleware(cfg), sessionHandler.DeleteSession)
 
@@ -372,6 +376,26 @@ func main() {
 			log.Println("Running scheduled password reset token cleanup...")
 			if err := userService.CleanupExpiredResetTokens(context.Background()); err != nil {
 				log.Printf("Error during scheduled cleanup: %v", err)
+			}
+		}
+	}()
+
+	// Start session cleanup job
+	go func() {
+		ticker := time.NewTicker(1 * time.Hour)
+		defer ticker.Stop()
+
+		// Run cleanup immediately on startup
+		log.Println("Running initial session cleanup...")
+		if err := sessionService.CleanupExpiredSessions(context.Background()); err != nil {
+			log.Printf("Error during initial session cleanup: %v", err)
+		}
+
+		// Run cleanup every hour
+		for range ticker.C {
+			log.Println("Running scheduled session cleanup...")
+			if err := sessionService.CleanupExpiredSessions(context.Background()); err != nil {
+				log.Printf("Error during scheduled session cleanup: %v", err)
 			}
 		}
 	}()

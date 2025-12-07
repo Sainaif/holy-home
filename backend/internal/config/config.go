@@ -57,12 +57,12 @@ type LogConfig struct {
 }
 
 func Load() (*Config, error) {
-	accessTTL, err := time.ParseDuration(getEnv("JWT_ACCESS_TTL", "24h"))
+	accessTTL, err := time.ParseDuration(getEnv("JWT_ACCESS_TTL", "15m"))
 	if err != nil {
 		return nil, fmt.Errorf("invalid JWT_ACCESS_TTL: %w", err)
 	}
 
-	refreshTTL, err := time.ParseDuration(getEnv("JWT_REFRESH_TTL", "8760h"))
+	refreshTTL, err := time.ParseDuration(getEnv("JWT_REFRESH_TTL", "720h")) // 30 days
 	if err != nil {
 		return nil, fmt.Errorf("invalid JWT_REFRESH_TTL: %w", err)
 	}

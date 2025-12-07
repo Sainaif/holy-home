@@ -211,13 +211,18 @@ func (s *UserService) UpdateUser(ctx context.Context, userID primitive.ObjectID,
 	}
 
 	if req.GroupID != nil {
-		log.Printf("[DEBUG] GroupID is not nil: %v, IsZero: %v", *req.GroupID, req.GroupID.IsZero())
 		if req.GroupID.IsZero() {
 			// Zero ObjectID means remove the group
-			log.Printf("[DEBUG] Adding group_id to unset")
 			unset["group_id"] = ""
 		} else {
-			log.Printf("[DEBUG] Setting group_id to %v", *req.GroupID)
+			// Verify group exists before assigning
+			groupCount, err := s.db.Collection("groups").CountDocuments(ctx, bson.M{"_id": *req.GroupID})
+			if err != nil {
+				return fmt.Errorf("database error checking group: %w", err)
+			}
+			if groupCount == 0 {
+				return errors.New("invalid group: group does not exist")
+			}
 			update["group_id"] = *req.GroupID
 		}
 	}

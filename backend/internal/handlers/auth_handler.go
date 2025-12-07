@@ -532,3 +532,40 @@ func (h *AuthHandler) ResetPasswordWithToken(c *fiber.Ctx) error {
 		"message":      "Password reset successfully",
 	})
 }
+
+// Logout godoc
+// @Summary Logout
+// @Description Revoke the current session's refresh token
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param request body map[string]string true "Refresh token"
+// @Success 200 {object} map[string]string
+// @Router /auth/logout [post]
+func (h *AuthHandler) Logout(c *fiber.Ctx) error {
+	var req struct {
+		RefreshToken string `json:"refreshToken"`
+	}
+
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid request body",
+		})
+	}
+
+	if req.RefreshToken == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Refresh token is required",
+		})
+	}
+
+	// Revoke the session (best effort - don't fail if session doesn't exist)
+	if err := h.authService.Logout(c.Context(), req.RefreshToken); err != nil {
+		// Log but don't fail - session may already be expired/deleted
+		fmt.Printf("Warning: Failed to revoke session during logout: %v\n", err)
+	}
+
+	return c.JSON(fiber.Map{
+		"message": "Logged out successfully",
+	})
+}

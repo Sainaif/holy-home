@@ -176,6 +176,16 @@
             </div>
           </div>
         </div>
+
+        <!-- Revoke all sessions button -->
+        <div v-if="sessions.length > 1" class="pt-4 border-t border-gray-700">
+          <button
+            @click="revokeAllSessions"
+            :disabled="revokingAllSessions"
+            class="btn btn-secondary w-full">
+            {{ revokingAllSessions ? 'Wylogowywanie...' : 'Wyloguj ze wszystkich urządzeń' }}
+          </button>
+        </div>
       </div>
     </div>
 
@@ -1105,6 +1115,7 @@ const sessions = ref([])
 const loadingSessions = ref(false)
 const showRenameSessionModal = ref(false)
 const renamingSession = ref(false)
+const revokingAllSessions = ref(false)
 const renameSessionForm = ref({
   id: '',
   name: ''
@@ -1495,13 +1506,14 @@ async function addUserToGroup() {
   groupUserError.value = ''
 
   try {
-    await api.patch(`/users/${userToAdd.value}`, {
+    const addedUserId = userToAdd.value
+    await api.patch(`/users/${addedUserId}`, {
       groupId: selectedGroup.value.id
     })
 
     await loadUsers()
     userToAdd.value = ''
-    emit(DATA_EVENTS.USER_UPDATED, { userId: userToAdd.value })
+    emit(DATA_EVENTS.USER_UPDATED, { userId: addedUserId })
   } catch (err) {
     groupUserError.value = err.response?.data?.error || 'Nie udało się dodać użytkownika do grupy'
   } finally {
@@ -1515,8 +1527,9 @@ async function removeUserFromGroup(userId) {
   groupUserError.value = ''
 
   try {
+    // Send zero ObjectID to signal group removal
     await api.patch(`/users/${userId}`, {
-      groupId: '000000000000000000000000' // Zero ObjectID to remove group
+      groupId: '000000000000000000000000'
     })
 
     await loadUsers()
@@ -1732,6 +1745,22 @@ async function deleteSession(sessionId) {
   } catch (err) {
     console.error('Failed to delete session:', err)
     alert('Nie udało się usunąć sesji')
+  }
+}
+
+async function revokeAllSessions() {
+  if (!confirm('Czy na pewno chcesz wylogować się ze wszystkich urządzeń? Zostaniesz wylogowany również z tego urządzenia.')) return
+
+  revokingAllSessions.value = true
+  try {
+    await api.delete('/sessions')
+    authStore.logout()
+    router.push('/login')
+  } catch (err) {
+    console.error('Failed to revoke all sessions:', err)
+    alert('Nie udało się wylogować ze wszystkich urządzeń')
+  } finally {
+    revokingAllSessions.value = false
   }
 }
 

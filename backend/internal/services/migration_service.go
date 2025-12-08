@@ -851,6 +851,26 @@ func (s *MigrationService) ImportFromJSON(ctx context.Context, jsonData []byte, 
 		return result, err
 	}
 
+	// Re-initialize default permissions and roles after clearing tables
+	// This is critical because the migration clears the permissions/roles tables
+	if clearExisting {
+		// Initialize default permissions
+		permissionService := NewPermissionService(s.repos.Permissions)
+		if err := permissionService.InitializeDefaultPermissions(ctx); err != nil {
+			result.Warnings = append(result.Warnings, fmt.Sprintf("re-initializing permissions: %v", err))
+		} else {
+			result.RecordsMigrated["permissions_initialized"] = 1
+		}
+
+		// Initialize default roles
+		roleService := NewRoleService(s.repos.Roles, s.repos.Users)
+		if err := roleService.InitializeDefaultRoles(ctx); err != nil {
+			result.Warnings = append(result.Warnings, fmt.Sprintf("re-initializing roles: %v", err))
+		} else {
+			result.RecordsMigrated["roles_initialized"] = 1
+		}
+	}
+
 	result.Success = len(result.Errors) == 0
 	result.CompletedAt = time.Now()
 	return result, nil

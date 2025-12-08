@@ -174,12 +174,12 @@ If you're upgrading from an older MongoDB-based version:
 3. **Import the backup:**
    ```bash
    # Login to get token
-   TOKEN=$(curl -s -X POST http://localhost:16161/auth/login \
+   TOKEN=$(curl -s -X POST http://localhost:16161/api/auth/login \
      -H "Content-Type: application/json" \
      -d '{"email":"admin@example.com","password":"yourpassword"}' | jq -r '.accessToken')
 
    # Import backup (use ?overwrite=true to clear bootstrap admin)
-   curl -X POST "http://localhost:16161/migrate/import?overwrite=true" \
+   curl -X POST "http://localhost:16161/api/migrate/import?overwrite=true" \
      -H "Authorization: Bearer $TOKEN" \
      -H "Content-Type: application/json" \
      --data-binary @backup.json

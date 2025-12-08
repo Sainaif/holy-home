@@ -171,8 +171,11 @@ func main() {
 	// Helper function to provide RoleService to middleware
 	getRoleService := func() interface{} { return roleService }
 
+	// API routes group - all API endpoints under /api
+	api := app.Group("/api")
+
 	// Authentication routes
-	auth := app.Group("/auth")
+	auth := api.Group("/auth")
 	auth.Get("/config", authHandler.GetAuthConfig) // Public endpoint for auth configuration
 	auth.Post("/login", middleware.RateLimitMiddleware(5, 15*time.Minute), authHandler.Login)
 	auth.Post("/refresh", middleware.RateLimitMiddleware(10, 15*time.Minute), authHandler.Refresh)
@@ -195,14 +198,14 @@ func main() {
 	auth.Post("/logout", authHandler.Logout)
 
 	// Session routes
-	sessions := app.Group("/sessions")
+	sessions := api.Group("/sessions")
 	sessions.Get("/", middleware.AuthMiddleware(cfg), sessionHandler.GetSessions)
 	sessions.Delete("/", middleware.AuthMiddleware(cfg), sessionHandler.DeleteAllSessions)
 	sessions.Patch("/:id", middleware.AuthMiddleware(cfg), sessionHandler.RenameSession)
 	sessions.Delete("/:id", middleware.AuthMiddleware(cfg), sessionHandler.DeleteSession)
 
 	// User routes
-	users := app.Group("/users")
+	users := api.Group("/users")
 	users.Get("/", middleware.AuthMiddleware(cfg), middleware.RequirePermission("users.read", getRoleService), userHandler.GetUsers)
 	users.Post("/", middleware.AuthMiddleware(cfg), middleware.RequirePermission("users.create", getRoleService), userHandler.CreateUser)
 	users.Get("/me", middleware.AuthMiddleware(cfg), userHandler.GetMe)
@@ -214,7 +217,7 @@ func main() {
 	users.Post("/:id/generate-reset-link", middleware.AuthMiddleware(cfg), middleware.RequirePermission("users.update", getRoleService), userHandler.GeneratePasswordResetLink)
 
 	// Group routes
-	groups := app.Group("/groups")
+	groups := api.Group("/groups")
 	groups.Get("/", middleware.AuthMiddleware(cfg), groupHandler.GetGroups)
 	groups.Post("/", middleware.AuthMiddleware(cfg), middleware.RequirePermission("groups.create", getRoleService), groupHandler.CreateGroup)
 	groups.Get("/:id", middleware.AuthMiddleware(cfg), groupHandler.GetGroup)
@@ -222,7 +225,7 @@ func main() {
 	groups.Delete("/:id", middleware.AuthMiddleware(cfg), middleware.RequirePermission("groups.delete", getRoleService), groupHandler.DeleteGroup)
 
 	// Bill routes
-	bills := app.Group("/bills")
+	bills := api.Group("/bills")
 	bills.Post("/", middleware.AuthMiddleware(cfg), middleware.RequirePermission("bills.create", getRoleService), billHandler.CreateBill)
 	bills.Get("/", middleware.AuthMiddleware(cfg), billHandler.GetBills)
 	bills.Get("/:id", middleware.AuthMiddleware(cfg), billHandler.GetBill)
@@ -234,14 +237,14 @@ func main() {
 	bills.Get("/:id/payment-status", middleware.AuthMiddleware(cfg), billHandler.GetBillPaymentStatus)
 
 	// Consumption routes
-	consumptions := app.Group("/consumptions")
+	consumptions := api.Group("/consumptions")
 	consumptions.Post("/", middleware.AuthMiddleware(cfg), billHandler.CreateConsumption)
 	consumptions.Get("/", middleware.AuthMiddleware(cfg), billHandler.GetConsumptions)
 	consumptions.Delete("/:id", middleware.AuthMiddleware(cfg), middleware.RequirePermission("readings.delete", getRoleService), billHandler.DeleteConsumption)
 	consumptions.Post("/:id/mark-invalid", middleware.AuthMiddleware(cfg), billHandler.MarkConsumptionInvalid)
 
 	// Recurring bill routes
-	recurringBills := app.Group("/recurring-bills")
+	recurringBills := api.Group("/recurring-bills")
 	recurringBills.Post("/", middleware.AuthMiddleware(cfg), middleware.RequirePermission("bills.create", getRoleService), recurringBillHandler.CreateRecurringBillTemplate)
 	recurringBills.Get("/", middleware.AuthMiddleware(cfg), recurringBillHandler.GetRecurringBillTemplates)
 	recurringBills.Get("/:id", middleware.AuthMiddleware(cfg), recurringBillHandler.GetRecurringBillTemplate)
@@ -250,13 +253,13 @@ func main() {
 	recurringBills.Post("/generate", middleware.AuthMiddleware(cfg), middleware.RequirePermission("bills.create", getRoleService), recurringBillHandler.GenerateRecurringBills)
 
 	// Payment routes
-	payments := app.Group("/payments")
+	payments := api.Group("/payments")
 	payments.Post("/", middleware.AuthMiddleware(cfg), paymentHandler.RecordPayment)
 	payments.Get("/me", middleware.AuthMiddleware(cfg), paymentHandler.GetUserPayments)
 	payments.Get("/bill/:billId", middleware.AuthMiddleware(cfg), paymentHandler.GetBillPayments)
 
 	// Loan routes
-	loans := app.Group("/loans")
+	loans := api.Group("/loans")
 	loans.Post("/", middleware.AuthMiddleware(cfg), middleware.RequirePermission("loans.create", getRoleService), loanHandler.CreateLoan)
 	loans.Post("/compensate", middleware.AuthMiddleware(cfg), middleware.RequirePermission("loans.create", getRoleService), loanHandler.CompensateLoan)
 	loans.Get("/", middleware.AuthMiddleware(cfg), middleware.RequirePermission("loans.read", getRoleService), loanHandler.GetLoans)
@@ -267,11 +270,11 @@ func main() {
 	loans.Delete("/:id", middleware.AuthMiddleware(cfg), middleware.RequirePermission("loans.delete", getRoleService), loanHandler.DeleteLoan)
 
 	// Loan payment routes
-	loanPayments := app.Group("/loan-payments")
+	loanPayments := api.Group("/loan-payments")
 	loanPayments.Post("/", middleware.AuthMiddleware(cfg), middleware.RequirePermission("loan-payments.create", getRoleService), loanHandler.CreateLoanPayment)
 
 	// Chore routes
-	chores := app.Group("/chores")
+	chores := api.Group("/chores")
 	chores.Post("/", middleware.AuthMiddleware(cfg), middleware.RequirePermission("chores.create", getRoleService), choreHandler.CreateChore)
 	chores.Get("/", middleware.AuthMiddleware(cfg), choreHandler.GetChores)
 	chores.Get("/with-assignments", middleware.AuthMiddleware(cfg), choreHandler.GetChoresWithAssignments)
@@ -282,16 +285,16 @@ func main() {
 	chores.Post("/:id/auto-assign", middleware.AuthMiddleware(cfg), middleware.RequirePermission("chores.assign", getRoleService), choreHandler.AutoAssignChore)
 
 	// Chore assignment routes
-	choreAssignments := app.Group("/chore-assignments")
+	choreAssignments := api.Group("/chore-assignments")
 	choreAssignments.Get("/", middleware.AuthMiddleware(cfg), choreHandler.GetChoreAssignments)
 	choreAssignments.Get("/me", middleware.AuthMiddleware(cfg), choreHandler.GetMyChoreAssignments)
 	choreAssignments.Patch("/:id", middleware.AuthMiddleware(cfg), choreHandler.UpdateChoreAssignment)
 
 	// Chore leaderboard
-	app.Get("/chores/leaderboard", middleware.AuthMiddleware(cfg), choreHandler.GetUserLeaderboard)
+	api.Get("/chores/leaderboard", middleware.AuthMiddleware(cfg), choreHandler.GetUserLeaderboard)
 
 	// Supply routes
-	supplies := app.Group("/supplies")
+	supplies := api.Group("/supplies")
 
 	// Settings
 	supplies.Get("/settings", middleware.AuthMiddleware(cfg), supplyHandler.GetSettings)
@@ -316,44 +319,44 @@ func main() {
 	supplies.Get("/stats", middleware.AuthMiddleware(cfg), supplyHandler.GetStats)
 
 	// Events/SSE route (legacy - token in URL)
-	events := app.Group("/events")
+	events := api.Group("/events")
 	events.Get("/stream", middleware.AuthMiddleware(cfg), eventHandler.StreamEvents)
 
 	// WebSocket route (secure - token sent after connection)
-	ws := app.Group("/ws")
+	ws := api.Group("/ws")
 	ws.Use(wsHandler.UpgradeMiddleware())
 	ws.Get("/events", wsHandler.HandleWebSocket())
 
 	// Export routes
-	exports := app.Group("/exports")
+	exports := api.Group("/exports")
 	exports.Get("/bills", middleware.AuthMiddleware(cfg), exportHandler.ExportBills)
 	exports.Get("/balances", middleware.AuthMiddleware(cfg), exportHandler.ExportBalances)
 	exports.Get("/chores", middleware.AuthMiddleware(cfg), exportHandler.ExportChores)
 	exports.Get("/consumptions", middleware.AuthMiddleware(cfg), exportHandler.ExportConsumptions)
 
 	// Audit log routes
-	audit := app.Group("/audit")
+	audit := api.Group("/audit")
 	audit.Get("/logs", middleware.AuthMiddleware(cfg), middleware.RequirePermission("audit.read", getRoleService), auditHandler.GetLogs)
 
 	// Role and permission routes
-	roles := app.Group("/roles")
+	roles := api.Group("/roles")
 	roles.Get("/", middleware.AuthMiddleware(cfg), middleware.RequirePermission("roles.read", getRoleService), roleHandler.GetAllRoles)
 	roles.Post("/", middleware.AuthMiddleware(cfg), middleware.RequirePermission("roles.create", getRoleService), roleHandler.CreateRole)
 	roles.Patch("/:id", middleware.AuthMiddleware(cfg), middleware.RequirePermission("roles.update", getRoleService), roleHandler.UpdateRole)
 	roles.Delete("/:id", middleware.AuthMiddleware(cfg), middleware.RequirePermission("roles.delete", getRoleService), roleHandler.DeleteRole)
 
-	permissions := app.Group("/permissions")
+	permissions := api.Group("/permissions")
 	permissions.Get("/", middleware.AuthMiddleware(cfg), middleware.RequirePermission("roles.read", getRoleService), roleHandler.GetAllPermissions)
 
 	// Approval routes
-	approvals := app.Group("/approvals")
+	approvals := api.Group("/approvals")
 	approvals.Get("/pending", middleware.AuthMiddleware(cfg), middleware.RequirePermission("approvals.review", getRoleService), approvalHandler.GetPendingRequests)
 	approvals.Get("/", middleware.AuthMiddleware(cfg), middleware.RequirePermission("approvals.review", getRoleService), approvalHandler.GetAllRequests)
 	approvals.Post("/:id/approve", middleware.AuthMiddleware(cfg), middleware.RequirePermission("approvals.review", getRoleService), approvalHandler.ApproveRequest)
 	approvals.Post("/:id/reject", middleware.AuthMiddleware(cfg), middleware.RequirePermission("approvals.review", getRoleService), approvalHandler.RejectRequest)
 
 	// Notification routes
-	notifications := app.Group("/notifications")
+	notifications := api.Group("/notifications")
 	notifications.Get("/", middleware.AuthMiddleware(cfg), notificationHandler.GetNotifications)
 	notifications.Post("/:id/read", middleware.AuthMiddleware(cfg), notificationHandler.MarkNotificationAsRead)
 	notifications.Post("/read-all", middleware.AuthMiddleware(cfg), notificationHandler.MarkAllNotificationsAsRead)
@@ -361,18 +364,18 @@ func main() {
 	notifications.Put("/preferences", middleware.AuthMiddleware(cfg), notificationPreferenceHandler.UpdatePreferences)
 
 	// Web push routes
-	webPush := app.Group("/web-push")
+	webPush := api.Group("/web-push")
 	webPush.Post("/subscribe", middleware.AuthMiddleware(cfg), webPushHandler.CreateSubscription)
 	webPush.Get("/subscriptions", middleware.AuthMiddleware(cfg), webPushHandler.GetSubscriptions)
 	webPush.Delete("/unsubscribe", middleware.AuthMiddleware(cfg), webPushHandler.DeleteSubscription)
 
 	// Backup routes
-	backup := app.Group("/backup")
+	backup := api.Group("/backup")
 	backup.Get("/export", middleware.AuthMiddleware(cfg), middleware.RequirePermission("backup.export", getRoleService), backupHandler.ExportBackup)
 	backup.Post("/import", middleware.AuthMiddleware(cfg), middleware.RequirePermission("backup.import", getRoleService), backupHandler.ImportBackup)
 
 	// App settings routes
-	appSettings := app.Group("/app-settings")
+	appSettings := api.Group("/app-settings")
 	appSettings.Get("/", appSettingsHandler.GetSettings)                    // Public - no auth required for branding
 	appSettings.Get("/languages", appSettingsHandler.GetSupportedLanguages) // Public - get supported languages
 	appSettings.Patch("/", middleware.AuthMiddleware(cfg), middleware.RequirePermission("settings.app.update", getRoleService), appSettingsHandler.UpdateSettings)
@@ -385,7 +388,7 @@ func main() {
 		migrationService := services.NewMigrationService(sqliteDB.DB, repos)
 		migrationHandler := handlers.NewMigrationHandler(migrationService)
 
-		migrate := app.Group("/migrate")
+		migrate := api.Group("/migrate")
 		migrate.Get("/status", migrationHandler.GetMigrationStatus)
 		migrate.Post("/import", middleware.AuthMiddleware(cfg), middleware.RequirePermission("backup.import", getRoleService), migrationHandler.ImportFromMongoDB)
 	}

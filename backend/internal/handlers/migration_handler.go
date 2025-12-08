@@ -41,15 +41,15 @@ func (h *MigrationHandler) ImportFromMongoDB(c *fiber.Ctx) error {
 		})
 	}
 
+	// Check overwrite flag
+	allowOverwrite := c.Query("overwrite", "false") == "true"
+
 	// Warn if there's existing data but allow override with query param
-	if status.HasExistingData {
-		allowOverwrite := c.Query("overwrite", "false")
-		if allowOverwrite != "true" {
-			return c.Status(fiber.StatusConflict).JSON(fiber.Map{
-				"error":           "Database already contains data. Use ?overwrite=true to proceed.",
-				"hasExistingData": true,
-			})
-		}
+	if status.HasExistingData && !allowOverwrite {
+		return c.Status(fiber.StatusConflict).JSON(fiber.Map{
+			"error":           "Database already contains data. Use ?overwrite=true to proceed (this will clear existing data).",
+			"hasExistingData": true,
+		})
 	}
 
 	// Read the uploaded JSON file
@@ -60,8 +60,8 @@ func (h *MigrationHandler) ImportFromMongoDB(c *fiber.Ctx) error {
 		})
 	}
 
-	// Perform the migration
-	result, err := h.migrationService.ImportFromJSON(c.Context(), jsonData)
+	// Perform the migration (clear existing data if overwrite is requested)
+	result, err := h.migrationService.ImportFromJSON(c.Context(), jsonData, allowOverwrite)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error":  err.Error(),

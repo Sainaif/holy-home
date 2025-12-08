@@ -447,7 +447,7 @@ func (s *MigrationService) ImportFromBackup(ctx context.Context, backup *BackupD
 }
 
 // ImportFromJSON imports data from a JSON backup file (handles MongoDB extended JSON format)
-func (s *MigrationService) ImportFromJSON(ctx context.Context, jsonData []byte) (*MigrationResult, error) {
+func (s *MigrationService) ImportFromJSON(ctx context.Context, jsonData []byte, clearExisting bool) (*MigrationResult, error) {
 	// Try parsing as MongoDB extended JSON format
 	var mongoBackup mongoBackupData
 	if err := json.Unmarshal(jsonData, &mongoBackup); err != nil {
@@ -466,6 +466,29 @@ func (s *MigrationService) ImportFromJSON(ctx context.Context, jsonData []byte) 
 		return result, err
 	}
 	defer tx.Rollback()
+
+	// Clear existing data if requested (for overwrite mode)
+	if clearExisting {
+		// Order matters: delete in reverse dependency order
+		tables := []string{
+			"supply_contributions", "supply_items", "supply_settings",
+			"notifications", "notification_preferences", "web_push_subscriptions",
+			"chore_settings", "chore_assignments", "chores",
+			"loan_payments", "loans",
+			"payments", "allocations", "consumptions", "bills",
+			"recurring_bill_allocations", "recurring_bill_templates",
+			"passkey_credentials", "sessions", "password_reset_tokens",
+			"audit_logs", "approval_requests",
+			"users", "groups",
+			"migration_metadata",
+		}
+		for _, table := range tables {
+			if _, err := tx.ExecContext(ctx, fmt.Sprintf("DELETE FROM %s", table)); err != nil {
+				// Ignore errors for tables that might not exist
+				result.Warnings = append(result.Warnings, fmt.Sprintf("clearing %s: %v", table, err))
+			}
+		}
+	}
 
 	// Import in dependency order
 

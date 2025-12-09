@@ -21,7 +21,7 @@
     "loginError": "Login error",
     "or": "or",
     "passkeyLogin": "Log in with passkey",
-    "identifierPlaceholder": "john@example.com or john_doe",
+    "identifierPlaceholder": "john{'@'}example.com or john_doe",
     "resetPasswordTitle": "Reset Password",
     "resetPasswordDescription": "Set a new password for your account",
     "validatingToken": "Validating reset link...",

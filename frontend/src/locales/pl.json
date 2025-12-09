@@ -21,7 +21,7 @@
     "loginError": "Błąd logowania",
     "or": "lub",
     "passkeyLogin": "Zaloguj się passkey",
-    "identifierPlaceholder": "jan@example.com lub jan_kowalski",
+    "identifierPlaceholder": "jan{'@'}example.com lub jan_kowalski",
     "resetPasswordTitle": "Resetowanie hasła",
     "resetPasswordDescription": "Ustaw nowe hasło dla swojego konta",
     "validatingToken": "Sprawdzanie linku resetowania...",

@@ -156,39 +156,6 @@ cp ./data/holyhome.db ./backup.db
 
 ---
 
-## Migrating from MongoDB (v1.4 and earlier)
-
-If you're upgrading from an older MongoDB-based version:
-
-1. **Export backup from old instance:**
-   - Login to old Holy Home
-   - Go to Settings → Backup → Export
-
-2. **Start new instance with migration mode:**
-   ```yaml
-   environment:
-     MIGRATION_MODE: "true"
-     # ... other required variables
-   ```
-
-3. **Import the backup:**
-   ```bash
-   # Login to get token
-   TOKEN=$(curl -s -X POST http://localhost:16161/api/auth/login \
-     -H "Content-Type: application/json" \
-     -d '{"email":"admin@example.com","password":"yourpassword"}' | jq -r '.accessToken')
-
-   # Import backup (use ?overwrite=true to clear bootstrap admin)
-   curl -X POST "http://localhost:16161/api/migrate/import?overwrite=true" \
-     -H "Authorization: Bearer $TOKEN" \
-     -H "Content-Type: application/json" \
-     --data-binary @backup.json
-   ```
-
-4. **Restart without migration mode** (remove `MIGRATION_MODE` or set to `false`)
-
----
-
 ## Production Checklist
 
 - [ ] Set `APP_DOMAIN` to your actual domain (required for WebAuthn/passkeys)

@@ -7,15 +7,13 @@ import (
 )
 
 type Config struct {
-	App           AppConfig
-	JWT           JWTConfig
-	Admin         AdminConfig
-	Auth          AuthConfig
-	Mongo         MongoConfig
-	SQLite        SQLiteConfig
-	Logging       LogConfig
-	VAPID         VAPIDConfig
-	MigrationMode bool // v1.5 bridge release: enables MongoDB->SQLite migration UI
+	App     AppConfig
+	JWT     JWTConfig
+	Admin   AdminConfig
+	Auth    AuthConfig
+	SQLite  SQLiteConfig
+	Logging LogConfig
+	VAPID   VAPIDConfig
 }
 
 type VAPIDConfig struct {
@@ -53,11 +51,6 @@ type AuthConfig struct {
 	AllowUsernameLogin bool // Allow login with username (default: false)
 	// Registration options
 	RequireUsername bool // Require username during registration (default: false)
-}
-
-type MongoConfig struct {
-	URI      string
-	Database string
 }
 
 type SQLiteConfig struct {
@@ -107,10 +100,6 @@ func Load() (*Config, error) {
 			AllowUsernameLogin: getEnv("AUTH_ALLOW_USERNAME_LOGIN", "false") == "true",
 			RequireUsername:    getEnv("AUTH_REQUIRE_USERNAME", "false") == "true",
 		},
-		Mongo: MongoConfig{
-			URI:      getEnv("MONGO_URI", "mongodb://localhost:27017"),
-			Database: getEnv("MONGO_DB", "holyhome"),
-		},
 		SQLite: SQLiteConfig{
 			DatabasePath: getEnv("DATABASE_PATH", "./holyhome.db"),
 		},
@@ -122,7 +111,6 @@ func Load() (*Config, error) {
 			PublicKey:  getEnv("VAPID_PUBLIC_KEY", ""),
 			PrivateKey: getEnv("VAPID_PRIVATE_KEY", ""),
 		},
-		MigrationMode: getEnv("MIGRATION_MODE", "false") == "true",
 	}, nil
 }
 

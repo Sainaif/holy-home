@@ -79,10 +79,6 @@
       </form>
     </div>
 
-    <!-- Migration Panel (shown when MIGRATION_MODE is enabled) -->
-    <div class="max-w-md w-full mt-6 shrink-0">
-      <MigrationPanel />
-    </div>
   </div>
 </template>
 
@@ -95,7 +91,6 @@ import { useAppSettingsStore } from '../stores/appSettings'
 import { usePasskey } from '../composables/usePasskey'
 import { Home, Mail, Lock, LogIn, AlertCircle, Key, User, AtSign } from 'lucide-vue-next'
 import LanguageSwitcher from '../components/LanguageSwitcher.vue'
-import MigrationPanel from '../components/MigrationPanel.vue'
 
 const router = useRouter()
 const { t } = useI18n()

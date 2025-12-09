@@ -380,20 +380,6 @@ func main() {
 	appSettings.Get("/languages", appSettingsHandler.GetSupportedLanguages) // Public - get supported languages
 	appSettings.Patch("/", middleware.AuthMiddleware(cfg), middleware.RequirePermission("settings.app.update", getRoleService), appSettingsHandler.UpdateSettings)
 
-	// Migration mode routes (v1.5 bridge release)
-	if cfg.MigrationMode {
-		log.Println("MIGRATION_MODE enabled - migration endpoints active (NO AUTH REQUIRED)")
-
-		// Initialize migration service and handler
-		migrationService := services.NewMigrationService(sqliteDB.DB, repos, cfg)
-		migrationHandler := handlers.NewMigrationHandler(migrationService)
-
-		migrate := api.Group("/migrate")
-		migrate.Get("/status", migrationHandler.GetMigrationStatus)
-		// No auth required in migration mode - enabling MIGRATION_MODE is the authorization
-		migrate.Post("/import", migrationHandler.ImportFromMongoDB)
-	}
-
 	// Serve embedded static files (SPA fallback)
 	// This must come AFTER all API routes
 	if static.HasStaticFiles() {

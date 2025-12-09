@@ -441,14 +441,3 @@ CREATE TABLE IF NOT EXISTS app_settings (
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
--- ============================================
--- MIGRATION METADATA (v1.5 only)
--- ============================================
-
-CREATE TABLE IF NOT EXISTS migration_metadata (
-    id TEXT PRIMARY KEY DEFAULT 'singleton',
-    source_version TEXT NOT NULL,
-    migrated_at TEXT NOT NULL DEFAULT (datetime('now')),
-    mongodb_export_date TEXT,
-    records_migrated INTEGER NOT NULL DEFAULT 0
-);

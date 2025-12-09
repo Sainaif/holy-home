@@ -109,7 +109,7 @@ func (s *SQLiteDB) NamedExec(ctx context.Context, query string, arg interface{})
 	return s.DB.NamedExecContext(ctx, query, arg)
 }
 
-// HasData checks if the database has any user data (for migration check)
+// HasData checks if the database has any user data
 func (s *SQLiteDB) HasData(ctx context.Context) bool {
 	var count int
 	err := s.DB.GetContext(ctx, &count, "SELECT COUNT(*) FROM users")
@@ -117,26 +117,4 @@ func (s *SQLiteDB) HasData(ctx context.Context) bool {
 		return false
 	}
 	return count > 0
-}
-
-// GetMigrationMetadata returns migration info if exists
-func (s *SQLiteDB) GetMigrationMetadata(ctx context.Context) (*MigrationMetadata, error) {
-	var meta MigrationMetadata
-	err := s.DB.GetContext(ctx, &meta, "SELECT * FROM migration_metadata WHERE id = 'singleton'")
-	if err == sql.ErrNoRows {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, err
-	}
-	return &meta, nil
-}
-
-// MigrationMetadata stores info about the MongoDB migration
-type MigrationMetadata struct {
-	ID                string  `db:"id"`
-	SourceVersion     string  `db:"source_version"`
-	MigratedAt        string  `db:"migrated_at"`
-	MongoDBExportDate *string `db:"mongodb_export_date"`
-	RecordsMigrated   int     `db:"records_migrated"`
 }

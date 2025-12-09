@@ -80,6 +80,13 @@ func (s *RecurringBillService) CreateTemplate(ctx context.Context, template *mod
 		return err
 	}
 
+	// Save allocations for this template
+	for _, alloc := range template.Allocations {
+		if err := s.templateAllocations.Create(ctx, template.ID, &alloc); err != nil {
+			return fmt.Errorf("failed to create template allocation: %w", err)
+		}
+	}
+
 	// Create the first bill immediately
 	if err := s.generateBillFromTemplate(ctx, template); err != nil {
 		return fmt.Errorf("failed to generate first bill: %w", err)
@@ -94,12 +101,34 @@ func (s *RecurringBillService) GetTemplate(ctx context.Context, id string) (*mod
 	if err != nil {
 		return nil, errors.New("template not found")
 	}
+
+	// Load allocations
+	allocations, err := s.templateAllocations.GetByTemplateID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	template.Allocations = allocations
+
 	return template, nil
 }
 
 // ListTemplates retrieves all active recurring bill templates
 func (s *RecurringBillService) ListTemplates(ctx context.Context) ([]models.RecurringBillTemplate, error) {
-	return s.templates.ListActive(ctx)
+	templates, err := s.templates.ListActive(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Load allocations for each template
+	for i := range templates {
+		allocations, err := s.templateAllocations.GetByTemplateID(ctx, templates[i].ID)
+		if err != nil {
+			return nil, err
+		}
+		templates[i].Allocations = allocations
+	}
+
+	return templates, nil
 }
 
 // UpdateTemplate updates an existing template
@@ -164,9 +193,17 @@ func (s *RecurringBillService) GenerateBillsFromTemplates(ctx context.Context) e
 	}
 
 	// Generate bills for each template
-	for _, template := range templates {
-		if err := s.generateBillFromTemplate(ctx, &template); err != nil {
-			fmt.Printf("Error generating bill from template %s: %v\n", template.ID, err)
+	for i := range templates {
+		// Load allocations for this template
+		allocations, err := s.templateAllocations.GetByTemplateID(ctx, templates[i].ID)
+		if err != nil {
+			fmt.Printf("Error loading allocations for template %s: %v\n", templates[i].ID, err)
+			continue
+		}
+		templates[i].Allocations = allocations
+
+		if err := s.generateBillFromTemplate(ctx, &templates[i]); err != nil {
+			fmt.Printf("Error generating bill from template %s: %v\n", templates[i].ID, err)
 			continue
 		}
 	}

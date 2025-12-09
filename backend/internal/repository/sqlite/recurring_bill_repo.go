@@ -39,7 +39,12 @@ func NewRecurringBillTemplateRepository(db *sqlx.DB) *RecurringBillTemplateRepos
 
 // Create creates a new recurring bill template
 func (r *RecurringBillTemplateRepository) Create(ctx context.Context, template *models.RecurringBillTemplate) error {
-	id := uuid.New().String()
+	// Use the ID from template if set, otherwise generate a new one
+	id := template.ID
+	if id == "" {
+		id = uuid.New().String()
+		template.ID = id
+	}
 	now := time.Now().UTC().Format(time.RFC3339)
 
 	var lastGeneratedAt *string

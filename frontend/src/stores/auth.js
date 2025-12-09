@@ -25,7 +25,8 @@ export const useAuthStore = defineStore('auth', () => {
     allowEmailLogin: true,
     allowUsernameLogin: false,
     requireUsername: false,
-    twoFAEnabled: false
+    twoFAEnabled: false,
+    vapidPublicKey: ''
   })
 
   const isAuthenticated = computed(() => !!accessToken.value)

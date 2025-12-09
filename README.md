@@ -46,6 +46,9 @@ Track shared purchases (toilet paper, cleaning supplies, etc.) and automatically
 ### Chore Management
 Create and assign household tasks. Set up rotation schedules so chores are distributed fairly.
 
+### Push Notifications
+Receive browser push notifications for new bills, chore reminders, and other updates. Works on desktop and mobile browsers.
+
 ### Secure Authentication
 Multiple login options: email, username, passkeys (WebAuthn), and optional two-factor authentication (TOTP).
 
@@ -104,6 +107,18 @@ All configuration is done via environment variables in `docker-compose.sqlite.ym
 | `TZ` | Europe/Warsaw | Container timezone |
 | `PUID` | (internal) | User ID for file ownership |
 | `PGID` | (internal) | Group ID for file ownership |
+| `VAPID_PUBLIC_KEY` | | Public key for push notifications |
+| `VAPID_PRIVATE_KEY` | | Private key for push notifications |
+
+### Push Notifications Setup
+
+To enable push notifications, generate VAPID keys:
+
+```bash
+npx web-push generate-vapid-keys
+```
+
+Add the generated keys to your docker-compose environment. Without these keys, push notifications are disabled (the app still works, just without browser notifications).
 
 ---
 

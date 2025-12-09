@@ -29,10 +29,11 @@ func NewAuthHandler(authService *services.AuthService, userService *services.Use
 
 // AuthConfigResponse contains public auth configuration for the frontend
 type AuthConfigResponse struct {
-	AllowEmailLogin    bool `json:"allowEmailLogin"`
-	AllowUsernameLogin bool `json:"allowUsernameLogin"`
-	RequireUsername    bool `json:"requireUsername"`
-	TwoFAEnabled       bool `json:"twoFAEnabled"`
+	AllowEmailLogin    bool   `json:"allowEmailLogin"`
+	AllowUsernameLogin bool   `json:"allowUsernameLogin"`
+	RequireUsername    bool   `json:"requireUsername"`
+	TwoFAEnabled       bool   `json:"twoFAEnabled"`
+	VAPIDPublicKey     string `json:"vapidPublicKey,omitempty"`
 }
 
 // GetAuthConfig returns public auth configuration
@@ -48,6 +49,7 @@ func (h *AuthHandler) GetAuthConfig(c *fiber.Ctx) error {
 		AllowUsernameLogin: h.cfg.Auth.AllowUsernameLogin,
 		RequireUsername:    h.cfg.Auth.RequireUsername,
 		TwoFAEnabled:       h.cfg.Auth.TwoFAEnabled,
+		VAPIDPublicKey:     h.cfg.VAPID.PublicKey,
 	})
 }
 

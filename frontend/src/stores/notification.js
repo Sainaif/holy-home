@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import apiClient from '../api/client';
+import { useAuthStore } from './auth';
 
 const MAX_HISTORY_LENGTH = 100; // Limit notification history to prevent memory leaks
 
@@ -75,10 +76,18 @@ export const useNotificationStore = defineStore('notification', () => {
       return;
     }
 
+    // Get VAPID public key from auth config
+    const authStore = useAuthStore();
+    const vapidPublicKey = authStore.authConfig.vapidPublicKey;
+    if (!vapidPublicKey) {
+      console.warn('VAPID public key not configured, push notifications disabled');
+      return;
+    }
+
     const registration = await navigator.serviceWorker.ready;
     const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: import.meta.env.VITE_VAPID_PUBLIC_KEY,
+      applicationServerKey: vapidPublicKey,
     });
 
     await apiClient.post('/web-push/subscribe', subscription);

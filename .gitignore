@@ -17,3 +17,6 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Build artifacts
+backend/internal/static/dist/

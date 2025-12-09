@@ -1,11 +1,11 @@
 <template>
-  <div class="min-h-screen flex items-center justify-center px-4 relative">
+  <div class="min-h-screen flex flex-col items-center justify-center px-4 py-8 relative">
     <!-- Language Switcher in top-right corner -->
     <div class="absolute top-4 right-4">
       <LanguageSwitcher :showLabel="false" />
     </div>
 
-    <div class="card max-w-md w-full">
+    <div class="card max-w-md w-full shrink-0">
       <div class="text-center mb-8">
         <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-600 to-pink-600 mb-4">
           <Home class="w-8 h-8 text-white" />
@@ -80,7 +80,7 @@
     </div>
 
     <!-- Migration Panel (shown when MIGRATION_MODE is enabled) -->
-    <div class="absolute bottom-4 left-4 right-4 max-w-md mx-auto">
+    <div class="max-w-md w-full mt-6 shrink-0">
       <MigrationPanel />
     </div>
   </div>

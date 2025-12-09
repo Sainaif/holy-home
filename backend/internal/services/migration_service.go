@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/sainaif/holy-home/internal/config"
 	"github.com/sainaif/holy-home/internal/repository"
 )
 
@@ -14,13 +15,15 @@ import (
 type MigrationService struct {
 	db    *sqlx.DB
 	repos *repository.Repositories
+	cfg   *config.Config
 }
 
 // NewMigrationService creates a new migration service
-func NewMigrationService(db *sqlx.DB, repos *repository.Repositories) *MigrationService {
+func NewMigrationService(db *sqlx.DB, repos *repository.Repositories, cfg *config.Config) *MigrationService {
 	return &MigrationService{
 		db:    db,
 		repos: repos,
+		cfg:   cfg,
 	}
 }
 
@@ -868,6 +871,17 @@ func (s *MigrationService) ImportFromJSON(ctx context.Context, jsonData []byte, 
 			result.Warnings = append(result.Warnings, fmt.Sprintf("re-initializing roles: %v", err))
 		} else {
 			result.RecordsMigrated["roles_initialized"] = 1
+		}
+
+		// Re-bootstrap admin user if configured
+		// The migration cleared the users table, so the bootstrap admin needs to be recreated
+		if s.cfg != nil && s.cfg.Admin.Email != "" {
+			authService := NewAuthService(s.repos.Users, s.repos.PasskeyCredentials, s.repos.Roles, s.cfg, nil)
+			if err := authService.BootstrapAdmin(ctx); err != nil {
+				result.Warnings = append(result.Warnings, fmt.Sprintf("re-bootstrapping admin: %v", err))
+			} else {
+				result.RecordsMigrated["admin_bootstrapped"] = 1
+			}
 		}
 	}
 

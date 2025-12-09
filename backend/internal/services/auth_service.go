@@ -159,7 +159,7 @@ func (s *AuthService) Login(ctx context.Context, req LoginRequest, ipAddress, us
 		return nil, errors.New("invalid credentials")
 	}
 
-	if err != nil {
+	if err != nil || user == nil {
 		return nil, errors.New("invalid credentials")
 	}
 

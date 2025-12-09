@@ -385,7 +385,7 @@ func main() {
 		log.Println("MIGRATION_MODE enabled - migration endpoints active (NO AUTH REQUIRED)")
 
 		// Initialize migration service and handler
-		migrationService := services.NewMigrationService(sqliteDB.DB, repos)
+		migrationService := services.NewMigrationService(sqliteDB.DB, repos, cfg)
 		migrationHandler := handlers.NewMigrationHandler(migrationService)
 
 		migrate := api.Group("/migrate")

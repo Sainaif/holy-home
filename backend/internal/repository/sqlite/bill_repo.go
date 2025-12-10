@@ -42,7 +42,12 @@ func NewBillRepository(db *sqlx.DB) *BillRepository {
 
 // Create creates a new bill
 func (r *BillRepository) Create(ctx context.Context, bill *models.Bill) error {
-	id := uuid.New().String()
+	// Use the ID from bill if set, otherwise generate a new one
+	id := bill.ID
+	if id == "" {
+		id = uuid.New().String()
+		bill.ID = id
+	}
 	now := time.Now().UTC().Format(time.RFC3339)
 
 	var reopenedAt *string

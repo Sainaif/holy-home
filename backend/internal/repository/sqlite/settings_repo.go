@@ -11,11 +11,12 @@ import (
 
 // AppSettingsRow represents app settings row in SQLite
 type AppSettingsRow struct {
-	ID                string `db:"id"`
-	AppName           string `db:"app_name"`
-	DefaultLanguage   string `db:"default_language"`
-	DisableAutoDetect int    `db:"disable_auto_detect"`
-	UpdatedAt         string `db:"updated_at"`
+	ID                       string `db:"id"`
+	AppName                  string `db:"app_name"`
+	DefaultLanguage          string `db:"default_language"`
+	DisableAutoDetect        int    `db:"disable_auto_detect"`
+	ReminderRateLimitPerHour int    `db:"reminder_rate_limit_per_hour"`
+	UpdatedAt                string `db:"updated_at"`
 }
 
 // AppSettingsRepository implements repository.AppSettingsRepository for SQLite
@@ -46,12 +47,13 @@ func (r *AppSettingsRepository) Upsert(ctx context.Context, settings *models.App
 	now := time.Now().UTC().Format(time.RFC3339)
 
 	query := `
-		INSERT INTO app_settings (id, app_name, default_language, disable_auto_detect, updated_at)
-		VALUES ('singleton', ?, ?, ?, ?)
+		INSERT INTO app_settings (id, app_name, default_language, disable_auto_detect, reminder_rate_limit_per_hour, updated_at)
+		VALUES ('singleton', ?, ?, ?, ?, ?)
 		ON CONFLICT(id) DO UPDATE SET
 			app_name = excluded.app_name,
 			default_language = excluded.default_language,
 			disable_auto_detect = excluded.disable_auto_detect,
+			reminder_rate_limit_per_hour = excluded.reminder_rate_limit_per_hour,
 			updated_at = excluded.updated_at
 	`
 
@@ -59,6 +61,7 @@ func (r *AppSettingsRepository) Upsert(ctx context.Context, settings *models.App
 		settings.AppName,
 		settings.DefaultLanguage,
 		boolToInt(settings.DisableAutoDetect),
+		settings.ReminderRateLimitPerHour,
 		now,
 	)
 	return err
@@ -66,10 +69,11 @@ func (r *AppSettingsRepository) Upsert(ctx context.Context, settings *models.App
 
 func rowToAppSettings(row *AppSettingsRow) *models.AppSettings {
 	settings := &models.AppSettings{
-		ID:                row.ID,
-		AppName:           row.AppName,
-		DefaultLanguage:   row.DefaultLanguage,
-		DisableAutoDetect: intToBool(row.DisableAutoDetect),
+		ID:                       row.ID,
+		AppName:                  row.AppName,
+		DefaultLanguage:          row.DefaultLanguage,
+		DisableAutoDetect:        intToBool(row.DisableAutoDetect),
+		ReminderRateLimitPerHour: row.ReminderRateLimitPerHour,
 	}
 	settings.UpdatedAt, _ = time.Parse(time.RFC3339, row.UpdatedAt)
 	return settings

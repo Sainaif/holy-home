@@ -9,7 +9,7 @@
     :isOpen="showNotificationPreferences"
     @close="showNotificationPreferences = false" />
 
-  <div class="min-h-screen pb-20 md:pb-0">
+  <div class="min-h-screen pb-20 md:pb-0 flex flex-col">
     <!-- Desktop Navigation -->
     <nav v-if="authStore.isAuthenticated" class="glass sticky top-0 z-50 backdrop-blur-xl border-b border-gray-700/50 hidden md:block">
       <div class="max-w-7xl mx-auto px-4">
@@ -94,12 +94,12 @@
       </div>
     </header>
 
-    <main class="max-w-7xl mx-auto px-3 py-3 md:px-4 md:py-8">
+    <main class="max-w-7xl mx-auto px-3 py-3 md:px-4 md:py-8 flex-grow w-full">
       <router-view />
     </main>
 
     <!-- Footer -->
-    <AppFooter v-if="authStore.isAuthenticated" class="mb-16 md:mb-0" />
+    <AppFooter v-if="authStore.isAuthenticated" class="mb-16 md:mb-0 mt-auto" />
 
     <!-- Mobile Bottom Navigation -->
     <nav

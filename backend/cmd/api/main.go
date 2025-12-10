@@ -132,7 +132,7 @@ func main() {
 	backupService := services.NewBackupService(sqliteDB.DB, repos.Users, repos.Groups, repos.Bills, repos.Consumptions, repos.Allocations, repos.Payments, repos.Loans, repos.LoanPayments, repos.Chores, repos.ChoreAssignments, repos.ChoreSettings, repos.Notifications, repos.SupplySettings, repos.SupplyItems, repos.SupplyContributions, repos.RecurringBillTemplates, repos.RecurringBillAllocations, repos.PasskeyCredentials)
 	auditService := services.NewAuditService(repos.AuditLogs)
 	permissionService := services.NewPermissionService(repos.Permissions)
-	roleService := services.NewRoleService(repos.Roles, repos.Users)
+	roleService := services.NewRoleService(repos.Roles, repos.Users, repos.Permissions)
 	approvalService := services.NewApprovalService(repos.ApprovalRequests)
 	appSettingsService := services.NewAppSettingsService(repos.AppSettings)
 	reminderService := services.NewReminderService(

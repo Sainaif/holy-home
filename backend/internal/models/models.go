@@ -208,8 +208,8 @@ type SupplySettings struct {
 type AppSettings struct {
 	ID                       string    `db:"id" json:"id"`
 	AppName                  string    `db:"app_name" json:"appName"`
-	DefaultLanguage          string    `db:"default_language" json:"defaultLanguage"`                    // Default locale code (e.g., "en", "pl")
-	DisableAutoDetect        bool      `db:"disable_auto_detect" json:"disableAutoDetect"`               // If true, always use default language
+	DefaultLanguage          string    `db:"default_language" json:"defaultLanguage"`                      // Default locale code (e.g., "en", "pl")
+	DisableAutoDetect        bool      `db:"disable_auto_detect" json:"disableAutoDetect"`                 // If true, always use default language
 	ReminderRateLimitPerHour int       `db:"reminder_rate_limit_per_hour" json:"reminderRateLimitPerHour"` // Max reminders per user per hour (0 = unlimited)
 	UpdatedAt                time.Time `db:"updated_at" json:"updatedAt"`
 }

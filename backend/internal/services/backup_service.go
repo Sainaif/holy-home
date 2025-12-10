@@ -214,17 +214,23 @@ func (s *BackupService) ImportJSON(ctx context.Context, jsonData []byte) error {
 		return fmt.Errorf("failed to unmarshal JSON backup: %w", err)
 	}
 
+	// Disable foreign key checks BEFORE starting transaction (PRAGMA must be outside transaction)
+	if _, err := s.db.ExecContext(ctx, "PRAGMA foreign_keys = OFF"); err != nil {
+		return fmt.Errorf("failed to disable foreign keys: %w", err)
+	}
+
 	// Start a transaction
 	tx, err := s.db.BeginTxx(ctx, nil)
 	if err != nil {
+		// Re-enable foreign keys before returning
+		s.db.ExecContext(ctx, "PRAGMA foreign_keys = ON")
 		return fmt.Errorf("failed to start transaction: %w", err)
 	}
-	defer tx.Rollback()
-
-	// Temporarily disable foreign key checks
-	if _, err := tx.ExecContext(ctx, "PRAGMA foreign_keys = OFF"); err != nil {
-		return fmt.Errorf("failed to disable foreign keys: %w", err)
-	}
+	defer func() {
+		tx.Rollback()
+		// Re-enable foreign keys on any exit path
+		s.db.ExecContext(ctx, "PRAGMA foreign_keys = ON")
+	}()
 
 	// Delete existing data in reverse dependency order
 	tablesToClear := []string{
@@ -531,15 +537,13 @@ func (s *BackupService) ImportJSON(ctx context.Context, jsonData []byte) error {
 		}
 	}
 
-	// Re-enable foreign key checks
-	if _, err := tx.ExecContext(ctx, "PRAGMA foreign_keys = ON"); err != nil {
-		return fmt.Errorf("failed to re-enable foreign keys: %w", err)
-	}
-
 	// Commit the transaction
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
+
+	// Re-enable foreign keys after successful commit (defer will also call this, but that's fine)
+	s.db.ExecContext(ctx, "PRAGMA foreign_keys = ON")
 
 	return nil
 }

@@ -337,7 +337,28 @@ func (s *RoleService) HasPermission(ctx context.Context, roleName, permission st
 }
 
 // GetRolePermissions returns all permissions for a given role
+// ADMIN role always gets all permissions dynamically
 func (s *RoleService) GetRolePermissions(ctx context.Context, roleName string) ([]string, error) {
+	// ADMIN role always has all permissions - return complete list
+	if roleName == "ADMIN" {
+		return []string{
+			"users.create", "users.read", "users.update", "users.delete",
+			"groups.create", "groups.read", "groups.update", "groups.delete",
+			"bills.create", "bills.read", "bills.update", "bills.delete", "bills.post", "bills.close",
+			"chores.create", "chores.read", "chores.update", "chores.delete", "chores.assign",
+			"supplies.create", "supplies.read", "supplies.update", "supplies.delete",
+			"roles.create", "roles.read", "roles.update", "roles.delete",
+			"approvals.review",
+			"audit.read",
+			"loans.create", "loans.read", "loans.update", "loans.delete",
+			"loan-payments.create", "loan-payments.read", "loan-payments.update", "loan-payments.delete",
+			"readings.delete",
+			"backup.export", "backup.import",
+			"settings.app.update",
+			"reminders.send",
+		}, nil
+	}
+
 	role, err := s.GetRole(ctx, roleName)
 	if err != nil {
 		return nil, err

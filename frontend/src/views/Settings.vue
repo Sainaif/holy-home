@@ -1931,7 +1931,10 @@ function translateCategory(category) {
     'approvals': 'Zatwierdzenia',
     'audit': 'Audyt',
     'loans': 'Pożyczki',
-    'backup': 'Kopia zapasowa'
+    'readings': 'Odczyty',
+    'backup': 'Kopia zapasowa',
+    'settings': 'Ustawienia',
+    'reminders': 'Przypomnienia'
   }
   return translations[category] || category
 }
@@ -1981,7 +1984,30 @@ function translatePermission(description) {
     'Review and approve/reject pending actions': 'Przeglądaj i zatwierdź/odrzuć oczekujące akcje',
 
     // Audit
-    'View audit logs': 'Przeglądaj logi audytu'
+    'View audit logs': 'Przeglądaj logi audytu',
+
+    // Loans
+    'Create loans': 'Twórz pożyczki',
+    'View loans': 'Przeglądaj pożyczki',
+    'Edit loans': 'Edytuj pożyczki',
+    'Delete loans': 'Usuń pożyczki',
+    'Add loan payments': 'Dodaj spłaty pożyczek',
+    'View loan payments': 'Przeglądaj spłaty pożyczek',
+    'Edit loan payments': 'Edytuj spłaty pożyczek',
+    'Delete loan payments': 'Usuń spłaty pożyczek',
+
+    // Readings
+    'Delete meter readings': 'Usuń odczyty liczników',
+
+    // Backup
+    'Export backup': 'Eksportuj kopię zapasową',
+    'Import backup': 'Importuj kopię zapasową',
+
+    // Settings
+    'Change app settings': 'Zmień ustawienia aplikacji',
+
+    // Reminders
+    'Send reminders to users': 'Wysyłaj przypomnienia użytkownikom'
   }
   return translations[description] || description
 }
@@ -2026,7 +2052,10 @@ function translatePermissionName(name) {
     'loan-payments.update': 'Edytuj spłaty pożyczek',
     'loan-payments.delete': 'Usuń spłaty pożyczek',
     'backup.export': 'Eksportuj kopię zapasową',
-    'backup.import': 'Importuj kopię zapasową'
+    'backup.import': 'Importuj kopię zapasową',
+    'readings.delete': 'Usuń odczyty',
+    'settings.app.update': 'Zmień ustawienia aplikacji',
+    'reminders.send': 'Wysyłaj przypomnienia'
   }
   return translations[name] || name
 }

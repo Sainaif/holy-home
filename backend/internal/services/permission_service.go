@@ -224,6 +224,9 @@ func (s *RoleService) GetRole(ctx context.Context, name string) (*models.Role, e
 	if err != nil {
 		return nil, errors.New("role not found")
 	}
+	if role == nil {
+		return nil, errors.New("role not found")
+	}
 	return role, nil
 }
 
@@ -231,6 +234,9 @@ func (s *RoleService) GetRole(ctx context.Context, name string) (*models.Role, e
 func (s *RoleService) GetRoleByID(ctx context.Context, id string) (*models.Role, error) {
 	role, err := s.roles.GetByID(ctx, id)
 	if err != nil {
+		return nil, errors.New("role not found")
+	}
+	if role == nil {
 		return nil, errors.New("role not found")
 	}
 	return role, nil

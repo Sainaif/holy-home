@@ -23,7 +23,12 @@ func (h *ReminderHandler) SendDebtReminder(c *fiber.Ctx) error {
 		})
 	}
 
-	senderUserID := c.Locals("userID").(string)
+	senderUserID, ok := c.Locals("userId").(string)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
 
 	if err := h.reminderService.SendDebtReminder(c.Context(), targetUserID, senderUserID); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -46,7 +51,12 @@ func (h *ReminderHandler) SendChoreReminder(c *fiber.Ctx) error {
 		})
 	}
 
-	senderUserID := c.Locals("userID").(string)
+	senderUserID, ok := c.Locals("userId").(string)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
 
 	if err := h.reminderService.SendChoreReminder(c.Context(), assignmentID, senderUserID); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -62,7 +72,12 @@ func (h *ReminderHandler) SendChoreReminder(c *fiber.Ctx) error {
 // SendLowSuppliesReminder broadcasts a reminder about low supplies to all users
 // POST /api/reminders/supplies
 func (h *ReminderHandler) SendLowSuppliesReminder(c *fiber.Ctx) error {
-	senderUserID := c.Locals("userID").(string)
+	senderUserID, ok := c.Locals("userId").(string)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
 
 	notifiedCount, err := h.reminderService.SendLowSuppliesReminder(c.Context(), senderUserID)
 	if err != nil {

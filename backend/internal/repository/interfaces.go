@@ -103,6 +103,7 @@ type AllocationRepository interface {
 	Create(ctx context.Context, billID, subjectType, subjectID, allocatedPLN string) error
 	GetByBillID(ctx context.Context, billID string) ([]Allocation, error)
 	DeleteByBillID(ctx context.Context, billID string) error
+	DeleteBySubjectID(ctx context.Context, subjectType, subjectID string) error
 	List(ctx context.Context) ([]Allocation, error)
 }
 
@@ -259,7 +260,7 @@ type NotificationPreferenceRepository interface {
 type WebPushSubscriptionRepository interface {
 	Create(ctx context.Context, sub *models.WebPushSubscription) error
 	GetByEndpoint(ctx context.Context, endpoint string) (*models.WebPushSubscription, error)
-	Delete(ctx context.Context, endpoint string) error
+	Delete(ctx context.Context, userID, endpoint string) error // SECURITY: userID required to prevent IDOR
 	ListByUserID(ctx context.Context, userID string) ([]models.WebPushSubscription, error)
 }
 

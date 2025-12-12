@@ -467,7 +467,7 @@ async function createChore() {
     // Auto-assign the chore based on assignment mode
     if (choreForm.value.assignmentMode === 'manual' && choreForm.value.manualAssigneeId) {
       // Manual assignment - assign to selected user
-      await api.post('/chore-assignments', {
+      await api.post('/chores/assign', {
         choreId: choreRes.data.id,
         assigneeUserId: choreForm.value.manualAssigneeId,
         dueDate: dueDate.toISOString()

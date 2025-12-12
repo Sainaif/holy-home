@@ -95,7 +95,8 @@ func (s *NotificationService) sendPushNotification(sub *models.WebPushSubscripti
 	defer resp.Body.Close()
 
 	if resp.StatusCode == 410 {
-		s.webPushService.DeleteSubscription(context.Background(), sub.Endpoint)
+		// Subscription expired/unsubscribed - clean it up
+		s.webPushService.DeleteSubscription(context.Background(), sub.UserID, sub.Endpoint)
 	}
 }
 

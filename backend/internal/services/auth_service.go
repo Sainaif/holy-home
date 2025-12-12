@@ -246,10 +246,12 @@ func (s *AuthService) RefreshTokens(ctx context.Context, refreshToken string, ip
 	}
 
 	// Validate session exists (if session service is available)
-	var sessionExists bool
+	// SECURITY: Deny refresh if session is revoked/missing
 	if s.sessionService != nil {
 		_, err := s.sessionService.ValidateSession(ctx, refreshToken)
-		sessionExists = (err == nil)
+		if err != nil {
+			return nil, errors.New("session expired or revoked")
+		}
 	}
 
 	// Find user
@@ -285,10 +287,8 @@ func (s *AuthService) RefreshTokens(ctx context.Context, refreshToken string, ip
 
 	// Update the session with new refresh token
 	if s.sessionService != nil {
-		if sessionExists {
-			// Revoke old session only if it existed
-			_ = s.sessionService.RevokeSession(ctx, refreshToken)
-		}
+		// Revoke old session (we know it exists since we validated above)
+		_ = s.sessionService.RevokeSession(ctx, refreshToken)
 
 		// Create new session with new refresh token
 		expiresAt := time.Now().Add(s.cfg.JWT.RefreshTTL)

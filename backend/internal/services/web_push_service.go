@@ -23,6 +23,6 @@ func (s *WebPushService) GetSubscriptionsByUserID(ctx context.Context, userID st
 	return s.webPushSubscriptions.ListByUserID(ctx, userID)
 }
 
-func (s *WebPushService) DeleteSubscription(ctx context.Context, endpoint string) error {
-	return s.webPushSubscriptions.Delete(ctx, endpoint)
+func (s *WebPushService) DeleteSubscription(ctx context.Context, userID, endpoint string) error {
+	return s.webPushSubscriptions.Delete(ctx, userID, endpoint)
 }

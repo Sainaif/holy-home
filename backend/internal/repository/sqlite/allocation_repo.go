@@ -63,6 +63,12 @@ func (r *AllocationRepository) DeleteByBillID(ctx context.Context, billID string
 	return err
 }
 
+// DeleteBySubjectID deletes all allocations for a subject (user or group)
+func (r *AllocationRepository) DeleteBySubjectID(ctx context.Context, subjectType, subjectID string) error {
+	_, err := r.db.ExecContext(ctx, "DELETE FROM allocations WHERE subject_type = ? AND subject_id = ?", subjectType, subjectID)
+	return err
+}
+
 // List returns all allocations
 func (r *AllocationRepository) List(ctx context.Context) ([]repository.Allocation, error) {
 	var rows []AllocationRow

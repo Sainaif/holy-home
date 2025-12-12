@@ -55,10 +55,11 @@ func (h *BackupHandler) ImportBackup(c *fiber.Ctx) error {
 	}
 
 	// Include password reset info if any users had their passwords reset
+	// SECURITY: Never expose the default password in the response
 	if len(result.UsersWithResetPasswords) > 0 {
-		response["warning"] = "Some users had missing password hashes and were assigned a default password"
-		response["defaultPassword"] = result.DefaultPassword
+		response["warning"] = "Some users had missing password hashes. They must reset their passwords using the password reset flow."
 		response["usersWithResetPasswords"] = result.UsersWithResetPasswords
+		response["usersRequiringPasswordReset"] = len(result.UsersWithResetPasswords)
 	}
 
 	return c.JSON(response)

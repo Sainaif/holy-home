@@ -37,6 +37,11 @@ type RecordPaymentRequest struct {
 
 // RecordPayment records a payment made by a user for a bill
 func (s *PaymentService) RecordPayment(ctx context.Context, req RecordPaymentRequest, userID string) (*models.Payment, error) {
+	// Validate amount is positive
+	if req.Amount <= 0 {
+		return nil, fmt.Errorf("payment amount must be positive")
+	}
+
 	// Verify bill exists and is posted
 	bill, err := s.bills.GetByID(ctx, req.BillID)
 	if err != nil {

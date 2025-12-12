@@ -312,9 +312,9 @@ func (r *WebPushSubscriptionRepository) GetByEndpoint(ctx context.Context, endpo
 	}, nil
 }
 
-// Delete deletes a subscription by endpoint
-func (r *WebPushSubscriptionRepository) Delete(ctx context.Context, endpoint string) error {
-	_, err := r.db.ExecContext(ctx, "DELETE FROM web_push_subscriptions WHERE endpoint = ?", endpoint)
+// Delete deletes a subscription by endpoint, scoped to user for security
+func (r *WebPushSubscriptionRepository) Delete(ctx context.Context, userID, endpoint string) error {
+	_, err := r.db.ExecContext(ctx, "DELETE FROM web_push_subscriptions WHERE user_id = ? AND endpoint = ?", userID, endpoint)
 	return err
 }
 

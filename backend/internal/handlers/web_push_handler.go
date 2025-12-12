@@ -49,7 +49,7 @@ func (h *WebPushHandler) GetSubscriptions(c *fiber.Ctx) error {
 }
 
 func (h *WebPushHandler) DeleteSubscription(c *fiber.Ctx) error {
-	_, ok := c.Locals("userId").(string)
+	userID, ok := c.Locals("userId").(string)
 	if !ok {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
 	}
@@ -59,7 +59,7 @@ func (h *WebPushHandler) DeleteSubscription(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "endpoint is required"})
 	}
 
-	if err := h.webPushService.DeleteSubscription(c.Context(), endpoint); err != nil {
+	if err := h.webPushService.DeleteSubscription(c.Context(), userID, endpoint); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to delete subscription"})
 	}
 

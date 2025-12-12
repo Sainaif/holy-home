@@ -477,8 +477,30 @@ async function loadBills() {
 
 async function loadChores() {
   try {
-    const res = await api.get('/chore-assignments/me?status=pending')
-    chores.value = res.data || []
+    // Load chore definitions and users for enrichment
+    const [allChoresRes, usersRes, res] = await Promise.all([
+      api.get('/chores'),
+      api.get('/users'),
+      api.get('/chore-assignments/me?status=pending')
+    ])
+
+    const allChoresData = allChoresRes.data || []
+    const usersData = usersRes.data || []
+    const choreAssignments = res.data || []
+
+    // Enrich chore assignments with chore and user details
+    for (let assignment of choreAssignments) {
+      const chore = allChoresData.find(c => c.id === assignment.choreId)
+      if (chore) {
+        assignment.choreName = chore.name
+      }
+      const user = usersData.find(u => u.id === assignment.assigneeUserId)
+      if (user) {
+        assignment.userName = user.name
+      }
+    }
+
+    chores.value = choreAssignments
   } catch (err) {
     console.error('Failed to load chores:', err)
   }

@@ -121,7 +121,7 @@ func (s *GroupService) DeleteGroup(ctx context.Context, groupID string) error {
 	}
 
 	// Delete all allocations for this group
-	if err := s.allocations.DeleteByBillID(ctx, groupID); err != nil {
+	if err := s.allocations.DeleteBySubjectID(ctx, "group", groupID); err != nil {
 		log.Printf("[WARN] Failed to delete allocations for group %s: %v", groupID, err)
 	}
 

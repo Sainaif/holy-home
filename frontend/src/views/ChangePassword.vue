@@ -12,47 +12,56 @@
       <!-- Change password form -->
       <form @submit.prevent="handleChangePassword" class="space-y-5">
         <div>
-          <label class="block text-sm font-medium mb-2 text-gray-300">
+          <label for="change-password-current" class="block text-sm font-medium mb-2 text-gray-300">
             <Lock class="w-4 h-4 inline mr-2" />
             {{ $t('settings.currentPassword') }}
           </label>
           <input
+            id="change-password-current"
             v-model="currentPassword"
             type="password"
             required
             class="input"
             placeholder="••••••••"
+            :aria-invalid="!!error"
+            :aria-describedby="error ? 'change-password-error' : undefined"
           />
         </div>
 
         <div>
-          <label class="block text-sm font-medium mb-2 text-gray-300">
+          <label for="change-password-new" class="block text-sm font-medium mb-2 text-gray-300">
             <Lock class="w-4 h-4 inline mr-2" />
             {{ $t('auth.newPassword') }}
           </label>
           <input
+            id="change-password-new"
             v-model="newPassword"
             type="password"
             required
             minlength="8"
             class="input"
             placeholder="••••••••"
+            :aria-invalid="!!error"
+            :aria-describedby="error ? 'change-password-error' : undefined"
           />
           <p class="text-xs text-gray-400 mt-1">{{ $t('auth.minPasswordLength') }}</p>
         </div>
 
         <div>
-          <label class="block text-sm font-medium mb-2 text-gray-300">
+          <label for="change-password-confirm" class="block text-sm font-medium mb-2 text-gray-300">
             <Lock class="w-4 h-4 inline mr-2" />
             {{ $t('auth.confirmNewPassword') }}
           </label>
           <input
+            id="change-password-confirm"
             v-model="confirmPassword"
             type="password"
             required
             minlength="8"
             class="input"
             placeholder="••••••••"
+            :aria-invalid="confirmPassword && !passwordsMatch"
+            :aria-describedby="confirmPassword && !passwordsMatch ? 'change-password-mismatch' : undefined"
           />
         </div>
 
@@ -72,12 +81,12 @@
         </div>
 
         <!-- Password mismatch warning -->
-        <div v-if="confirmPassword && !passwordsMatch" class="flex items-center gap-2 p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/30 text-yellow-400">
+        <div v-if="confirmPassword && !passwordsMatch" id="change-password-mismatch" role="alert" class="flex items-center gap-2 p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/30 text-yellow-400">
           <AlertCircle class="w-5 h-5" />
           <span>{{ $t('errors.passwordsMismatch') }}</span>
         </div>
 
-        <div v-if="error" class="flex items-center gap-2 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400">
+        <div v-if="error" id="change-password-error" role="alert" class="flex items-center gap-2 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400">
           <AlertCircle class="w-5 h-5" />
           <span>{{ error }}</span>
         </div>

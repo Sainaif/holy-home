@@ -32,33 +32,39 @@
       <!-- Reset password form -->
       <form v-else @submit.prevent="handleResetPassword" class="space-y-5">
         <div>
-          <label class="block text-sm font-medium mb-2 text-gray-300">
+          <label for="reset-password-new" class="block text-sm font-medium mb-2 text-gray-300">
             <Lock class="w-4 h-4 inline mr-2" />
             {{ $t('auth.newPassword') }}
           </label>
           <input
+            id="reset-password-new"
             v-model="newPassword"
             type="password"
             required
             minlength="8"
             class="input"
             placeholder="••••••••"
+            :aria-invalid="!!error"
+            :aria-describedby="error ? 'reset-password-error' : undefined"
           />
           <p class="text-xs text-gray-400 mt-1">{{ $t('auth.minPasswordLength') }}</p>
         </div>
 
         <div>
-          <label class="block text-sm font-medium mb-2 text-gray-300">
+          <label for="reset-password-confirm" class="block text-sm font-medium mb-2 text-gray-300">
             <Lock class="w-4 h-4 inline mr-2" />
             {{ $t('auth.confirmNewPassword') }}
           </label>
           <input
+            id="reset-password-confirm"
             v-model="confirmPassword"
             type="password"
             required
             minlength="8"
             class="input"
             placeholder="••••••••"
+            :aria-invalid="!!error"
+            :aria-describedby="error ? 'reset-password-error' : undefined"
           />
         </div>
 
@@ -77,7 +83,7 @@
           </p>
         </div>
 
-        <div v-if="error" class="flex items-center gap-2 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400">
+        <div v-if="error" id="reset-password-error" role="alert" class="flex items-center gap-2 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400">
           <AlertCircle class="w-5 h-5" />
           <span>{{ error }}</span>
         </div>

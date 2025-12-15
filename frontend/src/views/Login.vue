@@ -16,36 +16,42 @@
 
       <form @submit.prevent="handleLogin" class="space-y-5">
         <div>
-          <label class="block text-sm font-medium mb-2 text-gray-300">
+          <label for="login-identifier" class="block text-sm font-medium mb-2 text-gray-300">
             <Mail v-if="authConfig.allowEmailLogin && !authConfig.allowUsernameLogin" class="w-4 h-4 inline mr-2" />
             <User v-else-if="!authConfig.allowEmailLogin && authConfig.allowUsernameLogin" class="w-4 h-4 inline mr-2" />
             <AtSign v-else class="w-4 h-4 inline mr-2" />
             {{ identifierLabel }}
           </label>
           <input
+            id="login-identifier"
             v-model="identifier"
             :type="authConfig.allowEmailLogin && !authConfig.allowUsernameLogin ? 'email' : 'text'"
             required
             class="input"
             :placeholder="identifierPlaceholder"
+            :aria-invalid="!!error"
+            :aria-describedby="error ? 'login-error' : undefined"
           />
         </div>
 
         <div>
-          <label class="block text-sm font-medium mb-2 text-gray-300">
+          <label for="login-password" class="block text-sm font-medium mb-2 text-gray-300">
             <Lock class="w-4 h-4 inline mr-2" />
             {{ $t('auth.password') }}
           </label>
           <input
+            id="login-password"
             v-model="password"
             type="password"
             required
             class="input"
             placeholder="••••••••"
+            :aria-invalid="!!error"
+            :aria-describedby="error ? 'login-error' : undefined"
           />
         </div>
 
-        <div v-if="error" class="flex items-center gap-2 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400">
+        <div v-if="error" id="login-error" role="alert" class="flex items-center gap-2 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400">
           <AlertCircle class="w-5 h-5" />
           <span>{{ error }}</span>
         </div>

@@ -401,61 +401,52 @@ async function loadPendingAllocations(signal) {
       userGroupId = viewingUser.value.groupId
     }
 
-    // Get all posted bills
-    const billsRes = await api.get('/bills?status=posted', { signal })
-    const postedBills = billsRes.data || []
+    // Get all posted bills with allocations in one request
+    const [billsRes, paymentsRes] = await Promise.all([
+      api.get('/bills?status=posted&include_allocations=true', { signal }),
+      api.get('/payments/me', { signal })
+    ])
 
-    // Get user's payments
-    const paymentsRes = await api.get('/payments/me', { signal })
+    const postedBills = billsRes.data || []
     const userPayments = paymentsRes.data || []
 
-    // For each posted bill, get user's allocations
-    const allocationsPromises = postedBills.map(async (bill) => {
-      try {
-        // Check if user has already paid for this bill
-        const hasPaid = userPayments.some(p => p.billId === bill.id)
-        if (hasPaid) {
-          return null
-        }
+    const results = []
 
-        const allocRes = await api.get(`/bills/${bill.id}/allocation`, { signal })
-        const allocations = allocRes.data || []
-
-        // Find user's allocation (either direct user or through group)
-        const userAllocation = allocations.find(a => {
-          if (a.subjectType === 'user' && a.subjectId === userId) {
-            return true
-          }
-          if (a.subjectType === 'group' && userGroupId && a.subjectId === userGroupId) {
-            return true
-          }
-          return false
-        })
-
-        if (userAllocation) {
-          // Map new allocation format to expected Dashboard format
-          const mapped = {
-            bill,
-            allocation: {
-              id: userAllocation.subjectId,
-              amountPLN: userAllocation.amount || 0, // New endpoint returns plain number as 'amount'
-              units: userAllocation.units || 0
-            }
-          }
-          return mapped
-        }
-      } catch (err) {
-        // Rethrow abort errors to be handled by outer catch
-        if (err.name === 'AbortError' || err.name === 'CanceledError') {
-          throw err
-        }
-        console.error(`Failed to load allocations for bill ${bill.id}:`, err)
+    for (const bill of postedBills) {
+      // Check if user has already paid for this bill
+      const hasPaid = userPayments.some(p => p.billId === bill.id)
+      if (hasPaid) {
+        continue
       }
-      return null
-    })
 
-    const results = await Promise.all(allocationsPromises)
-    pendingAllocations.value = results.filter(r => r !== null)
+      const allocations = bill.allocations || []
+
+      // Find user's allocation (either direct user or through group)
+      const userAllocation = allocations.find(a => {
+        if (a.subjectType === 'user' && a.subjectId === userId) {
+          return true
+        }
+        if (a.subjectType === 'group' && userGroupId && a.subjectId === userGroupId) {
+          return true
+        }
+        return false
+      })
+
+      if (userAllocation) {
+        // Map new allocation format to expected Dashboard format
+        const mapped = {
+          bill,
+          allocation: {
+            id: userAllocation.subjectId,
+            amountPLN: userAllocation.amount || 0, // New endpoint returns plain number as 'amount'
+            units: userAllocation.units || 0
+          }
+        }
+        results.push(mapped)
+      }
+    }
+
+    pendingAllocations.value = results
   } catch (err) {
     // Ignore abort errors (expected on navigation/unmount)
     if (err.name === 'AbortError' || err.name === 'CanceledError') {

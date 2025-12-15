@@ -84,6 +84,7 @@ func (h *BillHandler) GetBills(c *fiber.Ctx) error {
 	billType := c.Query("type")
 	fromStr := c.Query("from")
 	toStr := c.Query("to")
+	includeAllocations := c.Query("include_allocations") == "true"
 
 	var billTypePtr *string
 	if billType != "" {
@@ -104,7 +105,7 @@ func (h *BillHandler) GetBills(c *fiber.Ctx) error {
 		}
 	}
 
-	bills, err := h.billService.GetBills(c.Context(), billTypePtr, fromPtr, toPtr)
+	bills, err := h.billService.GetBills(c.Context(), billTypePtr, fromPtr, toPtr, includeAllocations)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": err.Error(),

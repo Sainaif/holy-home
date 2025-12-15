@@ -44,24 +44,38 @@ type Group struct {
 	CreatedAt time.Time `db:"created_at" json:"createdAt"`
 }
 
+// AllocationBreakdown represents cost breakdown per user/group
+type AllocationBreakdown struct {
+	SubjectID   string  `json:"subjectId"`
+	SubjectType string  `json:"subjectType"` // "user" or "group"
+	SubjectName string  `json:"subjectName"`
+	Weight      float64 `json:"weight"`
+	Amount      float64 `json:"amount"`
+	// For metered allocation (electricity)
+	PersonalAmount *float64 `json:"personalAmount,omitempty"`
+	SharedAmount   *float64 `json:"sharedAmount,omitempty"`
+	Units          *float64 `json:"units,omitempty"`
+}
+
 // Bill represents a utility bill or shared expense
 type Bill struct {
-	ID                  string     `db:"id" json:"id"`
-	Type                string     `db:"type" json:"type"`                                // electricity, gas, internet, inne
-	CustomType          *string    `db:"custom_type" json:"customType,omitempty"`         // used when Type is "inne"
-	AllocationType      *string    `db:"allocation_type" json:"allocationType,omitempty"` // simple (like gas) or metered (like electricity) - only for "inne"
-	PeriodStart         time.Time  `db:"period_start" json:"periodStart"`
-	PeriodEnd           time.Time  `db:"period_end" json:"periodEnd"`
-	PaymentDeadline     *time.Time `db:"payment_deadline" json:"paymentDeadline,omitempty"` // optional deadline for payment
-	TotalAmountPLN      string     `db:"total_amount_pln" json:"totalAmountPLN"`            // Decimal as string
-	TotalUnits          string     `db:"total_units" json:"totalUnits,omitempty"`           // Decimal as string
-	Notes               *string    `db:"notes" json:"notes,omitempty"`
-	Status              string     `db:"status" json:"status"` // draft, posted, closed
-	ReopenedAt          *time.Time `db:"reopened_at" json:"reopenedAt,omitempty"`
-	ReopenReason        *string    `db:"reopen_reason" json:"reopenReason,omitempty"`
-	ReopenedBy          *string    `db:"reopened_by" json:"reopenedBy,omitempty"`
-	RecurringTemplateID *string    `db:"recurring_template_id" json:"recurringTemplateId,omitempty"` // link to recurring template if generated
-	CreatedAt           time.Time  `db:"created_at" json:"createdAt"`
+	ID                  string                `db:"id" json:"id"`
+	Type                string                `db:"type" json:"type"`                                // electricity, gas, internet, inne
+	CustomType          *string               `db:"custom_type" json:"customType,omitempty"`         // used when Type is "inne"
+	AllocationType      *string               `db:"allocation_type" json:"allocationType,omitempty"` // simple (like gas) or metered (like electricity) - only for "inne"
+	PeriodStart         time.Time             `db:"period_start" json:"periodStart"`
+	PeriodEnd           time.Time             `db:"period_end" json:"periodEnd"`
+	PaymentDeadline     *time.Time            `db:"payment_deadline" json:"paymentDeadline,omitempty"` // optional deadline for payment
+	TotalAmountPLN      string                `db:"total_amount_pln" json:"totalAmountPLN"`            // Decimal as string
+	TotalUnits          string                `db:"total_units" json:"totalUnits,omitempty"`           // Decimal as string
+	Notes               *string               `db:"notes" json:"notes,omitempty"`
+	Status              string                `db:"status" json:"status"` // draft, posted, closed
+	ReopenedAt          *time.Time            `db:"reopened_at" json:"reopenedAt,omitempty"`
+	ReopenReason        *string               `db:"reopen_reason" json:"reopenReason,omitempty"`
+	ReopenedBy          *string               `db:"reopened_by" json:"reopenedBy,omitempty"`
+	RecurringTemplateID *string               `db:"recurring_template_id" json:"recurringTemplateId,omitempty"` // link to recurring template if generated
+	CreatedAt           time.Time             `db:"created_at" json:"createdAt"`
+	Allocations         []AllocationBreakdown `db:"-" json:"allocations,omitempty"`
 }
 
 // RecurringBillTemplate represents a template for auto-generating bills

@@ -17,6 +17,7 @@ type BillService struct {
 	bills               repository.BillRepository
 	consumptions        repository.ConsumptionRepository
 	allocations         repository.AllocationRepository
+	allocationService   *AllocationService
 	payments            repository.PaymentRepository
 	users               repository.UserRepository
 	groups              repository.GroupRepository
@@ -27,6 +28,7 @@ func NewBillService(
 	bills repository.BillRepository,
 	consumptions repository.ConsumptionRepository,
 	allocations repository.AllocationRepository,
+	allocationService *AllocationService,
 	payments repository.PaymentRepository,
 	users repository.UserRepository,
 	groups repository.GroupRepository,
@@ -36,6 +38,7 @@ func NewBillService(
 		bills:               bills,
 		consumptions:        consumptions,
 		allocations:         allocations,
+		allocationService:   allocationService,
 		payments:            payments,
 		users:               users,
 		groups:              groups,
@@ -147,7 +150,7 @@ func (s *BillService) CreateBill(ctx context.Context, req CreateBillRequest, cre
 }
 
 // GetBills gets all bills, can filter by type and dates
-func (s *BillService) GetBills(ctx context.Context, billType *string, from *time.Time, to *time.Time) ([]models.Bill, error) {
+func (s *BillService) GetBills(ctx context.Context, billType *string, from *time.Time, to *time.Time, includeAllocations bool) ([]models.Bill, error) {
 	var bills []models.Bill
 	var err error
 
@@ -174,6 +177,19 @@ func (s *BillService) GetBills(ctx context.Context, billType *string, from *time
 
 	if err != nil {
 		return nil, fmt.Errorf("database error: %w", err)
+	}
+
+	if includeAllocations {
+		for i := range bills {
+			// Fetch allocations for each bill
+			// This could be optimized to batch fetch, but even this is better than N+1 HTTP requests
+			allocations, err := s.allocationService.GetAllocationBreakdown(ctx, bills[i].ID)
+			if err != nil {
+				log.Printf("failed to get allocations for bill %s: %v", bills[i].ID, err)
+				continue
+			}
+			bills[i].Allocations = allocations
+		}
 	}
 
 	return bills, nil

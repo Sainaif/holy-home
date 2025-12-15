@@ -34,21 +34,8 @@ func NewAllocationService(
 	}
 }
 
-// AllocationBreakdown represents cost breakdown per user/group
-type AllocationBreakdown struct {
-	SubjectID   string  `json:"subjectId"`
-	SubjectType string  `json:"subjectType"` // "user" or "group"
-	SubjectName string  `json:"subjectName"`
-	Weight      float64 `json:"weight"`
-	Amount      float64 `json:"amount"`
-	// For metered allocation (electricity)
-	PersonalAmount *float64 `json:"personalAmount,omitempty"`
-	SharedAmount   *float64 `json:"sharedAmount,omitempty"`
-	Units          *float64 `json:"units,omitempty"`
-}
-
 // CalculateSimpleAllocation divides total cost by weights
-func (s *AllocationService) CalculateSimpleAllocation(ctx context.Context, billID string, totalAmount float64) ([]AllocationBreakdown, error) {
+func (s *AllocationService) CalculateSimpleAllocation(ctx context.Context, billID string, totalAmount float64) ([]models.AllocationBreakdown, error) {
 	// Get all active users
 	users, err := s.users.ListActive(ctx)
 	if err != nil {
@@ -97,7 +84,7 @@ func (s *AllocationService) CalculateSimpleAllocation(ctx context.Context, billI
 		weight    float64
 		amount    float64
 	})
-	individualAllocations := []AllocationBreakdown{}
+	individualAllocations := []models.AllocationBreakdown{}
 
 	for _, u := range users {
 		weight := userWeights[u.ID]
@@ -131,7 +118,7 @@ func (s *AllocationService) CalculateSimpleAllocation(ctx context.Context, billI
 			}
 		} else {
 			// User is not in a group - show individually with Name
-			individualAllocations = append(individualAllocations, AllocationBreakdown{
+			individualAllocations = append(individualAllocations, models.AllocationBreakdown{
 				SubjectID:   u.ID,
 				SubjectType: "user",
 				SubjectName: u.Name,
@@ -142,11 +129,11 @@ func (s *AllocationService) CalculateSimpleAllocation(ctx context.Context, billI
 	}
 
 	// Build final breakdown
-	breakdown := make([]AllocationBreakdown, 0, len(groupAllocations)+len(individualAllocations))
+	breakdown := make([]models.AllocationBreakdown, 0, len(groupAllocations)+len(individualAllocations))
 
 	// Add group allocations
 	for _, ga := range groupAllocations {
-		breakdown = append(breakdown, AllocationBreakdown{
+		breakdown = append(breakdown, models.AllocationBreakdown{
 			SubjectID:   ga.groupID,
 			SubjectType: "group",
 			SubjectName: ga.groupName,
@@ -162,7 +149,7 @@ func (s *AllocationService) CalculateSimpleAllocation(ctx context.Context, billI
 }
 
 // CalculateMeteredAllocation calculates based on meter readings + shared common area
-func (s *AllocationService) CalculateMeteredAllocation(ctx context.Context, billID string, totalAmount float64, totalUnits *float64) ([]AllocationBreakdown, error) {
+func (s *AllocationService) CalculateMeteredAllocation(ctx context.Context, billID string, totalAmount float64, totalUnits *float64) ([]models.AllocationBreakdown, error) {
 	if totalUnits == nil || *totalUnits == 0 {
 		return nil, errors.New("totalUnits is required for metered allocation")
 	}
@@ -266,7 +253,7 @@ func (s *AllocationService) CalculateMeteredAllocation(ctx context.Context, bill
 		sharedAmount   float64
 		units          float64
 	})
-	individualAllocations := []AllocationBreakdown{}
+	individualAllocations := []models.AllocationBreakdown{}
 
 	for _, u := range users {
 		weight := userWeights[u.ID]
@@ -321,7 +308,7 @@ func (s *AllocationService) CalculateMeteredAllocation(ctx context.Context, bill
 			// User is not in a group - show individually
 			totalUserAmount := personalAmount + sharedAmount
 
-			individualAllocations = append(individualAllocations, AllocationBreakdown{
+			individualAllocations = append(individualAllocations, models.AllocationBreakdown{
 				SubjectID:      u.ID,
 				SubjectType:    "user",
 				SubjectName:    u.Name,
@@ -335,12 +322,12 @@ func (s *AllocationService) CalculateMeteredAllocation(ctx context.Context, bill
 	}
 
 	// Build final breakdown
-	breakdown := make([]AllocationBreakdown, 0, len(groupAllocations)+len(individualAllocations))
+	breakdown := make([]models.AllocationBreakdown, 0, len(groupAllocations)+len(individualAllocations))
 
 	// Add group allocations
 	for _, ga := range groupAllocations {
 		totalAmount := ga.personalAmount + ga.sharedAmount
-		breakdown = append(breakdown, AllocationBreakdown{
+		breakdown = append(breakdown, models.AllocationBreakdown{
 			SubjectID:      ga.groupID,
 			SubjectType:    "group",
 			SubjectName:    ga.groupName,
@@ -359,7 +346,7 @@ func (s *AllocationService) CalculateMeteredAllocation(ctx context.Context, bill
 }
 
 // GetAllocationBreakdown returns allocation breakdown for a bill
-func (s *AllocationService) GetAllocationBreakdown(ctx context.Context, billID string) ([]AllocationBreakdown, error) {
+func (s *AllocationService) GetAllocationBreakdown(ctx context.Context, billID string) ([]models.AllocationBreakdown, error) {
 	// First, check if allocations already exist in the database
 	storedAllocations, err := s.allocations.GetByBillID(ctx, billID)
 	if err != nil {
@@ -368,7 +355,7 @@ func (s *AllocationService) GetAllocationBreakdown(ctx context.Context, billID s
 
 	// If allocations exist, return them
 	if len(storedAllocations) > 0 {
-		breakdown := make([]AllocationBreakdown, 0, len(storedAllocations))
+		breakdown := make([]models.AllocationBreakdown, 0, len(storedAllocations))
 
 		for _, alloc := range storedAllocations {
 			amount := utils.DecimalStringToFloat(alloc.AllocatedPLN)
@@ -387,7 +374,7 @@ func (s *AllocationService) GetAllocationBreakdown(ctx context.Context, billID s
 				}
 			}
 
-			breakdown = append(breakdown, AllocationBreakdown{
+			breakdown = append(breakdown, models.AllocationBreakdown{
 				SubjectID:   alloc.SubjectID,
 				SubjectType: alloc.SubjectType,
 				SubjectName: subjectName,

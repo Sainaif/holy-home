@@ -4,8 +4,10 @@ import (
 	"crypto/rand"
 	"crypto/subtle"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"strings"
+	"unicode"
 
 	"golang.org/x/crypto/argon2"
 	"golang.org/x/crypto/bcrypt"
@@ -88,4 +90,46 @@ func VerifyPassword(password, encodedHash string) (bool, error) {
 	computedHash := argon2.IDKey([]byte(password), salt, time, memory, uint8(threads), uint32(len(hash)))
 
 	return subtle.ConstantTimeCompare(hash, computedHash) == 1, nil
+}
+
+// ValidatePasswordStrength checks if the password meets security requirements
+func ValidatePasswordStrength(password string) error {
+	if len(password) < 10 {
+		return errors.New("password must be at least 10 characters long")
+	}
+
+	var (
+		hasUpper   bool
+		hasLower   bool
+		hasNumber  bool
+		hasSpecial bool
+	)
+
+	for _, char := range password {
+		switch {
+		case unicode.IsUpper(char):
+			hasUpper = true
+		case unicode.IsLower(char):
+			hasLower = true
+		case unicode.IsNumber(char):
+			hasNumber = true
+		case unicode.IsPunct(char) || unicode.IsSymbol(char):
+			hasSpecial = true
+		}
+	}
+
+	if !hasUpper {
+		return errors.New("password must contain at least one uppercase letter")
+	}
+	if !hasLower {
+		return errors.New("password must contain at least one lowercase letter")
+	}
+	if !hasNumber {
+		return errors.New("password must contain at least one number")
+	}
+	if !hasSpecial {
+		return errors.New("password must contain at least one special character")
+	}
+
+	return nil
 }

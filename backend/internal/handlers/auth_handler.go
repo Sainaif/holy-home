@@ -9,6 +9,7 @@ import (
 	"github.com/sainaif/holy-home/internal/config"
 	"github.com/sainaif/holy-home/internal/middleware"
 	"github.com/sainaif/holy-home/internal/services"
+	"github.com/sainaif/holy-home/internal/utils"
 )
 
 type AuthHandler struct {
@@ -495,10 +496,10 @@ func (h *AuthHandler) ResetPasswordWithToken(c *fiber.Ctx) error {
 		})
 	}
 
-	// Validate password strength (minimum 8 characters)
-	if len(req.NewPassword) < 8 {
+	// Validate password strength
+	if err := utils.ValidatePasswordStrength(req.NewPassword); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "Password must be at least 8 characters long",
+			"error": err.Error(),
 		})
 	}
 

@@ -96,6 +96,14 @@ func (s *UserService) CreateUser(ctx context.Context, req CreateUserRequest) (*m
 	if req.TempPassword != nil {
 		password = *req.TempPassword
 	}
+
+	// Validate password strength if provided
+	if req.TempPassword != nil {
+		if err := utils.ValidatePasswordStrength(password); err != nil {
+			return nil, err
+		}
+	}
+
 	passwordHash, err := utils.HashPassword(password)
 	if err != nil {
 		return nil, fmt.Errorf("failed to hash password: %w", err)
@@ -253,6 +261,11 @@ func (s *UserService) ChangePassword(ctx context.Context, userID string, oldPass
 	valid, err := utils.VerifyPassword(oldPassword, user.PasswordHash)
 	if err != nil || !valid {
 		return nil, errors.New("invalid current password")
+	}
+
+	// Validate new password strength
+	if err := utils.ValidatePasswordStrength(newPassword); err != nil {
+		return nil, err
 	}
 
 	// Hash new password
@@ -424,6 +437,11 @@ func (s *UserService) ResetPasswordWithToken(ctx context.Context, token string, 
 	// Validate the token
 	resetToken, err := s.ValidateResetToken(ctx, token)
 	if err != nil {
+		return nil, err
+	}
+
+	// Validate password strength
+	if err := utils.ValidatePasswordStrength(newPassword); err != nil {
 		return nil, err
 	}
 

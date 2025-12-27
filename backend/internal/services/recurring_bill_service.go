@@ -260,6 +260,13 @@ func (s *RecurringBillService) GenerateBillsFromTemplates(ctx context.Context) e
 			log.Printf("[RECURRING BILL] Error loading allocations for template %s: %v", templates[i].ID, err)
 			continue
 		}
+		// Ensure allocations exist before generating bill - without allocations,
+		// the bill would be created but GetAllocationBreakdown would fall back to
+		// weight-based calculation instead of using the template's fixed amounts
+		if len(allocations) == 0 {
+			log.Printf("[RECURRING BILL] Template %s has no allocations configured, skipping bill generation", templates[i].ID)
+			continue
+		}
 		templates[i].Allocations = allocations
 
 		if err := s.generateBillFromTemplate(ctx, &templates[i]); err != nil {
@@ -273,6 +280,12 @@ func (s *RecurringBillService) GenerateBillsFromTemplates(ctx context.Context) e
 
 // generateBillFromTemplate generates a single bill from a template
 func (s *RecurringBillService) generateBillFromTemplate(ctx context.Context, template *models.RecurringBillTemplate) error {
+	// Defensive check: ensure allocations exist before creating bill
+	// Without allocations, GetAllocationBreakdown falls back to weight-based calculation
+	if len(template.Allocations) == 0 {
+		return fmt.Errorf("cannot generate bill: template %s has no allocations", template.ID)
+	}
+
 	now := time.Now()
 
 	// Calculate period based on frequency

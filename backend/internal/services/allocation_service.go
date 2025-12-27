@@ -10,6 +10,8 @@ import (
 	"github.com/sainaif/holy-home/internal/utils"
 )
 
+var ErrNoPreviousReading = errors.New("no previous meter reading found")
+
 type AllocationService struct {
 	users        repository.UserRepository
 	groups       repository.GroupRepository
@@ -461,7 +463,7 @@ func (s *AllocationService) deriveUnitsFromMeter(ctx context.Context, consumptio
 	}
 
 	if previous == nil || previous.MeterValue == nil {
-		return 0, nil
+		return 0, ErrNoPreviousReading
 	}
 
 	prevValue := utils.DecimalStringToFloat(*previous.MeterValue)

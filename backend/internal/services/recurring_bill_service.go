@@ -58,23 +58,24 @@ func (s *RecurringBillService) CreateTemplate(ctx context.Context, template *mod
 	template.UpdatedAt = now
 	template.IsActive = true
 
-	// Calculate first due date based on start date
+	// Calculate first due date based on start date, handling end-of-month edge cases
 	year, month, _ := template.StartDate.Date()
-	template.NextDueDate = time.Date(year, month, template.DayOfMonth, 0, 0, 0, 0, time.UTC)
+
+	// Get the last day of the start month
+	lastDayOfMonth := time.Date(year, month+1, 0, 0, 0, 0, 0, time.UTC).Day()
+
+	// If the requested day exceeds the last day of the month, use the last day
+	actualDay := template.DayOfMonth
+	if template.DayOfMonth > lastDayOfMonth {
+		actualDay = lastDayOfMonth
+	}
+
+	template.NextDueDate = time.Date(year, month, actualDay, 0, 0, 0, 0, time.UTC)
 
 	// If the calculated date is before StartDate (e.g., StartDate is Jan 31 but DayOfMonth is 15),
 	// move to next period by adding the frequency interval
 	if template.NextDueDate.Before(template.StartDate) {
-		switch template.Frequency {
-		case "monthly":
-			template.NextDueDate = template.NextDueDate.AddDate(0, 1, 0)
-		case "quarterly":
-			template.NextDueDate = template.NextDueDate.AddDate(0, 3, 0)
-		case "yearly":
-			template.NextDueDate = template.NextDueDate.AddDate(1, 0, 0)
-		default:
-			template.NextDueDate = template.NextDueDate.AddDate(0, 1, 0)
-		}
+		template.NextDueDate = s.calculateNextDueDate(template.NextDueDate, template.DayOfMonth, template.Frequency)
 	}
 
 	if err := s.templates.Create(ctx, template); err != nil {
@@ -319,9 +320,19 @@ func (s *RecurringBillService) calculateNextDueDate(from time.Time, dayOfMonth i
 		next = from.AddDate(0, 1, 0)
 	}
 
-	// Adjust to the specified day of month
+	// Adjust to the specified day of month, handling end-of-month edge cases
 	year, month, _ := next.Date()
-	next = time.Date(year, month, dayOfMonth, 0, 0, 0, 0, next.Location())
+
+	// Get the last day of the target month
+	lastDayOfMonth := time.Date(year, month+1, 0, 0, 0, 0, 0, next.Location()).Day()
+
+	// If the requested day exceeds the last day of the month, use the last day
+	actualDay := dayOfMonth
+	if dayOfMonth > lastDayOfMonth {
+		actualDay = lastDayOfMonth
+	}
+
+	next = time.Date(year, month, actualDay, 0, 0, 0, 0, next.Location())
 
 	return next
 }
@@ -349,10 +360,10 @@ func (s *RecurringBillService) calculatePeriod(dueDate time.Time, frequency stri
 // CheckAndGenerateNextBill checks if a bill is from a recurring template and all payments are made,
 // then generates the next bill if ready
 func (s *RecurringBillService) CheckAndGenerateNextBill(ctx context.Context, billID string) error {
-	// Find the recurring template that has this bill as its current bill
-	bill, err := s.bills.GetByRecurringTemplateID(ctx, billID)
+	// Get the bill by its ID
+	bill, err := s.bills.GetByID(ctx, billID)
 	if err != nil || bill == nil {
-		// Not a recurring bill or already processed, that's okay
+		// Bill not found, that's okay
 		return nil
 	}
 
@@ -382,17 +393,21 @@ func (s *RecurringBillService) CheckAndGenerateNextBill(ctx context.Context, bil
 		return err
 	}
 
-	// Build a map of users who have paid
-	paidUsers := make(map[string]bool)
+	// Build a map of total amount paid by each user
+	paymentMap := make(map[string]float64)
 	for _, payment := range payments {
-		paidUsers[payment.PayerUserID] = true
+		paidFloat := utils.DecimalStringToFloat(payment.AmountPLN)
+		paymentMap[payment.PayerUserID] += paidFloat
 	}
 
-	// Check if all users with allocations have paid
+	// Check if all users with allocations have paid their full amount
 	allPaid := true
 	for _, alloc := range storedAllocations {
+		allocFloat := utils.DecimalStringToFloat(alloc.AllocatedPLN)
+
 		if alloc.SubjectType == "user" {
-			if !paidUsers[alloc.SubjectID] {
+			paidFloat := paymentMap[alloc.SubjectID]
+			if paidFloat < allocFloat-0.01 { // Allow 1 cent tolerance for rounding
 				allPaid = false
 				break
 			}
@@ -403,14 +418,14 @@ func (s *RecurringBillService) CheckAndGenerateNextBill(ctx context.Context, bil
 				return err
 			}
 
-			// Check if any group member hasn't paid
+			// Calculate total paid by all group members
+			totalPaidFloat := 0.0
 			for _, user := range groupUsers {
-				if !paidUsers[user.ID] {
-					allPaid = false
-					break
-				}
+				totalPaidFloat += paymentMap[user.ID]
 			}
-			if !allPaid {
+
+			if totalPaidFloat < allocFloat-0.01 { // Allow 1 cent tolerance for rounding
+				allPaid = false
 				break
 			}
 		}

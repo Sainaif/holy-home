@@ -461,7 +461,7 @@ func (s *AllocationService) deriveUnitsFromMeter(ctx context.Context, consumptio
 	}
 
 	if previous == nil || previous.MeterValue == nil {
-		return 0, nil
+		return 0, ErrNoPreviousReading
 	}
 
 	prevValue := utils.DecimalStringToFloat(*previous.MeterValue)

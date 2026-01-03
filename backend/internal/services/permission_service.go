@@ -213,6 +213,7 @@ func (s *RoleService) InitializeDefaultRoles(ctx context.Context) error {
 }
 
 // GetRole retrieves a role by name
+// For ADMIN role, permissions are populated dynamically from all available permissions
 func (s *RoleService) GetRole(ctx context.Context, name string) (*models.Role, error) {
 	role, err := s.roles.GetByName(ctx, name)
 	if err != nil {
@@ -221,10 +222,25 @@ func (s *RoleService) GetRole(ctx context.Context, name string) (*models.Role, e
 	if role == nil {
 		return nil, errors.New("role not found")
 	}
+
+	// For ADMIN role, replace stored permissions with all available permissions
+	if role.Name == "ADMIN" {
+		allPerms, err := s.permissions.List(ctx)
+		if err != nil {
+			return nil, err
+		}
+		permNames := make([]string, len(allPerms))
+		for i, p := range allPerms {
+			permNames[i] = p.Name
+		}
+		role.Permissions = permNames
+	}
+
 	return role, nil
 }
 
 // GetRoleByID retrieves a role by ID
+// For ADMIN role, permissions are populated dynamically from all available permissions
 func (s *RoleService) GetRoleByID(ctx context.Context, id string) (*models.Role, error) {
 	role, err := s.roles.GetByID(ctx, id)
 	if err != nil {
@@ -233,12 +249,48 @@ func (s *RoleService) GetRoleByID(ctx context.Context, id string) (*models.Role,
 	if role == nil {
 		return nil, errors.New("role not found")
 	}
+
+	// For ADMIN role, replace stored permissions with all available permissions
+	if role.Name == "ADMIN" {
+		allPerms, err := s.permissions.List(ctx)
+		if err != nil {
+			return nil, err
+		}
+		permNames := make([]string, len(allPerms))
+		for i, p := range allPerms {
+			permNames[i] = p.Name
+		}
+		role.Permissions = permNames
+	}
+
 	return role, nil
 }
 
 // GetAllRoles retrieves all roles
+// For ADMIN role, permissions are populated dynamically from all available permissions
 func (s *RoleService) GetAllRoles(ctx context.Context) ([]models.Role, error) {
-	return s.roles.List(ctx)
+	roles, err := s.roles.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// For ADMIN role, replace stored permissions with all available permissions
+	for i := range roles {
+		if roles[i].Name == "ADMIN" {
+			allPerms, err := s.permissions.List(ctx)
+			if err != nil {
+				return nil, err
+			}
+			permNames := make([]string, len(allPerms))
+			for j, p := range allPerms {
+				permNames[j] = p.Name
+			}
+			roles[i].Permissions = permNames
+			break
+		}
+	}
+
+	return roles, nil
 }
 
 // CreateRole creates a new custom role

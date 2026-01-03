@@ -124,7 +124,7 @@ func main() {
 	consumptionService := services.NewConsumptionService(repos.Consumptions, repos.Bills, repos.Users)
 	allocationService := services.NewAllocationService(repos.Users, repos.Groups, repos.Consumptions, repos.Allocations, repos.Bills)
 	loanService := services.NewLoanService(repos.Loans, repos.LoanPayments, repos.Users, repos.Groups, notificationService)
-	choreService := services.NewChoreService(repos.Chores, repos.ChoreAssignments, repos.Users, notificationService)
+	choreService := services.NewChoreService(repos.Chores, repos.ChoreAssignments, repos.ChoreSwapRequests, repos.Users, notificationService)
 	supplyService := services.NewSupplyService(repos.SupplySettings, repos.SupplyItems, repos.SupplyContributions, repos.Users, notificationService)
 	recurringBillService := services.NewRecurringBillService(repos.RecurringBillTemplates, repos.RecurringBillAllocations, repos.Bills, repos.Allocations, repos.Payments, repos.Users, cfg)
 	paymentService := services.NewPaymentService(repos.Payments, repos.Bills, recurringBillService)
@@ -318,6 +318,15 @@ func main() {
 
 	// Chore leaderboard
 	api.Get("/chores/leaderboard", middleware.AuthMiddleware(cfg), choreHandler.GetUserLeaderboard)
+
+	// Chore swap request routes (user-to-user approval flow)
+	swapRequests := api.Group("/chore-swap-requests")
+	swapRequests.Post("/", middleware.AuthMiddleware(cfg), choreHandler.CreateSwapRequest)
+	swapRequests.Get("/pending", middleware.AuthMiddleware(cfg), choreHandler.GetPendingSwapRequests)
+	swapRequests.Get("/my", middleware.AuthMiddleware(cfg), choreHandler.GetMySwapRequests)
+	swapRequests.Post("/:id/accept", middleware.AuthMiddleware(cfg), choreHandler.AcceptSwapRequest)
+	swapRequests.Post("/:id/reject", middleware.AuthMiddleware(cfg), choreHandler.RejectSwapRequest)
+	swapRequests.Delete("/:id", middleware.AuthMiddleware(cfg), choreHandler.CancelSwapRequest)
 
 	// Supply routes
 	supplies := api.Group("/supplies")

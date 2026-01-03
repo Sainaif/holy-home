@@ -181,6 +181,20 @@ type ChoreSettingsRepository interface {
 	Upsert(ctx context.Context, settings *models.ChoreSettings) error
 }
 
+// ChoreSwapRequestRepository handles chore swap request operations
+type ChoreSwapRequestRepository interface {
+	Create(ctx context.Context, request *models.ChoreSwapRequest) error
+	GetByID(ctx context.Context, id string) (*models.ChoreSwapRequest, error)
+	Update(ctx context.Context, request *models.ChoreSwapRequest) error
+	Delete(ctx context.Context, id string) error
+	List(ctx context.Context) ([]models.ChoreSwapRequest, error)
+	ListByRequesterID(ctx context.Context, requesterID string) ([]models.ChoreSwapRequest, error)
+	ListByTargetID(ctx context.Context, targetID string) ([]models.ChoreSwapRequest, error)
+	ListPendingByTargetID(ctx context.Context, targetID string) ([]models.ChoreSwapRequest, error)
+	ListPendingForAssignment(ctx context.Context, assignmentID string) ([]models.ChoreSwapRequest, error)
+	ExpireOldRequests(ctx context.Context) error
+}
+
 // SupplySettingsRepository handles supply settings (singleton)
 type SupplySettingsRepository interface {
 	Get(ctx context.Context) (*models.SupplySettings, error)
@@ -332,6 +346,7 @@ type Repositories struct {
 	Chores                   ChoreRepository
 	ChoreAssignments         ChoreAssignmentRepository
 	ChoreSettings            ChoreSettingsRepository
+	ChoreSwapRequests        ChoreSwapRequestRepository
 	SupplySettings           SupplySettingsRepository
 	SupplyItems              SupplyItemRepository
 	SupplyContributions      SupplyContributionRepository

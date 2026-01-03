@@ -17,6 +17,7 @@ import (
 type ChoreService struct {
 	chores              repository.ChoreRepository
 	choreAssignments    repository.ChoreAssignmentRepository
+	choreSwapRequests   repository.ChoreSwapRequestRepository
 	users               repository.UserRepository
 	notificationService *NotificationService
 }
@@ -24,12 +25,14 @@ type ChoreService struct {
 func NewChoreService(
 	chores repository.ChoreRepository,
 	choreAssignments repository.ChoreAssignmentRepository,
+	choreSwapRequests repository.ChoreSwapRequestRepository,
 	users repository.UserRepository,
 	notificationService *NotificationService,
 ) *ChoreService {
 	return &ChoreService{
 		chores:              chores,
 		choreAssignments:    choreAssignments,
+		choreSwapRequests:   choreSwapRequests,
 		users:               users,
 		notificationService: notificationService,
 	}
@@ -77,6 +80,16 @@ type ReassignChoreRequest struct {
 type RandomAssignRequest struct {
 	DueDate         time.Time `json:"dueDate"`
 	EligibleUserIDs []string  `json:"eligibleUserIds"` // Users to randomly choose from
+}
+
+type CreateSwapRequest struct {
+	RequesterAssignmentID string  `json:"requesterAssignmentId"`
+	TargetAssignmentID    string  `json:"targetAssignmentId"`
+	Message               *string `json:"message,omitempty"`
+}
+
+type RespondSwapRequest struct {
+	ResponseMessage *string `json:"responseMessage,omitempty"`
 }
 
 type ChoreWithAssignment struct {
@@ -782,4 +795,279 @@ func (s *ChoreService) RandomAssignChore(ctx context.Context, choreID string, re
 		AssigneeUserID: randomUserID,
 		DueDate:        req.DueDate,
 	})
+}
+
+// ============================================
+// SWAP REQUEST METHODS (User-to-User Swap Approval)
+// ============================================
+
+// CreateSwapRequest creates a new swap request from one user to another
+func (s *ChoreService) CreateSwapRequest(ctx context.Context, requesterUserID string, req CreateSwapRequest) (*models.ChoreSwapRequest, error) {
+	// Get requester's assignment
+	requesterAssignment, err := s.GetChoreAssignment(ctx, req.RequesterAssignmentID)
+	if err != nil {
+		return nil, errors.New("requester assignment not found")
+	}
+
+	// Verify requester owns this assignment
+	if requesterAssignment.AssigneeUserID != requesterUserID {
+		return nil, errors.New("you can only swap your own assignments")
+	}
+
+	// Get target assignment
+	targetAssignment, err := s.GetChoreAssignment(ctx, req.TargetAssignmentID)
+	if err != nil {
+		return nil, errors.New("target assignment not found")
+	}
+
+	// Prevent swapping with yourself
+	if targetAssignment.AssigneeUserID == requesterUserID {
+		return nil, errors.New("cannot swap with yourself")
+	}
+
+	// Both must be pending or in_progress
+	if requesterAssignment.Status != "pending" && requesterAssignment.Status != "in_progress" {
+		return nil, errors.New("requester assignment must be pending or in progress")
+	}
+	if targetAssignment.Status != "pending" && targetAssignment.Status != "in_progress" {
+		return nil, errors.New("target assignment must be pending or in progress")
+	}
+
+	// Check for existing pending swap request involving these assignments
+	existingRequests, err := s.choreSwapRequests.ListPendingForAssignment(ctx, req.RequesterAssignmentID)
+	if err == nil && len(existingRequests) > 0 {
+		return nil, errors.New("there is already a pending swap request for this assignment")
+	}
+	existingRequests, err = s.choreSwapRequests.ListPendingForAssignment(ctx, req.TargetAssignmentID)
+	if err == nil && len(existingRequests) > 0 {
+		return nil, errors.New("target assignment already has a pending swap request")
+	}
+
+	// Create swap request with 48 hour expiration
+	now := time.Now()
+	swapRequest := &models.ChoreSwapRequest{
+		ID:                      uuid.New().String(),
+		RequesterUserID:         requesterUserID,
+		RequesterAssignmentID:   req.RequesterAssignmentID,
+		TargetUserID:            targetAssignment.AssigneeUserID,
+		TargetAssignmentID:      req.TargetAssignmentID,
+		Status:                  "pending",
+		Message:                 req.Message,
+		ExpiresAt:               now.Add(48 * time.Hour),
+		CreatedAt:               now,
+	}
+
+	if err := s.choreSwapRequests.Create(ctx, swapRequest); err != nil {
+		return nil, fmt.Errorf("failed to create swap request: %w", err)
+	}
+
+	log.Printf("[CHORE] Swap request created: ID=%s, requester=%s, target=%s", swapRequest.ID, requesterUserID, targetAssignment.AssigneeUserID)
+
+	// Send notification to target user
+	if s.notificationService != nil {
+		requester, _ := s.users.GetByID(ctx, requesterUserID)
+		requesterChore, _ := s.GetChore(ctx, requesterAssignment.ChoreID)
+		targetChore, _ := s.GetChore(ctx, targetAssignment.ChoreID)
+
+		if requester != nil && requesterChore != nil && targetChore != nil {
+			notification := &models.Notification{
+				ID:           uuid.New().String(),
+				UserID:       &targetAssignment.AssigneeUserID,
+				Channel:      "app",
+				TemplateID:   "chore_swap_request",
+				ScheduledFor: now,
+				SentAt:       &now,
+				Status:       "sent",
+				Title:        "Prośba o zamianę zadania",
+				Body:         fmt.Sprintf("%s chce zamienić zadanie '%s' na Twoje '%s'", requester.Name, requesterChore.Name, targetChore.Name),
+			}
+			s.notificationService.CreateNotification(ctx, notification)
+		}
+	}
+
+	return swapRequest, nil
+}
+
+// AcceptSwapRequest accepts a swap request and performs the swap
+func (s *ChoreService) AcceptSwapRequest(ctx context.Context, targetUserID, requestID string, req RespondSwapRequest) error {
+	// Expire old requests first
+	s.choreSwapRequests.ExpireOldRequests(ctx)
+
+	swapRequest, err := s.choreSwapRequests.GetByID(ctx, requestID)
+	if err != nil || swapRequest == nil {
+		return errors.New("swap request not found")
+	}
+
+	// Verify target user
+	if swapRequest.TargetUserID != targetUserID {
+		return errors.New("you are not the target of this swap request")
+	}
+
+	// Check status
+	if swapRequest.Status != "pending" {
+		return fmt.Errorf("swap request is already %s", swapRequest.Status)
+	}
+
+	// Check expiration
+	if time.Now().After(swapRequest.ExpiresAt) {
+		swapRequest.Status = "expired"
+		s.choreSwapRequests.Update(ctx, swapRequest)
+		return errors.New("swap request has expired")
+	}
+
+	// Perform the actual swap
+	if err := s.SwapChoreAssignment(ctx, swapRequest.RequesterAssignmentID, swapRequest.TargetAssignmentID); err != nil {
+		return fmt.Errorf("failed to perform swap: %w", err)
+	}
+
+	// Update swap request
+	now := time.Now()
+	swapRequest.Status = "accepted"
+	swapRequest.ResponseMessage = req.ResponseMessage
+	swapRequest.RespondedAt = &now
+
+	if err := s.choreSwapRequests.Update(ctx, swapRequest); err != nil {
+		return fmt.Errorf("failed to update swap request: %w", err)
+	}
+
+	log.Printf("[CHORE] Swap request accepted: ID=%s", requestID)
+
+	// Send notification to requester
+	if s.notificationService != nil {
+		target, _ := s.users.GetByID(ctx, targetUserID)
+		if target != nil {
+			notification := &models.Notification{
+				ID:           uuid.New().String(),
+				UserID:       &swapRequest.RequesterUserID,
+				Channel:      "app",
+				TemplateID:   "chore_swap_accepted",
+				ScheduledFor: now,
+				SentAt:       &now,
+				Status:       "sent",
+				Title:        "Zamiana zaakceptowana",
+				Body:         fmt.Sprintf("%s zaakceptował(a) Twoją prośbę o zamianę zadań", target.Name),
+			}
+			s.notificationService.CreateNotification(ctx, notification)
+		}
+	}
+
+	return nil
+}
+
+// RejectSwapRequest rejects a swap request
+func (s *ChoreService) RejectSwapRequest(ctx context.Context, targetUserID, requestID string, req RespondSwapRequest) error {
+	// Expire old requests first
+	s.choreSwapRequests.ExpireOldRequests(ctx)
+
+	swapRequest, err := s.choreSwapRequests.GetByID(ctx, requestID)
+	if err != nil || swapRequest == nil {
+		return errors.New("swap request not found")
+	}
+
+	// Verify target user
+	if swapRequest.TargetUserID != targetUserID {
+		return errors.New("you are not the target of this swap request")
+	}
+
+	// Check status
+	if swapRequest.Status != "pending" {
+		return fmt.Errorf("swap request is already %s", swapRequest.Status)
+	}
+
+	// Update swap request
+	now := time.Now()
+	swapRequest.Status = "rejected"
+	swapRequest.ResponseMessage = req.ResponseMessage
+	swapRequest.RespondedAt = &now
+
+	if err := s.choreSwapRequests.Update(ctx, swapRequest); err != nil {
+		return fmt.Errorf("failed to update swap request: %w", err)
+	}
+
+	log.Printf("[CHORE] Swap request rejected: ID=%s", requestID)
+
+	// Send notification to requester
+	if s.notificationService != nil {
+		target, _ := s.users.GetByID(ctx, targetUserID)
+		if target != nil {
+			notification := &models.Notification{
+				ID:           uuid.New().String(),
+				UserID:       &swapRequest.RequesterUserID,
+				Channel:      "app",
+				TemplateID:   "chore_swap_rejected",
+				ScheduledFor: now,
+				SentAt:       &now,
+				Status:       "sent",
+				Title:        "Zamiana odrzucona",
+				Body:         fmt.Sprintf("%s odrzucił(a) Twoją prośbę o zamianę zadań", target.Name),
+			}
+			s.notificationService.CreateNotification(ctx, notification)
+		}
+	}
+
+	return nil
+}
+
+// CancelSwapRequest cancels a pending swap request by the requester
+func (s *ChoreService) CancelSwapRequest(ctx context.Context, requesterUserID, requestID string) error {
+	swapRequest, err := s.choreSwapRequests.GetByID(ctx, requestID)
+	if err != nil || swapRequest == nil {
+		return errors.New("swap request not found")
+	}
+
+	// Verify requester
+	if swapRequest.RequesterUserID != requesterUserID {
+		return errors.New("you can only cancel your own swap requests")
+	}
+
+	// Check status
+	if swapRequest.Status != "pending" {
+		return fmt.Errorf("swap request is already %s", swapRequest.Status)
+	}
+
+	// Update swap request
+	now := time.Now()
+	swapRequest.Status = "cancelled"
+	swapRequest.RespondedAt = &now
+
+	if err := s.choreSwapRequests.Update(ctx, swapRequest); err != nil {
+		return fmt.Errorf("failed to cancel swap request: %w", err)
+	}
+
+	log.Printf("[CHORE] Swap request cancelled: ID=%s", requestID)
+
+	return nil
+}
+
+// GetPendingSwapRequestsForUser gets all pending swap requests where user is the target
+func (s *ChoreService) GetPendingSwapRequestsForUser(ctx context.Context, userID string) ([]models.ChoreSwapRequest, error) {
+	// Expire old requests first
+	s.choreSwapRequests.ExpireOldRequests(ctx)
+
+	requests, err := s.choreSwapRequests.ListPendingByTargetID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get swap requests: %w", err)
+	}
+	return requests, nil
+}
+
+// GetMySwapRequests gets all swap requests created by the user
+func (s *ChoreService) GetMySwapRequests(ctx context.Context, userID string) ([]models.ChoreSwapRequest, error) {
+	// Expire old requests first
+	s.choreSwapRequests.ExpireOldRequests(ctx)
+
+	requests, err := s.choreSwapRequests.ListByRequesterID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get swap requests: %w", err)
+	}
+	return requests, nil
+}
+
+// GetSwapRequest gets a swap request by ID
+func (s *ChoreService) GetSwapRequest(ctx context.Context, requestID string) (*models.ChoreSwapRequest, error) {
+	request, err := s.choreSwapRequests.GetByID(ctx, requestID)
+	if err != nil || request == nil {
+		return nil, errors.New("swap request not found")
+	}
+	return request, nil
 }

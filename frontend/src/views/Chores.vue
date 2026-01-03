@@ -189,6 +189,100 @@
       </div>
     </div>
 
+    <!-- Pending Swap Requests (incoming) -->
+    <div v-if="pendingSwapRequests.length > 0" class="card mb-6">
+      <h2 class="text-xl font-semibold mb-4 flex items-center gap-2">
+        <span>📩</span> {{ $t('chores.incomingSwapRequests') }}
+      </h2>
+      <div class="space-y-3">
+        <div v-for="request in pendingSwapRequests" :key="request.id"
+             class="p-4 rounded-xl bg-yellow-600/10 border border-yellow-600/30">
+          <div class="flex justify-between items-start">
+            <div class="flex-1">
+              <div class="font-medium mb-1">
+                {{ request.requesterUserName }} {{ $t('chores.wantsToSwap') }}
+              </div>
+              <div class="text-sm text-gray-400 mb-2">
+                <span class="text-yellow-400">{{ request.requesterChore?.name }}</span>
+                ↔
+                <span class="text-purple-400">{{ request.targetChore?.name }}</span>
+              </div>
+              <div v-if="request.message" class="text-sm text-gray-300 italic mb-2">
+                "{{ request.message }}"
+              </div>
+              <div class="text-xs text-gray-500">
+                {{ $t('chores.expiresAt', { time: formatDate(request.expiresAt) }) }}
+              </div>
+            </div>
+            <div class="flex gap-2">
+              <button
+                @click="acceptSwapRequest(request.id)"
+                :disabled="respondingToSwapRequest === request.id"
+                class="btn btn-sm btn-primary">
+                {{ $t('common.accept') }}
+              </button>
+              <button
+                @click="rejectSwapRequest(request.id)"
+                :disabled="respondingToSwapRequest === request.id"
+                class="btn btn-sm btn-outline">
+                {{ $t('common.reject') }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- My Swap Requests (outgoing) -->
+    <div v-if="mySwapRequests.length > 0" class="card mb-6">
+      <h2 class="text-xl font-semibold mb-4 flex items-center gap-2">
+        <span>📤</span> {{ $t('chores.mySwapRequests') }}
+      </h2>
+      <div class="space-y-3">
+        <div v-for="request in mySwapRequests" :key="request.id"
+             :class="[
+               'p-4 rounded-xl border',
+               request.status === 'pending' ? 'bg-blue-600/10 border-blue-600/30' :
+               request.status === 'accepted' ? 'bg-green-600/10 border-green-600/30' :
+               request.status === 'rejected' ? 'bg-red-600/10 border-red-600/30' :
+               'bg-gray-600/10 border-gray-600/30'
+             ]">
+          <div class="flex justify-between items-start">
+            <div class="flex-1">
+              <div class="font-medium mb-1">
+                {{ $t('chores.swapRequestTo', { name: request.targetUserName }) }}
+              </div>
+              <div class="text-sm text-gray-400 mb-2">
+                <span class="text-purple-400">{{ request.requesterChore?.name }}</span>
+                ↔
+                <span class="text-yellow-400">{{ request.targetChore?.name }}</span>
+              </div>
+              <div class="flex items-center gap-2 text-xs">
+                <span :class="[
+                  'px-2 py-1 rounded',
+                  request.status === 'pending' ? 'bg-blue-600/20 text-blue-400' :
+                  request.status === 'accepted' ? 'bg-green-600/20 text-green-400' :
+                  request.status === 'rejected' ? 'bg-red-600/20 text-red-400' :
+                  'bg-gray-600/20 text-gray-400'
+                ]">
+                  {{ $t('chores.swapStatus.' + request.status) }}
+                </span>
+                <span v-if="request.status === 'pending'" class="text-gray-500">
+                  {{ $t('chores.expiresAt', { time: formatDate(request.expiresAt) }) }}
+                </span>
+              </div>
+            </div>
+            <button
+              v-if="request.status === 'pending'"
+              @click="cancelSwapRequest(request.id)"
+              class="btn btn-sm btn-outline text-red-400 border-red-400 hover:bg-red-600/20">
+              {{ $t('common.cancel') }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Chores List -->
     <div class="card">
       <div v-if="loading" class="text-center py-8">{{ $t('common.loading') }}</div>
@@ -487,6 +581,51 @@
         </div>
       </div>
     </div>
+
+    <!-- Swap Request Modal (for non-admin users) -->
+    <div v-if="showSwapRequestModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click.self="closeSwapRequestModal">
+      <div class="bg-gray-800 rounded-xl p-6 w-full max-w-md">
+        <h2 class="text-xl font-semibold mb-4">{{ $t('chores.requestSwap') }}</h2>
+        <p class="text-gray-400 mb-4">{{ $t('chores.swapRequestDescription') }}</p>
+
+        <div class="mb-4 p-3 bg-gray-700/50 rounded-lg">
+          <div class="text-sm text-gray-400 mb-1">{{ $t('chores.yourChore') }}</div>
+          <div class="font-medium">{{ swapFirstAssignment?.chore?.name }}</div>
+          <div class="text-sm text-gray-400">{{ formatDate(swapFirstAssignment?.dueDate) }}</div>
+        </div>
+
+        <div class="mb-4 text-center text-2xl">🔄</div>
+
+        <div class="mb-4 p-3 bg-gray-700/50 rounded-lg">
+          <div class="text-sm text-gray-400 mb-1">{{ $t('chores.theirChore') }}</div>
+          <div class="font-medium">{{ swapRequestTargetAssignment?.chore?.name }}</div>
+          <div class="text-sm text-gray-400">
+            {{ swapRequestTargetAssignment?.userName }} • {{ formatDate(swapRequestTargetAssignment?.dueDate) }}
+          </div>
+        </div>
+
+        <div class="mb-4">
+          <label class="block text-sm font-medium mb-2">{{ $t('chores.swapMessage') }}</label>
+          <textarea
+            v-model="swapRequestMessage"
+            class="input w-full h-24 resize-none"
+            :placeholder="$t('chores.swapMessagePlaceholder')"></textarea>
+        </div>
+
+        <div class="flex justify-end gap-2">
+          <button type="button" @click="closeSwapRequestModal" class="btn btn-outline">
+            {{ $t('common.cancel') }}
+          </button>
+          <button
+            @click="createSwapRequest"
+            :disabled="creatingSwapRequest"
+            class="btn btn-primary">
+            {{ creatingSwapRequest ? $t('chores.sending') : $t('chores.sendRequest') }}
+          </button>
+        </div>
+      </div>
+    </div>
+
   </div>
 </template>
 
@@ -538,6 +677,15 @@ const randomAssignChoreId = ref(null)
 const randomAssignSelectedUsers = ref([])
 const randomAssignDueDate = ref('')
 const savingRandomAssign = ref(false)
+
+// Swap request state (for non-admin users)
+const showSwapRequestModal = ref(false)
+const swapRequestMessage = ref('')
+const swapRequestTargetAssignment = ref(null)
+const creatingSwapRequest = ref(false)
+const pendingSwapRequests = ref([])
+const mySwapRequests = ref([])
+const respondingToSwapRequest = ref(null)
 
 const choreForm = ref({
   name: '',
@@ -604,6 +752,12 @@ onMounted(async () => {
   // Then load assignments (which enriches with chore/user data)
   await loadAssignments()
 
+  // Load swap requests
+  await Promise.all([
+    loadPendingSwapRequests(),
+    loadMySwapRequests()
+  ])
+
   // Find user stats from leaderboard
   userStats.value = leaderboard.value.find(u => u.userId === authStore.user?.id)
 
@@ -616,6 +770,12 @@ onMounted(async () => {
   onEvent('chore.assigned', () => {
     console.log('[Chores] Chore assigned event received, refreshing...')
     refreshAssignmentsAndLeaderboard()
+  })
+
+  onEvent('chore.swap_request', () => {
+    console.log('[Chores] Chore swap request event received, refreshing...')
+    loadPendingSwapRequests()
+    loadMySwapRequests()
   })
 
   // Listen for local data events
@@ -962,8 +1122,14 @@ async function reassignChore() {
 // Swap functions
 function startSwap(assignment) {
   if (swapMode.value && swapFirstAssignment.value) {
-    // Second click - complete the swap
-    completeSwap(assignment)
+    // Second click - complete the swap or open request modal
+    if (authStore.hasPermission('chores.force_swap')) {
+      // Admin can force swap directly
+      completeSwap(assignment)
+    } else {
+      // Regular user opens swap request modal
+      openSwapRequestModal(assignment)
+    }
   } else {
     // First click - enter swap mode
     swapMode.value = true
@@ -1002,6 +1168,104 @@ async function completeSwap(secondAssignment) {
     alert(t('chores.swapError') + ' ' + (err.response?.data?.error || err.message))
   } finally {
     swappingChores.value = false
+  }
+}
+
+// Swap request functions (for non-admin users)
+function openSwapRequestModal(targetAssignment) {
+  swapRequestTargetAssignment.value = targetAssignment
+  swapRequestMessage.value = ''
+  showSwapRequestModal.value = true
+}
+
+function closeSwapRequestModal() {
+  showSwapRequestModal.value = false
+  swapRequestTargetAssignment.value = null
+  swapRequestMessage.value = ''
+  cancelSwap()
+}
+
+async function createSwapRequest() {
+  if (!swapFirstAssignment.value || !swapRequestTargetAssignment.value) return
+
+  creatingSwapRequest.value = true
+  try {
+    await api.post('/chore-swap-requests', {
+      requesterAssignmentId: swapFirstAssignment.value.id,
+      targetAssignmentId: swapRequestTargetAssignment.value.id,
+      message: swapRequestMessage.value || undefined
+    })
+
+    closeSwapRequestModal()
+    await loadMySwapRequests()
+    alert(t('chores.swapRequestSent'))
+  } catch (err) {
+    console.error('Failed to create swap request:', err)
+    alert(t('chores.swapRequestError') + ' ' + (err.response?.data?.error || err.message))
+  } finally {
+    creatingSwapRequest.value = false
+  }
+}
+
+async function loadPendingSwapRequests() {
+  try {
+    const response = await api.get('/chore-swap-requests/pending')
+    pendingSwapRequests.value = response.data || []
+  } catch (err) {
+    console.error('Failed to load pending swap requests:', err)
+    pendingSwapRequests.value = []
+  }
+}
+
+async function loadMySwapRequests() {
+  try {
+    const response = await api.get('/chore-swap-requests/my')
+    mySwapRequests.value = response.data || []
+  } catch (err) {
+    console.error('Failed to load my swap requests:', err)
+    mySwapRequests.value = []
+  }
+}
+
+async function acceptSwapRequest(requestId) {
+  respondingToSwapRequest.value = requestId
+  try {
+    await api.post(`/chore-swap-requests/${requestId}/accept`)
+    await Promise.all([
+      loadPendingSwapRequests(),
+      loadAssignments()
+    ])
+    emit(DATA_EVENTS.CHORE_ASSIGNMENT_UPDATED)
+  } catch (err) {
+    console.error('Failed to accept swap request:', err)
+    alert(t('chores.acceptSwapError') + ' ' + (err.response?.data?.error || err.message))
+  } finally {
+    respondingToSwapRequest.value = null
+  }
+}
+
+async function rejectSwapRequest(requestId) {
+  respondingToSwapRequest.value = requestId
+  try {
+    await api.post(`/chore-swap-requests/${requestId}/reject`)
+    await loadPendingSwapRequests()
+  } catch (err) {
+    console.error('Failed to reject swap request:', err)
+    alert(t('chores.rejectSwapError') + ' ' + (err.response?.data?.error || err.message))
+  } finally {
+    respondingToSwapRequest.value = null
+  }
+}
+
+async function cancelSwapRequest(requestId) {
+  if (!confirm(t('chores.confirmCancelSwapRequest'))) return
+
+  try {
+    await api.delete(`/chore-swap-requests/${requestId}`)
+    await loadMySwapRequests()
+  } catch (err) {
+    console.error('Failed to cancel swap request:', err)
+    alert(t('chores.cancelSwapRequestError') + ' ' + (err.response?.data?.error || err.message))
   }
 }
 

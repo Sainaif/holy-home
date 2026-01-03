@@ -485,3 +485,182 @@ func (h *ChoreHandler) RandomAssignChore(c *fiber.Ctx) error {
 		"selectedUserId": assignment.AssigneeUserID,
 	})
 }
+
+// ============================================
+// SWAP REQUEST HANDLERS (User-to-User Swap Approval)
+// ============================================
+
+// CreateSwapRequest creates a new swap request from the current user
+func (h *ChoreHandler) CreateSwapRequest(c *fiber.Ctx) error {
+	userID, err := middleware.GetUserID(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
+
+	var req services.CreateSwapRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid request body",
+		})
+	}
+
+	swapRequest, err := h.choreService.CreateSwapRequest(c.Context(), userID, req)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
+	// Broadcast to target user
+	h.eventService.BroadcastToUser(swapRequest.TargetUserID, services.EventChoreUpdated, map[string]interface{}{
+		"swapRequestId": swapRequest.ID,
+		"action":        "swap_request_received",
+	})
+
+	return c.Status(fiber.StatusCreated).JSON(swapRequest)
+}
+
+// AcceptSwapRequest accepts a swap request
+func (h *ChoreHandler) AcceptSwapRequest(c *fiber.Ctx) error {
+	userID, err := middleware.GetUserID(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
+
+	requestID := c.Params("id")
+	if requestID == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid request ID",
+		})
+	}
+
+	var req services.RespondSwapRequest
+	c.BodyParser(&req) // Optional body
+
+	if err := h.choreService.AcceptSwapRequest(c.Context(), userID, requestID, req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
+	// Get the swap request to notify the requester
+	swapRequest, _ := h.choreService.GetSwapRequest(c.Context(), requestID)
+	if swapRequest != nil {
+		h.eventService.BroadcastToUser(swapRequest.RequesterUserID, services.EventChoreUpdated, map[string]interface{}{
+			"swapRequestId": swapRequest.ID,
+			"action":        "swap_request_accepted",
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"message": "Swap request accepted and assignments swapped",
+	})
+}
+
+// RejectSwapRequest rejects a swap request
+func (h *ChoreHandler) RejectSwapRequest(c *fiber.Ctx) error {
+	userID, err := middleware.GetUserID(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
+
+	requestID := c.Params("id")
+	if requestID == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid request ID",
+		})
+	}
+
+	var req services.RespondSwapRequest
+	c.BodyParser(&req) // Optional body
+
+	if err := h.choreService.RejectSwapRequest(c.Context(), userID, requestID, req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
+	// Get the swap request to notify the requester
+	swapRequest, _ := h.choreService.GetSwapRequest(c.Context(), requestID)
+	if swapRequest != nil {
+		h.eventService.BroadcastToUser(swapRequest.RequesterUserID, services.EventChoreUpdated, map[string]interface{}{
+			"swapRequestId": swapRequest.ID,
+			"action":        "swap_request_rejected",
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"message": "Swap request rejected",
+	})
+}
+
+// CancelSwapRequest cancels a pending swap request
+func (h *ChoreHandler) CancelSwapRequest(c *fiber.Ctx) error {
+	userID, err := middleware.GetUserID(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
+
+	requestID := c.Params("id")
+	if requestID == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid request ID",
+		})
+	}
+
+	if err := h.choreService.CancelSwapRequest(c.Context(), userID, requestID); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"message": "Swap request cancelled",
+	})
+}
+
+// GetPendingSwapRequests gets pending swap requests where current user is the target
+func (h *ChoreHandler) GetPendingSwapRequests(c *fiber.Ctx) error {
+	userID, err := middleware.GetUserID(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
+
+	requests, err := h.choreService.GetPendingSwapRequestsForUser(c.Context(), userID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
+	return c.JSON(requests)
+}
+
+// GetMySwapRequests gets swap requests created by the current user
+func (h *ChoreHandler) GetMySwapRequests(c *fiber.Ctx) error {
+	userID, err := middleware.GetUserID(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
+
+	requests, err := h.choreService.GetMySwapRequests(c.Context(), userID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
+	return c.JSON(requests)
+}

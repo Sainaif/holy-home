@@ -434,3 +434,189 @@ func rowToChoreSettings(row *ChoreSettingsRow) *models.ChoreSettings {
 	settings.UpdatedAt, _ = time.Parse(time.RFC3339, row.UpdatedAt)
 	return settings
 }
+
+// ChoreSwapRequestRow represents a chore swap request row in SQLite
+type ChoreSwapRequestRow struct {
+	ID                    string  `db:"id"`
+	RequesterUserID       string  `db:"requester_user_id"`
+	RequesterAssignmentID string  `db:"requester_assignment_id"`
+	TargetUserID          string  `db:"target_user_id"`
+	TargetAssignmentID    string  `db:"target_assignment_id"`
+	Status                string  `db:"status"`
+	Message               *string `db:"message"`
+	ResponseMessage       *string `db:"response_message"`
+	ExpiresAt             string  `db:"expires_at"`
+	RespondedAt           *string `db:"responded_at"`
+	CreatedAt             string  `db:"created_at"`
+}
+
+// ChoreSwapRequestRepository implements repository.ChoreSwapRequestRepository for SQLite
+type ChoreSwapRequestRepository struct {
+	db *sqlx.DB
+}
+
+// NewChoreSwapRequestRepository creates a new SQLite chore swap request repository
+func NewChoreSwapRequestRepository(db *sqlx.DB) *ChoreSwapRequestRepository {
+	return &ChoreSwapRequestRepository{db: db}
+}
+
+// Create creates a new chore swap request
+func (r *ChoreSwapRequestRepository) Create(ctx context.Context, request *models.ChoreSwapRequest) error {
+	now := time.Now().UTC().Format(time.RFC3339)
+
+	query := `
+		INSERT INTO chore_swap_requests (id, requester_user_id, requester_assignment_id, target_user_id,
+			target_assignment_id, status, message, expires_at, created_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`
+
+	_, err := r.db.ExecContext(ctx, query,
+		request.ID,
+		request.RequesterUserID,
+		request.RequesterAssignmentID,
+		request.TargetUserID,
+		request.TargetAssignmentID,
+		request.Status,
+		request.Message,
+		request.ExpiresAt.UTC().Format(time.RFC3339),
+		now,
+	)
+	return err
+}
+
+// GetByID retrieves a chore swap request by ID
+func (r *ChoreSwapRequestRepository) GetByID(ctx context.Context, id string) (*models.ChoreSwapRequest, error) {
+	var row ChoreSwapRequestRow
+	err := r.db.GetContext(ctx, &row, "SELECT * FROM chore_swap_requests WHERE id = ?", id)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return rowToChoreSwapRequest(&row), nil
+}
+
+// Update updates an existing chore swap request
+func (r *ChoreSwapRequestRepository) Update(ctx context.Context, request *models.ChoreSwapRequest) error {
+	var respondedAt *string
+	if request.RespondedAt != nil {
+		ra := request.RespondedAt.UTC().Format(time.RFC3339)
+		respondedAt = &ra
+	}
+
+	query := `
+		UPDATE chore_swap_requests SET
+			status = ?, response_message = ?, responded_at = ?
+		WHERE id = ?
+	`
+
+	_, err := r.db.ExecContext(ctx, query,
+		request.Status,
+		request.ResponseMessage,
+		respondedAt,
+		request.ID,
+	)
+	return err
+}
+
+// Delete deletes a chore swap request
+func (r *ChoreSwapRequestRepository) Delete(ctx context.Context, id string) error {
+	_, err := r.db.ExecContext(ctx, "DELETE FROM chore_swap_requests WHERE id = ?", id)
+	return err
+}
+
+// List returns all chore swap requests
+func (r *ChoreSwapRequestRepository) List(ctx context.Context) ([]models.ChoreSwapRequest, error) {
+	var rows []ChoreSwapRequestRow
+	err := r.db.SelectContext(ctx, &rows, "SELECT * FROM chore_swap_requests ORDER BY created_at DESC")
+	if err != nil {
+		return nil, err
+	}
+	return rowsToChoreSwapRequests(rows), nil
+}
+
+// ListByRequesterID returns swap requests created by a user
+func (r *ChoreSwapRequestRepository) ListByRequesterID(ctx context.Context, requesterID string) ([]models.ChoreSwapRequest, error) {
+	var rows []ChoreSwapRequestRow
+	err := r.db.SelectContext(ctx, &rows,
+		"SELECT * FROM chore_swap_requests WHERE requester_user_id = ? ORDER BY created_at DESC",
+		requesterID)
+	if err != nil {
+		return nil, err
+	}
+	return rowsToChoreSwapRequests(rows), nil
+}
+
+// ListByTargetID returns swap requests sent to a user
+func (r *ChoreSwapRequestRepository) ListByTargetID(ctx context.Context, targetID string) ([]models.ChoreSwapRequest, error) {
+	var rows []ChoreSwapRequestRow
+	err := r.db.SelectContext(ctx, &rows,
+		"SELECT * FROM chore_swap_requests WHERE target_user_id = ? ORDER BY created_at DESC",
+		targetID)
+	if err != nil {
+		return nil, err
+	}
+	return rowsToChoreSwapRequests(rows), nil
+}
+
+// ListPendingByTargetID returns pending swap requests for a user to respond to
+func (r *ChoreSwapRequestRepository) ListPendingByTargetID(ctx context.Context, targetID string) ([]models.ChoreSwapRequest, error) {
+	var rows []ChoreSwapRequestRow
+	err := r.db.SelectContext(ctx, &rows,
+		"SELECT * FROM chore_swap_requests WHERE target_user_id = ? AND status = 'pending' ORDER BY created_at DESC",
+		targetID)
+	if err != nil {
+		return nil, err
+	}
+	return rowsToChoreSwapRequests(rows), nil
+}
+
+// ListPendingForAssignment returns pending swap requests involving a specific assignment
+func (r *ChoreSwapRequestRepository) ListPendingForAssignment(ctx context.Context, assignmentID string) ([]models.ChoreSwapRequest, error) {
+	var rows []ChoreSwapRequestRow
+	err := r.db.SelectContext(ctx, &rows,
+		"SELECT * FROM chore_swap_requests WHERE (requester_assignment_id = ? OR target_assignment_id = ?) AND status = 'pending'",
+		assignmentID, assignmentID)
+	if err != nil {
+		return nil, err
+	}
+	return rowsToChoreSwapRequests(rows), nil
+}
+
+// ExpireOldRequests marks expired pending requests as expired
+func (r *ChoreSwapRequestRepository) ExpireOldRequests(ctx context.Context) error {
+	now := time.Now().UTC().Format(time.RFC3339)
+	_, err := r.db.ExecContext(ctx,
+		"UPDATE chore_swap_requests SET status = 'expired' WHERE status = 'pending' AND expires_at < ?",
+		now)
+	return err
+}
+
+func rowToChoreSwapRequest(row *ChoreSwapRequestRow) *models.ChoreSwapRequest {
+	request := &models.ChoreSwapRequest{
+		ID:                    row.ID,
+		RequesterUserID:       row.RequesterUserID,
+		RequesterAssignmentID: row.RequesterAssignmentID,
+		TargetUserID:          row.TargetUserID,
+		TargetAssignmentID:    row.TargetAssignmentID,
+		Status:                row.Status,
+		Message:               row.Message,
+		ResponseMessage:       row.ResponseMessage,
+	}
+	request.ExpiresAt, _ = time.Parse(time.RFC3339, row.ExpiresAt)
+	request.CreatedAt, _ = time.Parse(time.RFC3339, row.CreatedAt)
+	if row.RespondedAt != nil {
+		t, _ := time.Parse(time.RFC3339, *row.RespondedAt)
+		request.RespondedAt = &t
+	}
+	return request
+}
+
+func rowsToChoreSwapRequests(rows []ChoreSwapRequestRow) []models.ChoreSwapRequest {
+	requests := make([]models.ChoreSwapRequest, len(rows))
+	for i, row := range rows {
+		requests[i] = *rowToChoreSwapRequest(&row)
+	}
+	return requests
+}

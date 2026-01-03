@@ -178,6 +178,21 @@ type ChoreSettings struct {
 	UpdatedAt             time.Time `db:"updated_at" json:"updatedAt"`
 }
 
+// ChoreSwapRequest represents a request to swap chore assignments between users
+type ChoreSwapRequest struct {
+	ID                    string     `db:"id" json:"id"`
+	RequesterUserID       string     `db:"requester_user_id" json:"requesterUserId"`             // User who initiated the swap
+	RequesterAssignmentID string     `db:"requester_assignment_id" json:"requesterAssignmentId"` // The requester's assignment
+	TargetUserID          string     `db:"target_user_id" json:"targetUserId"`                   // User who must approve the swap
+	TargetAssignmentID    string     `db:"target_assignment_id" json:"targetAssignmentId"`       // The target's assignment
+	Status                string     `db:"status" json:"status"`                                 // pending, accepted, rejected, cancelled, expired
+	Message               *string    `db:"message" json:"message,omitempty"`                     // Optional message from requester
+	ResponseMessage       *string    `db:"response_message" json:"responseMessage,omitempty"`    // Optional response from target
+	ExpiresAt             time.Time  `db:"expires_at" json:"expiresAt"`                          // Request expires after 48h
+	RespondedAt           *time.Time `db:"responded_at" json:"respondedAt,omitempty"`
+	CreatedAt             time.Time  `db:"created_at" json:"createdAt"`
+}
+
 // Notification represents an in-app notification
 type Notification struct {
 	ID           string     `db:"id" json:"id"`

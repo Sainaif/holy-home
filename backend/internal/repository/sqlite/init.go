@@ -22,6 +22,7 @@ func NewRepositories(db *sqlx.DB) *repository.Repositories {
 		Chores:                   NewChoreRepository(db),
 		ChoreAssignments:         NewChoreAssignmentRepository(db),
 		ChoreSettings:            NewChoreSettingsRepository(db),
+		ChoreSwapRequests:        NewChoreSwapRequestRepository(db),
 		SupplySettings:           NewSupplySettingsRepository(db),
 		SupplyItems:              NewSupplyItemRepository(db),
 		SupplyContributions:      NewSupplyContributionRepository(db),

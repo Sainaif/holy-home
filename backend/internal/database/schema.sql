@@ -217,6 +217,25 @@ CREATE INDEX IF NOT EXISTS idx_chore_assign_user ON chore_assignments(assignee_u
 CREATE INDEX IF NOT EXISTS idx_chore_assign_due ON chore_assignments(due_date);
 CREATE INDEX IF NOT EXISTS idx_chore_assign_status ON chore_assignments(status);
 
+-- Chore swap requests (user-to-user swap approval)
+CREATE TABLE IF NOT EXISTS chore_swap_requests (
+    id TEXT PRIMARY KEY,
+    requester_user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    requester_assignment_id TEXT NOT NULL REFERENCES chore_assignments(id) ON DELETE CASCADE,
+    target_user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    target_assignment_id TEXT NOT NULL REFERENCES chore_assignments(id) ON DELETE CASCADE,
+    status TEXT NOT NULL DEFAULT 'pending',
+    message TEXT,
+    response_message TEXT,
+    expires_at TEXT NOT NULL,
+    responded_at TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_swap_requests_requester ON chore_swap_requests(requester_user_id);
+CREATE INDEX IF NOT EXISTS idx_swap_requests_target ON chore_swap_requests(target_user_id);
+CREATE INDEX IF NOT EXISTS idx_swap_requests_status ON chore_swap_requests(status);
+
 -- Chore settings (singleton - one row max)
 CREATE TABLE IF NOT EXISTS chore_settings (
     id TEXT PRIMARY KEY DEFAULT 'singleton',

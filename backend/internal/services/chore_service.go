@@ -846,15 +846,15 @@ func (s *ChoreService) CreateSwapRequest(ctx context.Context, requesterUserID st
 	// Create swap request with 48 hour expiration
 	now := time.Now()
 	swapRequest := &models.ChoreSwapRequest{
-		ID:                      uuid.New().String(),
-		RequesterUserID:         requesterUserID,
-		RequesterAssignmentID:   req.RequesterAssignmentID,
-		TargetUserID:            targetAssignment.AssigneeUserID,
-		TargetAssignmentID:      req.TargetAssignmentID,
-		Status:                  "pending",
-		Message:                 req.Message,
-		ExpiresAt:               now.Add(48 * time.Hour),
-		CreatedAt:               now,
+		ID:                    uuid.New().String(),
+		RequesterUserID:       requesterUserID,
+		RequesterAssignmentID: req.RequesterAssignmentID,
+		TargetUserID:          targetAssignment.AssigneeUserID,
+		TargetAssignmentID:    req.TargetAssignmentID,
+		Status:                "pending",
+		Message:               req.Message,
+		ExpiresAt:             now.Add(48 * time.Hour),
+		CreatedAt:             now,
 	}
 
 	if err := s.choreSwapRequests.Create(ctx, swapRequest); err != nil {

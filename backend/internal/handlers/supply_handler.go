@@ -84,6 +84,29 @@ func (h *SupplyHandler) AdjustBudget(c *fiber.Ctx) error {
 	})
 }
 
+// SetBudgetHolder assigns a user as the budget holder (ADMIN only)
+func (h *SupplyHandler) SetBudgetHolder(c *fiber.Ctx) error {
+	var req struct {
+		UserID *string `json:"userId"`
+	}
+
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid request body",
+		})
+	}
+
+	if err := h.supplyService.SetBudgetHolder(c.Context(), req.UserID); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"message": "Budget holder updated successfully",
+	})
+}
+
 // ========== Item Handlers ==========
 
 // GetItems retrieves supply items with optional filters and sorting

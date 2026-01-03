@@ -12,14 +12,15 @@ import (
 
 // SupplySettingsRow represents supply settings row in SQLite
 type SupplySettingsRow struct {
-	ID                    string `db:"id"`
-	WeeklyContributionPLN string `db:"weekly_contribution_pln"`
-	ContributionDay       string `db:"contribution_day"`
-	CurrentBudgetPLN      string `db:"current_budget_pln"`
-	LastContributionAt    string `db:"last_contribution_at"`
-	IsActive              int    `db:"is_active"`
-	CreatedAt             string `db:"created_at"`
-	UpdatedAt             string `db:"updated_at"`
+	ID                    string  `db:"id"`
+	WeeklyContributionPLN string  `db:"weekly_contribution_pln"`
+	ContributionDay       string  `db:"contribution_day"`
+	CurrentBudgetPLN      string  `db:"current_budget_pln"`
+	LastContributionAt    string  `db:"last_contribution_at"`
+	IsActive              int     `db:"is_active"`
+	BudgetHolderUserID    *string `db:"budget_holder_user_id"`
+	CreatedAt             string  `db:"created_at"`
+	UpdatedAt             string  `db:"updated_at"`
 }
 
 // SupplySettingsRepository implements repository.SupplySettingsRepository for SQLite
@@ -51,14 +52,15 @@ func (r *SupplySettingsRepository) Upsert(ctx context.Context, settings *models.
 
 	query := `
 		INSERT INTO supply_settings (id, weekly_contribution_pln, contribution_day, current_budget_pln,
-			last_contribution_at, is_active, created_at, updated_at)
-		VALUES ('singleton', ?, ?, ?, ?, ?, ?, ?)
+			last_contribution_at, is_active, budget_holder_user_id, created_at, updated_at)
+		VALUES ('singleton', ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(id) DO UPDATE SET
 			weekly_contribution_pln = excluded.weekly_contribution_pln,
 			contribution_day = excluded.contribution_day,
 			current_budget_pln = excluded.current_budget_pln,
 			last_contribution_at = excluded.last_contribution_at,
 			is_active = excluded.is_active,
+			budget_holder_user_id = excluded.budget_holder_user_id,
 			updated_at = excluded.updated_at
 	`
 
@@ -68,6 +70,7 @@ func (r *SupplySettingsRepository) Upsert(ctx context.Context, settings *models.
 		settings.CurrentBudgetPLN,
 		settings.LastContributionAt.UTC().Format(time.RFC3339),
 		boolToInt(settings.IsActive),
+		settings.BudgetHolderUserID,
 		now,
 		now,
 	)
@@ -81,6 +84,7 @@ func rowToSupplySettings(row *SupplySettingsRow) *models.SupplySettings {
 		ContributionDay:       row.ContributionDay,
 		CurrentBudgetPLN:      row.CurrentBudgetPLN,
 		IsActive:              intToBool(row.IsActive),
+		BudgetHolderUserID:    row.BudgetHolderUserID,
 	}
 	settings.LastContributionAt, _ = time.Parse(time.RFC3339, row.LastContributionAt)
 	settings.CreatedAt, _ = time.Parse(time.RFC3339, row.CreatedAt)

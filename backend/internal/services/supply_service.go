@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -108,6 +109,34 @@ func (s *SupplyService) AdjustBudget(ctx context.Context, adjustment float64, no
 
 	if err := s.supplySettings.Upsert(ctx, settings); err != nil {
 		return fmt.Errorf("failed to adjust budget: %w", err)
+	}
+
+	return nil
+}
+
+// SetBudgetHolder assigns a user as the budget holder (ADMIN only)
+func (s *SupplyService) SetBudgetHolder(ctx context.Context, userID *string) error {
+	// If userID is provided, verify user exists and is active
+	if userID != nil && *userID != "" {
+		user, err := s.users.GetByID(ctx, *userID)
+		if err != nil {
+			return errors.New("user not found")
+		}
+		if !user.IsActive {
+			return errors.New("user is not active")
+		}
+	}
+
+	settings, err := s.GetSettings(ctx)
+	if err != nil {
+		return err
+	}
+
+	settings.BudgetHolderUserID = userID
+	settings.UpdatedAt = time.Now()
+
+	if err := s.supplySettings.Upsert(ctx, settings); err != nil {
+		return fmt.Errorf("failed to set budget holder: %w", err)
 	}
 
 	return nil
@@ -557,7 +586,7 @@ func (s *SupplyService) ProcessWeeklyContributions(ctx context.Context) error {
 	}
 
 	now := time.Now()
-	if now.Weekday().String() != settings.ContributionDay {
+	if strings.ToLower(now.Weekday().String()) != settings.ContributionDay {
 		return nil // Not the right day
 	}
 

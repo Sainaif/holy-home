@@ -301,17 +301,20 @@ func main() {
 	chores.Post("/", middleware.AuthMiddleware(cfg), middleware.RequirePermission("chores.create", getRoleService), choreHandler.CreateChore)
 	chores.Get("/", middleware.AuthMiddleware(cfg), choreHandler.GetChores)
 	chores.Get("/with-assignments", middleware.AuthMiddleware(cfg), choreHandler.GetChoresWithAssignments)
+	chores.Put("/:id", middleware.AuthMiddleware(cfg), middleware.RequirePermission("chores.update", getRoleService), choreHandler.UpdateChore)
 	chores.Delete("/:id", middleware.AuthMiddleware(cfg), choreHandler.DeleteChore)
 	chores.Post("/assign", middleware.AuthMiddleware(cfg), middleware.RequirePermission("chores.assign", getRoleService), choreHandler.AssignChore)
 	chores.Post("/swap", middleware.AuthMiddleware(cfg), middleware.RequirePermission("chores.assign", getRoleService), choreHandler.SwapChoreAssignment)
 	chores.Post("/:id/rotate", middleware.AuthMiddleware(cfg), middleware.RequirePermission("chores.assign", getRoleService), choreHandler.RotateChore)
 	chores.Post("/:id/auto-assign", middleware.AuthMiddleware(cfg), middleware.RequirePermission("chores.assign", getRoleService), choreHandler.AutoAssignChore)
+	chores.Post("/:id/random-assign", middleware.AuthMiddleware(cfg), middleware.RequirePermission("chores.assign", getRoleService), choreHandler.RandomAssignChore)
 
 	// Chore assignment routes
 	choreAssignments := api.Group("/chore-assignments")
 	choreAssignments.Get("/", middleware.AuthMiddleware(cfg), choreHandler.GetChoreAssignments)
 	choreAssignments.Get("/me", middleware.AuthMiddleware(cfg), choreHandler.GetMyChoreAssignments)
 	choreAssignments.Patch("/:id", middleware.AuthMiddleware(cfg), choreHandler.UpdateChoreAssignment)
+	choreAssignments.Patch("/:id/reassign", middleware.AuthMiddleware(cfg), middleware.RequirePermission("chores.assign", getRoleService), choreHandler.ReassignChoreAssignment)
 
 	// Chore leaderboard
 	api.Get("/chores/leaderboard", middleware.AuthMiddleware(cfg), choreHandler.GetUserLeaderboard)
@@ -323,6 +326,7 @@ func main() {
 	supplies.Get("/settings", middleware.AuthMiddleware(cfg), supplyHandler.GetSettings)
 	supplies.Patch("/settings", middleware.AuthMiddleware(cfg), middleware.RequirePermission("supplies.update", getRoleService), supplyHandler.UpdateSettings)
 	supplies.Post("/settings/adjust", middleware.AuthMiddleware(cfg), middleware.RequirePermission("supplies.update", getRoleService), supplyHandler.AdjustBudget)
+	supplies.Patch("/settings/holder", middleware.AuthMiddleware(cfg), middleware.RequirePermission("supplies.update", getRoleService), supplyHandler.SetBudgetHolder)
 
 	// Items
 	supplies.Get("/items", middleware.AuthMiddleware(cfg), supplyHandler.GetItems)

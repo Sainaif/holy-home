@@ -233,7 +233,7 @@
               </div>
             </div>
 
-            <div class="flex gap-2">
+            <div class="flex flex-wrap gap-2">
               <button
                 v-if="assignment.status === 'pending' && assignment.assigneeUserId === authStore.user?.id"
                 @click="updateStatus(assignment.id, 'in_progress')"
@@ -245,6 +245,42 @@
                 @click="updateStatus(assignment.id, 'done')"
                 class="btn btn-sm btn-primary">
                 {{ $t('chores.markDone') }}
+              </button>
+              <!-- Edit button -->
+              <button
+                v-if="authStore.hasPermission('chores.update') && assignment.chore"
+                @click="openEditModal(assignment.chore)"
+                class="btn btn-sm btn-outline"
+                :title="$t('chores.edit')">
+                ✏️
+              </button>
+              <!-- Reassign button -->
+              <button
+                v-if="authStore.hasPermission('chores.assign') && (assignment.status === 'pending' || assignment.status === 'in_progress')"
+                @click="openReassignModal(assignment)"
+                class="btn btn-sm btn-outline"
+                :title="$t('chores.reassign')">
+                👤
+              </button>
+              <!-- Swap button -->
+              <button
+                v-if="authStore.hasPermission('chores.assign') && (assignment.status === 'pending' || assignment.status === 'in_progress')"
+                @click="startSwap(assignment)"
+                :class="[
+                  'btn btn-sm',
+                  swapMode && swapFirstAssignment?.id === assignment.id ? 'btn-warning' : 'btn-outline'
+                ]"
+                :disabled="swappingChores"
+                :title="swapMode ? (swapFirstAssignment?.id === assignment.id ? $t('chores.clickAnotherToSwap') : $t('chores.swapWith')) : $t('chores.swap')">
+                🔄
+              </button>
+              <!-- Random assign button -->
+              <button
+                v-if="authStore.hasPermission('chores.assign') && assignment.chore"
+                @click="openRandomAssignModal(assignment.chore.id)"
+                class="btn btn-sm btn-outline"
+                :title="$t('chores.randomAssign')">
+                🎲
               </button>
               <button
                 v-if="authStore.hasPermission('reminders.send') && (assignment.status === 'pending' || assignment.status === 'in_progress') && assignment.assigneeUserId !== authStore.user?.id"
@@ -270,6 +306,184 @@
               </button>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Swap Mode Banner -->
+    <div v-if="swapMode" class="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-yellow-600 text-white px-6 py-3 rounded-lg shadow-lg z-50 flex items-center gap-4">
+      <span>{{ $t('chores.swapModeActive', { name: swapFirstAssignment?.chore?.name || '' }) }}</span>
+      <button @click="cancelSwap" class="btn btn-sm btn-outline text-white border-white hover:bg-yellow-700">
+        {{ $t('common.cancel') }}
+      </button>
+    </div>
+
+    <!-- Edit Chore Modal -->
+    <div v-if="showEditModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click.self="closeEditModal">
+      <div class="bg-gray-800 rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <h2 class="text-xl font-semibold mb-4">{{ $t('chores.editChore') }}</h2>
+        <form @submit.prevent="saveChoreEdit" class="space-y-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium mb-2">{{ $t('chores.name') }}</label>
+              <input v-model="editForm.name" required class="input" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-2">{{ $t('chores.descriptionOptional') }}</label>
+              <input v-model="editForm.description" class="input" />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+              <label class="block text-sm font-medium mb-2">{{ $t('chores.frequency') }}</label>
+              <select v-model="editForm.frequency" required class="input">
+                <option value="daily">{{ $t('chores.daily') }}</option>
+                <option value="weekly">{{ $t('chores.weekly') }}</option>
+                <option value="monthly">{{ $t('chores.monthly') }}</option>
+                <option value="custom">{{ $t('chores.custom') }}</option>
+                <option value="irregular">{{ $t('chores.irregular') }}</option>
+              </select>
+            </div>
+            <div v-if="editForm.frequency === 'custom'">
+              <label class="block text-sm font-medium mb-2">{{ $t('chores.interval') }}</label>
+              <input v-model.number="editForm.customInterval" type="number" min="1" class="input" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-2">{{ $t('chores.difficulty') }}</label>
+              <select v-model.number="editForm.difficulty" required class="input">
+                <option :value="1">⭐ {{ $t('chores.veryEasy') }}</option>
+                <option :value="2">⭐⭐ {{ $t('chores.easy') }}</option>
+                <option :value="3">⭐⭐⭐ {{ $t('chores.medium') }}</option>
+                <option :value="4">⭐⭐⭐⭐ {{ $t('chores.hard') }}</option>
+                <option :value="5">⭐⭐⭐⭐⭐ {{ $t('chores.veryHard') }}</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-2">{{ $t('chores.priority') }}</label>
+              <select v-model.number="editForm.priority" required class="input">
+                <option :value="1">{{ $t('chores.veryLow') }}</option>
+                <option :value="2">{{ $t('chores.low') }}</option>
+                <option :value="3">{{ $t('chores.medium') }}</option>
+                <option :value="4">{{ $t('chores.high') }}</option>
+                <option :value="5">{{ $t('chores.veryHigh') }}</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium mb-2">{{ $t('chores.assignmentMode') }}</label>
+              <select v-model="editForm.assignmentMode" required class="input">
+                <option value="auto">{{ $t('chores.autoLeastLoaded') }}</option>
+                <option value="manual">{{ $t('chores.manual') }}</option>
+                <option value="round_robin">{{ $t('chores.roundRobin') }}</option>
+                <option value="random">{{ $t('chores.random') }}</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-2">{{ $t('chores.reminderHours') }}</label>
+              <input v-model.number="editForm.reminderHours" type="number" min="0" max="168" class="input" />
+            </div>
+          </div>
+
+          <div class="flex items-center gap-4">
+            <div class="flex items-center gap-2">
+              <input v-model="editForm.notificationsEnabled" type="checkbox" id="editNotifications" class="w-4 h-4" />
+              <label for="editNotifications" class="text-sm">{{ $t('chores.enableNotifications') }}</label>
+            </div>
+            <div class="flex items-center gap-2">
+              <input v-model="editForm.isActive" type="checkbox" id="editIsActive" class="w-4 h-4" />
+              <label for="editIsActive" class="text-sm">{{ $t('chores.isActive') }}</label>
+            </div>
+          </div>
+
+          <div class="flex justify-end gap-2">
+            <button type="button" @click="closeEditModal" class="btn btn-outline">
+              {{ $t('common.cancel') }}
+            </button>
+            <button type="submit" :disabled="savingEdit" class="btn btn-primary">
+              {{ savingEdit ? $t('common.saving') : $t('common.save') }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Reassign Modal -->
+    <div v-if="showReassignModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click.self="closeReassignModal">
+      <div class="bg-gray-800 rounded-xl p-6 w-full max-w-md">
+        <h2 class="text-xl font-semibold mb-4">{{ $t('chores.reassignChore') }}</h2>
+        <p class="text-gray-400 mb-4">{{ reassigningAssignment?.chore?.name }}</p>
+        <div class="mb-4">
+          <label class="block text-sm font-medium mb-2">{{ $t('chores.selectNewAssignee') }}</label>
+          <select v-model="reassignUserId" class="input w-full">
+            <option value="">{{ $t('chores.selectUser') }}</option>
+            <option
+              v-for="user in users"
+              :key="user.id"
+              :value="user.id"
+              :disabled="user.id === reassigningAssignment?.assigneeUserId">
+              {{ user.name }} {{ user.id === reassigningAssignment?.assigneeUserId ? `(${$t('chores.currentAssignee')})` : '' }}
+            </option>
+          </select>
+        </div>
+        <div class="flex justify-end gap-2">
+          <button type="button" @click="closeReassignModal" class="btn btn-outline">
+            {{ $t('common.cancel') }}
+          </button>
+          <button
+            @click="reassignChore"
+            :disabled="!reassignUserId || savingReassign"
+            class="btn btn-primary">
+            {{ savingReassign ? $t('chores.reassigning') : $t('chores.reassign') }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Random Assign Modal -->
+    <div v-if="showRandomAssignModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" @click.self="closeRandomAssignModal">
+      <div class="bg-gray-800 rounded-xl p-6 w-full max-w-md">
+        <h2 class="text-xl font-semibold mb-4">{{ $t('chores.randomAssignChore') }}</h2>
+        <p class="text-gray-400 mb-4">{{ $t('chores.selectUsersForRandom') }}</p>
+
+        <div class="mb-4">
+          <label class="block text-sm font-medium mb-2">{{ $t('chores.dueDate') }}</label>
+          <input v-model="randomAssignDueDate" type="date" class="input w-full" required />
+        </div>
+
+        <div class="mb-4">
+          <label class="block text-sm font-medium mb-2">{{ $t('chores.eligibleUsers') }}</label>
+          <div class="space-y-2 max-h-48 overflow-y-auto">
+            <div
+              v-for="user in users"
+              :key="user.id"
+              class="flex items-center gap-2 p-2 rounded hover:bg-gray-700 cursor-pointer"
+              @click="toggleUserForRandomAssign(user.id)">
+              <input
+                type="checkbox"
+                :checked="randomAssignSelectedUsers.includes(user.id)"
+                class="w-4 h-4"
+                @click.stop="toggleUserForRandomAssign(user.id)" />
+              <span>{{ user.name }}</span>
+            </div>
+          </div>
+          <p class="text-xs text-gray-400 mt-2">
+            {{ $t('chores.selectedCount', { count: randomAssignSelectedUsers.length }) }}
+          </p>
+        </div>
+
+        <div class="flex justify-end gap-2">
+          <button type="button" @click="closeRandomAssignModal" class="btn btn-outline">
+            {{ $t('common.cancel') }}
+          </button>
+          <button
+            @click="randomAssign"
+            :disabled="randomAssignSelectedUsers.length < 2 || savingRandomAssign"
+            class="btn btn-primary">
+            {{ savingRandomAssign ? $t('chores.assigning') : $t('chores.randomAssign') }}
+          </button>
         </div>
       </div>
     </div>
@@ -300,6 +514,30 @@ const deletingChoreId = ref(null)
 const sendingChoreReminder = ref(null)
 const showLeaderboard = ref(false)
 const showCreateForm = ref(false)
+
+// Edit modal state
+const showEditModal = ref(false)
+const editingChore = ref(null)
+const editForm = ref({})
+const savingEdit = ref(false)
+
+// Reassign modal state
+const showReassignModal = ref(false)
+const reassigningAssignment = ref(null)
+const reassignUserId = ref('')
+const savingReassign = ref(false)
+
+// Swap state
+const swapMode = ref(false)
+const swapFirstAssignment = ref(null)
+const swappingChores = ref(false)
+
+// Random assign state
+const showRandomAssignModal = ref(false)
+const randomAssignChoreId = ref(null)
+const randomAssignSelectedUsers = ref([])
+const randomAssignDueDate = ref('')
+const savingRandomAssign = ref(false)
 
 const choreForm = ref({
   name: '',
@@ -631,6 +869,196 @@ async function sendChoreReminder(assignmentId) {
     alert(t('errors.sendReminderFailed') + ' ' + (err.response?.data?.error || err.message))
   } finally {
     sendingChoreReminder.value = null
+  }
+}
+
+// Edit chore functions
+function openEditModal(chore) {
+  editingChore.value = chore
+  editForm.value = {
+    name: chore.name,
+    description: chore.description || '',
+    frequency: chore.frequency,
+    customInterval: chore.customInterval,
+    difficulty: chore.difficulty,
+    priority: chore.priority,
+    assignmentMode: chore.assignmentMode,
+    notificationsEnabled: chore.notificationsEnabled,
+    reminderHours: chore.reminderHours,
+    isActive: chore.isActive
+  }
+  showEditModal.value = true
+}
+
+function closeEditModal() {
+  showEditModal.value = false
+  editingChore.value = null
+  editForm.value = {}
+}
+
+async function saveChoreEdit() {
+  if (!editingChore.value) return
+
+  savingEdit.value = true
+  try {
+    await api.put(`/chores/${editingChore.value.id}`, {
+      name: editForm.value.name,
+      description: editForm.value.description || undefined,
+      frequency: editForm.value.frequency,
+      customInterval: editForm.value.customInterval || undefined,
+      difficulty: editForm.value.difficulty,
+      priority: editForm.value.priority,
+      assignmentMode: editForm.value.assignmentMode,
+      notificationsEnabled: editForm.value.notificationsEnabled,
+      reminderHours: editForm.value.reminderHours || undefined,
+      isActive: editForm.value.isActive
+    })
+
+    closeEditModal()
+    await loadChores()
+    await loadAssignments()
+    emit(DATA_EVENTS.CHORE_UPDATED)
+  } catch (err) {
+    console.error('Failed to update chore:', err)
+    alert(t('chores.updateError') + ' ' + (err.response?.data?.error || err.message))
+  } finally {
+    savingEdit.value = false
+  }
+}
+
+// Reassign functions
+function openReassignModal(assignment) {
+  reassigningAssignment.value = assignment
+  reassignUserId.value = ''
+  showReassignModal.value = true
+}
+
+function closeReassignModal() {
+  showReassignModal.value = false
+  reassigningAssignment.value = null
+  reassignUserId.value = ''
+}
+
+async function reassignChore() {
+  if (!reassigningAssignment.value || !reassignUserId.value) return
+
+  savingReassign.value = true
+  try {
+    await api.patch(`/chore-assignments/${reassigningAssignment.value.id}/reassign`, {
+      newAssigneeUserId: reassignUserId.value
+    })
+
+    closeReassignModal()
+    await loadAssignments()
+    emit(DATA_EVENTS.CHORE_ASSIGNMENT_UPDATED)
+  } catch (err) {
+    console.error('Failed to reassign chore:', err)
+    alert(t('chores.reassignError') + ' ' + (err.response?.data?.error || err.message))
+  } finally {
+    savingReassign.value = false
+  }
+}
+
+// Swap functions
+function startSwap(assignment) {
+  if (swapMode.value && swapFirstAssignment.value) {
+    // Second click - complete the swap
+    completeSwap(assignment)
+  } else {
+    // First click - enter swap mode
+    swapMode.value = true
+    swapFirstAssignment.value = assignment
+  }
+}
+
+function cancelSwap() {
+  swapMode.value = false
+  swapFirstAssignment.value = null
+}
+
+async function completeSwap(secondAssignment) {
+  if (!swapFirstAssignment.value || swapFirstAssignment.value.id === secondAssignment.id) {
+    cancelSwap()
+    return
+  }
+
+  if (!confirm(t('chores.confirmSwap'))) {
+    cancelSwap()
+    return
+  }
+
+  swappingChores.value = true
+  try {
+    await api.post('/chores/swap', {
+      assignment1Id: swapFirstAssignment.value.id,
+      assignment2Id: secondAssignment.id
+    })
+
+    cancelSwap()
+    await loadAssignments()
+    emit(DATA_EVENTS.CHORE_ASSIGNMENT_UPDATED)
+  } catch (err) {
+    console.error('Failed to swap chores:', err)
+    alert(t('chores.swapError') + ' ' + (err.response?.data?.error || err.message))
+  } finally {
+    swappingChores.value = false
+  }
+}
+
+// Random assign functions
+function openRandomAssignModal(choreId) {
+  randomAssignChoreId.value = choreId
+  randomAssignSelectedUsers.value = []
+  randomAssignDueDate.value = getDefaultDueDate()
+  showRandomAssignModal.value = true
+}
+
+function closeRandomAssignModal() {
+  showRandomAssignModal.value = false
+  randomAssignChoreId.value = null
+  randomAssignSelectedUsers.value = []
+  randomAssignDueDate.value = ''
+}
+
+function getDefaultDueDate() {
+  const date = new Date()
+  date.setDate(date.getDate() + 7)
+  return date.toISOString().split('T')[0]
+}
+
+function toggleUserForRandomAssign(userId) {
+  const index = randomAssignSelectedUsers.value.indexOf(userId)
+  if (index === -1) {
+    randomAssignSelectedUsers.value.push(userId)
+  } else {
+    randomAssignSelectedUsers.value.splice(index, 1)
+  }
+}
+
+async function randomAssign() {
+  if (!randomAssignChoreId.value || randomAssignSelectedUsers.value.length < 2) {
+    alert(t('chores.selectAtLeastTwoUsers'))
+    return
+  }
+
+  savingRandomAssign.value = true
+  try {
+    const response = await api.post(`/chores/${randomAssignChoreId.value}/random-assign`, {
+      dueDate: new Date(randomAssignDueDate.value).toISOString(),
+      eligibleUserIds: randomAssignSelectedUsers.value
+    })
+
+    const selectedUser = users.value.find(u => u.id === response.data.selectedUserId)
+    alert(t('chores.randomlyAssignedTo', { name: selectedUser?.name || response.data.selectedUserId }))
+
+    closeRandomAssignModal()
+    await loadAssignments()
+    emit(DATA_EVENTS.CHORE_ASSIGNED)
+  } catch (err) {
+    console.error('Failed to random assign chore:', err)
+    alert(t('chores.randomAssignError') + ' ' + (err.response?.data?.error || err.message))
+  } finally {
+    savingRandomAssign.value = false
   }
 }
 </script>

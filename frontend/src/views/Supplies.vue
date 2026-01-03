@@ -31,6 +31,9 @@
         <div>
           <p class="text-sm text-gray-400 mb-1">{{ $t('supplies.currentBudget') }}</p>
           <p class="text-3xl font-bold gradient-text">{{ formatMoney(settings?.currentBudgetPLN) }} PLN</p>
+          <p v-if="budgetHolderName" class="text-sm text-gray-400 mt-1">
+            {{ $t('supplies.budgetHolder') }}: <span class="text-purple-400 font-medium">{{ budgetHolderName }}</span>
+          </p>
         </div>
         <div class="text-right">
           <p class="text-sm text-gray-400 mb-1">{{ $t('supplies.weeklyContribution') }}</p>
@@ -345,6 +348,17 @@
           </div>
 
           <div>
+            <label class="block text-sm font-medium mb-2">{{ $t('supplies.budgetHolder') }}</label>
+            <select v-model="settingsForm.budgetHolderUserId" class="input">
+              <option :value="null">{{ $t('supplies.noBudgetHolder') }}</option>
+              <option v-for="user in activeUsers" :key="user.id" :value="user.id">
+                {{ user.name }}
+              </option>
+            </select>
+            <p class="text-xs text-gray-400 mt-1">{{ $t('supplies.budgetHolderHint') }}</p>
+          </div>
+
+          <div>
             <label class="block text-sm font-medium mb-2">{{ $t('supplies.manualAdjustment') }}</label>
             <div class="flex gap-2">
               <input
@@ -542,7 +556,8 @@ const newItem = ref({
 
 const settingsForm = ref({
   weeklyContributionPLN: 10,
-  contributionDay: 'monday'
+  contributionDay: 'monday',
+  budgetHolderUserId: null
 })
 
 const restockForm = ref({
@@ -588,6 +603,16 @@ const totalPendingRefunds = computed(() => {
     const amount = item.lastRestockAmountPLN ? parseFloat(item.lastRestockAmountPLN.$numberDecimal || item.lastRestockAmountPLN || 0) : 0
     return sum + amount
   }, 0).toFixed(2)
+})
+
+const budgetHolderName = computed(() => {
+  if (!settings.value?.budgetHolderUserId) return null
+  const user = users.value.find(u => u.id === settings.value.budgetHolderUserId)
+  return user ? user.name : null
+})
+
+const activeUsers = computed(() => {
+  return users.value.filter(u => u.isActive)
 })
 
 // Helper function for event handlers
@@ -639,7 +664,8 @@ async function loadSettings() {
     settings.value = response.data
     settingsForm.value = {
       weeklyContributionPLN: parseFloat(response.data.weeklyContributionPLN.$numberDecimal || response.data.weeklyContributionPLN || 10),
-      contributionDay: response.data.contributionDay || 'monday'
+      contributionDay: response.data.contributionDay || 'monday',
+      budgetHolderUserId: response.data.budgetHolderUserId || null
     }
   } catch (err) {
     console.error('Failed to load supply settings:', err)
@@ -828,9 +854,15 @@ async function saveSettings() {
   settingsError.value = ''
 
   try {
+    // Save general settings
     await api.patch('/supplies/settings', {
       weeklyContributionPLN: settingsForm.value.weeklyContributionPLN,
       contributionDay: settingsForm.value.contributionDay
+    })
+
+    // Save budget holder separately
+    await api.patch('/supplies/settings/holder', {
+      userId: settingsForm.value.budgetHolderUserId
     })
 
     showSettingsModal.value = false

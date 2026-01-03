@@ -647,10 +647,10 @@ func (s *BackupService) ImportJSON(ctx context.Context, jsonData []byte) (*Impor
 		}
 
 		_, err := tx.ExecContext(ctx,
-			`INSERT INTO supply_settings (id, weekly_contribution_pln, contribution_day, current_budget_pln, last_contribution_at, is_active, created_at, updated_at)
-			VALUES ('singleton', ?, ?, ?, ?, ?, ?, ?)`,
+			`INSERT INTO supply_settings (id, weekly_contribution_pln, contribution_day, current_budget_pln, last_contribution_at, is_active, budget_holder_user_id, created_at, updated_at)
+			VALUES ('singleton', ?, ?, ?, ?, ?, ?, ?, ?)`,
 			ss.WeeklyContributionPLN, ss.ContributionDay, ss.CurrentBudgetPLN,
-			ss.LastContributionAt.UTC().Format(time.RFC3339), isActive,
+			ss.LastContributionAt.UTC().Format(time.RFC3339), isActive, ss.BudgetHolderUserID,
 			ss.CreatedAt.UTC().Format(time.RFC3339), ss.UpdatedAt.UTC().Format(time.RFC3339))
 		if err != nil {
 			return nil, fmt.Errorf("failed to import supply settings: %w", err)

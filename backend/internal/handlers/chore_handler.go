@@ -364,3 +364,124 @@ func (h *ChoreHandler) DeleteChore(c *fiber.Ctx) error {
 		"message":          "Delete request submitted for admin approval",
 	})
 }
+
+// UpdateChore updates an existing chore
+func (h *ChoreHandler) UpdateChore(c *fiber.Ctx) error {
+	choreID := c.Params("id")
+	if choreID == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid chore ID",
+		})
+	}
+
+	var req services.UpdateChoreRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid request body",
+		})
+	}
+
+	chore, err := h.choreService.UpdateChore(c.Context(), choreID, req)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
+	// Broadcast event to all users
+	h.eventService.Broadcast(services.EventChoreUpdated, map[string]interface{}{
+		"choreId":     chore.ID,
+		"name":        chore.Name,
+		"description": chore.Description,
+		"action":      "updated",
+	})
+
+	return c.JSON(chore)
+}
+
+// ReassignChoreAssignment reassigns a chore to a different user
+func (h *ChoreHandler) ReassignChoreAssignment(c *fiber.Ctx) error {
+	assignmentID := c.Params("id")
+	if assignmentID == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid assignment ID",
+		})
+	}
+
+	var req services.ReassignChoreRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid request body",
+		})
+	}
+
+	assignment, err := h.choreService.ReassignChoreAssignment(c.Context(), assignmentID, req)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
+	// Get chore details for notification
+	chore, _ := h.choreService.GetChore(c.Context(), assignment.ChoreID)
+	user, _ := h.choreService.GetUserByID(c.Context(), assignment.AssigneeUserID)
+
+	// Broadcast to new assignee
+	if chore != nil && user != nil {
+		h.eventService.BroadcastToUser(assignment.AssigneeUserID, services.EventChoreAssigned, map[string]interface{}{
+			"choreId":      chore.ID,
+			"choreName":    chore.Name,
+			"assigneeId":   user.ID,
+			"assigneeName": user.Name,
+			"dueDate":      assignment.DueDate.Format(time.RFC3339),
+			"action":       "reassigned",
+		})
+	}
+
+	return c.JSON(assignment)
+}
+
+// RandomAssignChore randomly assigns a chore to one of the eligible users
+func (h *ChoreHandler) RandomAssignChore(c *fiber.Ctx) error {
+	choreID := c.Params("id")
+	if choreID == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid chore ID",
+		})
+	}
+
+	var req services.RandomAssignRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid request body",
+		})
+	}
+
+	assignment, err := h.choreService.RandomAssignChore(c.Context(), choreID, req)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
+	// Get chore and user details for notification
+	chore, _ := h.choreService.GetChore(c.Context(), choreID)
+	user, _ := h.choreService.GetUserByID(c.Context(), assignment.AssigneeUserID)
+
+	// Broadcast to assigned user
+	if chore != nil && user != nil {
+		h.eventService.BroadcastToUser(assignment.AssigneeUserID, services.EventChoreAssigned, map[string]interface{}{
+			"choreId":      chore.ID,
+			"choreName":    chore.Name,
+			"assigneeId":   user.ID,
+			"assigneeName": user.Name,
+			"dueDate":      req.DueDate.Format(time.RFC3339),
+			"action":       "random_assigned",
+		})
+	}
+
+	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
+		"assignment":     assignment,
+		"selectedUserId": assignment.AssigneeUserID,
+	})
+}

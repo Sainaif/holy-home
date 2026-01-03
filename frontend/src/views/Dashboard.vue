@@ -405,21 +405,16 @@ async function loadPendingAllocations(signal) {
     const billsRes = await api.get('/bills?status=posted', { signal })
     const postedBills = billsRes.data || []
 
-    // Get user's payments
-    const paymentsRes = await api.get('/payments/me', { signal })
-    const userPayments = paymentsRes.data || []
-
-    // For each posted bill, get user's allocations
+    // For each posted bill, check payment status and get allocations
     const allocationsPromises = postedBills.map(async (bill) => {
       try {
-        // Check if user has already paid for this bill
-        const hasPaid = userPayments.some(p => p.billId === bill.id)
-        if (hasPaid) {
-          return null
-        }
-
-        const allocRes = await api.get(`/bills/${bill.id}/allocation`, { signal })
+        // Get payment status which correctly aggregates group payments
+        const [allocRes, statusRes] = await Promise.all([
+          api.get(`/bills/${bill.id}/allocation`, { signal }),
+          api.get(`/bills/${bill.id}/payment-status`, { signal })
+        ])
         const allocations = allocRes.data || []
+        const paymentStatus = statusRes.data || []
 
         // Find user's allocation (either direct user or through group)
         const userAllocation = allocations.find(a => {
@@ -432,18 +427,31 @@ async function loadPendingAllocations(signal) {
           return false
         })
 
-        if (userAllocation) {
-          // Map new allocation format to expected Dashboard format
-          const mapped = {
-            bill,
-            allocation: {
-              id: userAllocation.subjectId,
-              amountPLN: userAllocation.amount || 0, // New endpoint returns plain number as 'amount'
-              units: userAllocation.units || 0
-            }
-          }
-          return mapped
+        if (!userAllocation) {
+          return null
         }
+
+        // Check if this allocation is already paid (works for both user and group allocations)
+        // For group allocations, payment-status aggregates all group members' payments
+        const allocationStatus = paymentStatus.find(s =>
+          s.subjectType === userAllocation.subjectType &&
+          s.subjectId === userAllocation.subjectId
+        )
+
+        if (allocationStatus?.isPaid) {
+          return null // Allocation is fully paid
+        }
+
+        // Map allocation format to expected Dashboard format
+        const mapped = {
+          bill,
+          allocation: {
+            id: userAllocation.subjectId,
+            amountPLN: userAllocation.amount || 0,
+            units: userAllocation.units || 0
+          }
+        }
+        return mapped
       } catch (err) {
         // Rethrow abort errors to be handled by outer catch
         if (err.name === 'AbortError' || err.name === 'CanceledError') {

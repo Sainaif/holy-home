@@ -200,6 +200,7 @@ type SupplySettings struct {
 	CurrentBudgetPLN      string    `db:"current_budget_pln" json:"currentBudgetPLN"`           // grows over time (decimal as string)
 	LastContributionAt    time.Time `db:"last_contribution_at" json:"lastContributionAt"`
 	IsActive              bool      `db:"is_active" json:"isActive"`
+	BudgetHolderUserID    *string   `db:"budget_holder_user_id" json:"budgetHolderUserId,omitempty"` // User who physically holds the budget money
 	CreatedAt             time.Time `db:"created_at" json:"createdAt"`
 	UpdatedAt             time.Time `db:"updated_at" json:"updatedAt"`
 }

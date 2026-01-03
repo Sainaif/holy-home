@@ -240,6 +240,7 @@ CREATE TABLE IF NOT EXISTS supply_settings (
     current_budget_pln TEXT NOT NULL DEFAULT '0',
     last_contribution_at TEXT NOT NULL DEFAULT (datetime('now')),
     is_active INTEGER NOT NULL DEFAULT 0,
+    budget_holder_user_id TEXT REFERENCES users(id),
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );

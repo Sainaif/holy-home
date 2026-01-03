@@ -2,9 +2,11 @@ package services
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"log"
+	"math/big"
 	"time"
 
 	"github.com/google/uuid"
@@ -53,6 +55,28 @@ type AssignChoreRequest struct {
 
 type UpdateChoreAssignmentRequest struct {
 	Status string `json:"status"` // pending, in_progress, done, overdue
+}
+
+type UpdateChoreRequest struct {
+	Name                 *string `json:"name,omitempty"`
+	Description          *string `json:"description,omitempty"`
+	Frequency            *string `json:"frequency,omitempty"`
+	CustomInterval       *int    `json:"customInterval,omitempty"`
+	Difficulty           *int    `json:"difficulty,omitempty"`
+	Priority             *int    `json:"priority,omitempty"`
+	AssignmentMode       *string `json:"assignmentMode,omitempty"`
+	NotificationsEnabled *bool   `json:"notificationsEnabled,omitempty"`
+	ReminderHours        *int    `json:"reminderHours,omitempty"`
+	IsActive             *bool   `json:"isActive,omitempty"`
+}
+
+type ReassignChoreRequest struct {
+	NewAssigneeUserID string `json:"newAssigneeUserId"`
+}
+
+type RandomAssignRequest struct {
+	DueDate         time.Time `json:"dueDate"`
+	EligibleUserIDs []string  `json:"eligibleUserIds"` // Users to randomly choose from
 }
 
 type ChoreWithAssignment struct {
@@ -584,4 +608,178 @@ func (s *ChoreService) DeleteChore(ctx context.Context, choreID string) error {
 	log.Printf("[CHORE] Deleted: ID=%s (including %d assignments)", choreID, len(assignments))
 
 	return nil
+}
+
+// UpdateChore updates an existing chore
+func (s *ChoreService) UpdateChore(ctx context.Context, choreID string, req UpdateChoreRequest) (*models.Chore, error) {
+	// Get existing chore
+	chore, err := s.GetChore(ctx, choreID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Apply updates (only non-nil fields)
+	if req.Name != nil {
+		if *req.Name == "" {
+			return nil, errors.New("chore name cannot be empty")
+		}
+		chore.Name = *req.Name
+	}
+	if req.Description != nil {
+		chore.Description = req.Description
+	}
+	if req.Frequency != nil {
+		validFrequencies := map[string]bool{
+			"daily": true, "weekly": true, "monthly": true, "custom": true, "irregular": true,
+		}
+		if !validFrequencies[*req.Frequency] {
+			return nil, errors.New("invalid frequency")
+		}
+		chore.Frequency = *req.Frequency
+	}
+	if req.CustomInterval != nil {
+		chore.CustomInterval = req.CustomInterval
+	}
+	if req.Difficulty != nil {
+		if *req.Difficulty < 1 || *req.Difficulty > 5 {
+			return nil, errors.New("difficulty must be between 1 and 5")
+		}
+		chore.Difficulty = *req.Difficulty
+	}
+	if req.Priority != nil {
+		if *req.Priority < 1 || *req.Priority > 5 {
+			return nil, errors.New("priority must be between 1 and 5")
+		}
+		chore.Priority = *req.Priority
+	}
+	if req.AssignmentMode != nil {
+		validModes := map[string]bool{
+			"manual": true, "round_robin": true, "random": true,
+		}
+		if !validModes[*req.AssignmentMode] {
+			return nil, errors.New("invalid assignment mode")
+		}
+		chore.AssignmentMode = *req.AssignmentMode
+	}
+	if req.NotificationsEnabled != nil {
+		chore.NotificationsEnabled = *req.NotificationsEnabled
+	}
+	if req.ReminderHours != nil {
+		chore.ReminderHours = req.ReminderHours
+	}
+	if req.IsActive != nil {
+		chore.IsActive = *req.IsActive
+	}
+
+	if err := s.chores.Update(ctx, chore); err != nil {
+		return nil, fmt.Errorf("failed to update chore: %w", err)
+	}
+
+	log.Printf("[CHORE] Updated: %q (ID: %s)", chore.Name, chore.ID)
+
+	return chore, nil
+}
+
+// ReassignChoreAssignment reassigns a chore to a different user
+func (s *ChoreService) ReassignChoreAssignment(ctx context.Context, assignmentID string, req ReassignChoreRequest) (*models.ChoreAssignment, error) {
+	if req.NewAssigneeUserID == "" {
+		return nil, errors.New("new assignee user ID is required")
+	}
+
+	// Verify new user exists
+	newUser, err := s.users.GetByID(ctx, req.NewAssigneeUserID)
+	if err != nil || newUser == nil {
+		return nil, errors.New("new assignee user not found")
+	}
+
+	// Get current assignment
+	assignment, err := s.GetChoreAssignment(ctx, assignmentID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Only allow reassigning pending or in_progress assignments
+	if assignment.Status != "pending" && assignment.Status != "in_progress" {
+		return nil, errors.New("can only reassign pending or in-progress chores")
+	}
+
+	oldAssigneeID := assignment.AssigneeUserID
+	assignment.AssigneeUserID = req.NewAssigneeUserID
+
+	if err := s.choreAssignments.Update(ctx, assignment); err != nil {
+		return nil, fmt.Errorf("failed to reassign chore: %w", err)
+	}
+
+	log.Printf("[CHORE] Reassigned: assignment %s from user %s to user %s", assignmentID, oldAssigneeID, req.NewAssigneeUserID)
+
+	// Send notification to new assignee
+	if s.notificationService != nil {
+		chore, _ := s.GetChore(ctx, assignment.ChoreID)
+		if chore != nil {
+			now := time.Now()
+			notification := &models.Notification{
+				ID:           uuid.New().String(),
+				UserID:       &req.NewAssigneeUserID,
+				Channel:      "app",
+				TemplateID:   "chore",
+				ScheduledFor: now,
+				SentAt:       &now,
+				Status:       "sent",
+				Title:        "Przypisano zadanie",
+				Body:         fmt.Sprintf("Przypisano Ci zadanie: %s (termin: %s)", chore.Name, assignment.DueDate.Format("2006-01-02")),
+			}
+			s.notificationService.CreateNotification(ctx, notification)
+		}
+	}
+
+	return assignment, nil
+}
+
+// RandomAssignChore randomly assigns a chore to one of the eligible users
+func (s *ChoreService) RandomAssignChore(ctx context.Context, choreID string, req RandomAssignRequest) (*models.ChoreAssignment, error) {
+	// Verify chore exists
+	_, err := s.GetChore(ctx, choreID)
+	if err != nil {
+		return nil, err
+	}
+
+	// If no eligible users provided, use all active users
+	eligibleUserIDs := req.EligibleUserIDs
+	if len(eligibleUserIDs) == 0 {
+		users, err := s.users.ListActive(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get active users: %w", err)
+		}
+		for _, u := range users {
+			eligibleUserIDs = append(eligibleUserIDs, u.ID)
+		}
+	}
+
+	if len(eligibleUserIDs) == 0 {
+		return nil, errors.New("no eligible users to assign chore to")
+	}
+
+	// Verify all eligible users exist
+	for _, userID := range eligibleUserIDs {
+		user, err := s.users.GetByID(ctx, userID)
+		if err != nil || user == nil {
+			return nil, fmt.Errorf("user %s not found", userID)
+		}
+	}
+
+	// Pick a random user using crypto/rand for secure randomness
+	n, err := rand.Int(rand.Reader, big.NewInt(int64(len(eligibleUserIDs))))
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate random number: %w", err)
+	}
+	randomUserID := eligibleUserIDs[n.Int64()]
+
+	log.Printf("[CHORE] Random assignment: selected user %s from %d eligible users", randomUserID, len(eligibleUserIDs))
+
+	// Assign to random user
+	return s.AssignChore(ctx, AssignChoreRequest{
+		ChoreID:        choreID,
+		AssigneeUserID: randomUserID,
+		DueDate:        req.DueDate,
+	})
 }

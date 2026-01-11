@@ -43,9 +43,9 @@ type CreateChoreRequest struct {
 	Description          *string `json:"description,omitempty"`
 	Frequency            string  `json:"frequency"` // daily, weekly, monthly, custom, irregular
 	CustomInterval       *int    `json:"customInterval,omitempty"`
-	Difficulty           int     `json:"difficulty"`     // 1-5
-	Priority             int     `json:"priority"`       // 1-5
-	AssignmentMode       string  `json:"assignmentMode"` // manual, round_robin, random
+	Difficulty           int     `json:"difficulty"`                 // 1-5
+	Priority             int     `json:"priority"`                   // 1-5
+	AssignmentMode       string  `json:"assignmentMode"`             // manual, round_robin, random
 	ManualAssigneeID     *string `json:"manualAssigneeId,omitempty"` // User ID for manual assignment mode
 	NotificationsEnabled bool    `json:"notificationsEnabled"`
 	ReminderHours        *int    `json:"reminderHours,omitempty"`

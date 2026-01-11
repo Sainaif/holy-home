@@ -289,6 +289,7 @@
     "all": "Wszystkie",
     "everyone": "Wszyscy",
     "selectUser": "Wybierz użytkownika",
+    "selectUserRequired": "Proszę wybrać użytkownika do przypisania ręcznego",
     "sortByLabel": "Sortuj według",
     "deadline": "Termin",
     "confirmDelete": "Czy na pewno chcesz usunąć ten obowiązek? Wszystkie powiązane przypisania również zostaną usunięte.",

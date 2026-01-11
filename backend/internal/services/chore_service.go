@@ -68,6 +68,7 @@ type UpdateChoreRequest struct {
 	Difficulty           *int    `json:"difficulty,omitempty"`
 	Priority             *int    `json:"priority,omitempty"`
 	AssignmentMode       *string `json:"assignmentMode,omitempty"`
+	ManualAssigneeId     *string `json:"manualAssigneeId,omitempty"` // User ID for manual assignment mode
 	NotificationsEnabled *bool   `json:"notificationsEnabled,omitempty"`
 	ReminderHours        *int    `json:"reminderHours,omitempty"`
 	IsActive             *bool   `json:"isActive,omitempty"`
@@ -686,6 +687,33 @@ func (s *ChoreService) UpdateChore(ctx context.Context, choreID string, req Upda
 
 	if err := s.chores.Update(ctx, chore); err != nil {
 		return nil, fmt.Errorf("failed to update chore: %w", err)
+	}
+
+	// Handle manual assignment if provided
+	if req.ManualAssigneeId != nil && *req.ManualAssigneeId != "" && chore.AssignmentMode == "manual" {
+		// Verify user exists
+		user, err := s.users.GetByID(ctx, *req.ManualAssigneeId)
+		if err != nil || user == nil {
+			return nil, errors.New("manual assignee user not found")
+		}
+
+		// Get current pending/in_progress assignments for this chore
+		assignments, err := s.choreAssignments.ListByChoreID(ctx, choreID)
+		if err != nil {
+			log.Printf("[CHORE] Warning: failed to get assignments for chore %s: %v", choreID, err)
+		} else {
+			// Reassign pending/in_progress assignments to the selected user
+			for _, assignment := range assignments {
+				if assignment.Status == "pending" || assignment.Status == "in_progress" {
+					assignment.AssigneeUserID = *req.ManualAssigneeId
+					if err := s.choreAssignments.Update(ctx, &assignment); err != nil {
+						log.Printf("[CHORE] Warning: failed to reassign assignment %s: %v", assignment.ID, err)
+					} else {
+						log.Printf("[CHORE] Reassigned assignment %s to user %s", assignment.ID, *req.ManualAssigneeId)
+					}
+				}
+			}
+		}
 	}
 
 	log.Printf("[CHORE] Updated: %q (ID: %s)", chore.Name, chore.ID)

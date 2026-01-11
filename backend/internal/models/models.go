@@ -149,6 +149,7 @@ type Chore struct {
 	Difficulty           int       `db:"difficulty" json:"difficulty"`                    // 1-5 scale
 	Priority             int       `db:"priority" json:"priority"`                        // 1-5 scale
 	AssignmentMode       string    `db:"assignment_mode" json:"assignmentMode"`           // manual, round_robin, random
+	ManualAssigneeID     *string   `db:"manual_assignee_id" json:"manualAssigneeId,omitempty"` // User ID for manual assignment mode
 	NotificationsEnabled bool      `db:"notifications_enabled" json:"notificationsEnabled"`
 	ReminderHours        *int      `db:"reminder_hours" json:"reminderHours,omitempty"` // hours before due
 	IsActive             bool      `db:"is_active" json:"isActive"`

@@ -46,6 +46,7 @@ type CreateChoreRequest struct {
 	Difficulty           int     `json:"difficulty"`     // 1-5
 	Priority             int     `json:"priority"`       // 1-5
 	AssignmentMode       string  `json:"assignmentMode"` // manual, round_robin, random
+	ManualAssigneeID     *string `json:"manualAssigneeId,omitempty"` // User ID for manual assignment mode
 	NotificationsEnabled bool    `json:"notificationsEnabled"`
 	ReminderHours        *int    `json:"reminderHours,omitempty"`
 }
@@ -68,7 +69,7 @@ type UpdateChoreRequest struct {
 	Difficulty           *int    `json:"difficulty,omitempty"`
 	Priority             *int    `json:"priority,omitempty"`
 	AssignmentMode       *string `json:"assignmentMode,omitempty"`
-	ManualAssigneeId     *string `json:"manualAssigneeId,omitempty"` // User ID for manual assignment mode
+	ManualAssigneeID     *string `json:"manualAssigneeId,omitempty"` // User ID for manual assignment mode
 	NotificationsEnabled *bool   `json:"notificationsEnabled,omitempty"`
 	ReminderHours        *int    `json:"reminderHours,omitempty"`
 	IsActive             *bool   `json:"isActive,omitempty"`
@@ -127,6 +128,7 @@ func (s *ChoreService) CreateChore(ctx context.Context, req CreateChoreRequest) 
 		Difficulty:           req.Difficulty,
 		Priority:             req.Priority,
 		AssignmentMode:       req.AssignmentMode,
+		ManualAssigneeID:     req.ManualAssigneeID,
 		NotificationsEnabled: req.NotificationsEnabled,
 		ReminderHours:        req.ReminderHours,
 		IsActive:             true,
@@ -689,28 +691,36 @@ func (s *ChoreService) UpdateChore(ctx context.Context, choreID string, req Upda
 		return nil, fmt.Errorf("failed to update chore: %w", err)
 	}
 
-	// Handle manual assignment if provided
-	if req.ManualAssigneeId != nil && *req.ManualAssigneeId != "" && chore.AssignmentMode == "manual" {
-		// Verify user exists
-		user, err := s.users.GetByID(ctx, *req.ManualAssigneeId)
-		if err != nil || user == nil {
-			return nil, errors.New("manual assignee user not found")
-		}
+	// Handle manual assignment if provided and different from current
+	if req.ManualAssigneeID != nil && *req.ManualAssigneeID != "" && chore.AssignmentMode == "manual" {
+		// Only reassign if the assignee is different from the stored one
+		if chore.ManualAssigneeID == nil || *chore.ManualAssigneeID != *req.ManualAssigneeID {
+			// Verify user exists
+			user, err := s.users.GetByID(ctx, *req.ManualAssigneeID)
+			if err != nil || user == nil {
+				return nil, errors.New("manual assignee user not found")
+			}
 
-		// Get current pending/in_progress assignments for this chore
-		assignments, err := s.choreAssignments.ListByChoreID(ctx, choreID)
-		if err != nil {
-			log.Printf("[CHORE] Warning: failed to get assignments for chore %s: %v", choreID, err)
-		} else {
+			// Update the stored manual assignee
+			chore.ManualAssigneeID = req.ManualAssigneeID
+			if err := s.chores.Update(ctx, chore); err != nil {
+				return nil, fmt.Errorf("failed to update chore manual assignee: %w", err)
+			}
+
+			// Get current pending/in_progress assignments for this chore
+			assignments, err := s.choreAssignments.ListByChoreID(ctx, choreID)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get assignments for chore: %w", err)
+			}
+
 			// Reassign pending/in_progress assignments to the selected user
-			for _, assignment := range assignments {
-				if assignment.Status == "pending" || assignment.Status == "in_progress" {
-					assignment.AssigneeUserID = *req.ManualAssigneeId
-					if err := s.choreAssignments.Update(ctx, &assignment); err != nil {
-						log.Printf("[CHORE] Warning: failed to reassign assignment %s: %v", assignment.ID, err)
-					} else {
-						log.Printf("[CHORE] Reassigned assignment %s to user %s", assignment.ID, *req.ManualAssigneeId)
+			for i := range assignments {
+				if assignments[i].Status == "pending" || assignments[i].Status == "in_progress" {
+					assignments[i].AssigneeUserID = *req.ManualAssigneeID
+					if err := s.choreAssignments.Update(ctx, &assignments[i]); err != nil {
+						return nil, fmt.Errorf("failed to reassign assignment %s: %w", assignments[i].ID, err)
 					}
+					log.Printf("[CHORE] Reassigned assignment %s to user %s", assignments[i].ID, *req.ManualAssigneeID)
 				}
 			}
 		}

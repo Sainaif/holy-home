@@ -562,10 +562,10 @@ func (s *BackupService) ImportJSON(ctx context.Context, jsonData []byte) (*Impor
 		}
 
 		_, err := tx.ExecContext(ctx,
-			`INSERT INTO chores (id, name, description, frequency, custom_interval, difficulty, priority, assignment_mode, notifications_enabled, reminder_hours, is_active, created_at)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			`INSERT INTO chores (id, name, description, frequency, custom_interval, difficulty, priority, assignment_mode, manual_assignee_id, notifications_enabled, reminder_hours, is_active, created_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			chore.ID, chore.Name, chore.Description, chore.Frequency, chore.CustomInterval,
-			chore.Difficulty, chore.Priority, chore.AssignmentMode, notificationsEnabled,
+			chore.Difficulty, chore.Priority, chore.AssignmentMode, chore.ManualAssigneeID, notificationsEnabled,
 			chore.ReminderHours, isActive, chore.CreatedAt.UTC().Format(time.RFC3339))
 		if err != nil {
 			return nil, fmt.Errorf("failed to import chore %s: %w", chore.ID, err)

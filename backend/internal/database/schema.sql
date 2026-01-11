@@ -195,6 +195,7 @@ CREATE TABLE IF NOT EXISTS chores (
     difficulty INTEGER NOT NULL DEFAULT 1,
     priority INTEGER NOT NULL DEFAULT 1,
     assignment_mode TEXT NOT NULL DEFAULT 'manual',
+    manual_assignee_id TEXT REFERENCES users(id) ON DELETE SET NULL,
     notifications_enabled INTEGER NOT NULL DEFAULT 1,
     reminder_hours INTEGER,
     is_active INTEGER NOT NULL DEFAULT 1,

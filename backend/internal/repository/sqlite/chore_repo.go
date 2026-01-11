@@ -19,6 +19,7 @@ type ChoreRow struct {
 	Difficulty           int     `db:"difficulty"`
 	Priority             int     `db:"priority"`
 	AssignmentMode       string  `db:"assignment_mode"`
+	ManualAssigneeID     *string `db:"manual_assignee_id"`
 	NotificationsEnabled int     `db:"notifications_enabled"`
 	ReminderHours        *int    `db:"reminder_hours"`
 	IsActive             int     `db:"is_active"`
@@ -41,8 +42,8 @@ func (r *ChoreRepository) Create(ctx context.Context, chore *models.Chore) error
 
 	query := `
 		INSERT INTO chores (id, name, description, frequency, custom_interval, difficulty, priority,
-			assignment_mode, notifications_enabled, reminder_hours, is_active, created_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			assignment_mode, manual_assignee_id, notifications_enabled, reminder_hours, is_active, created_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
 	_, err := r.db.ExecContext(ctx, query,
@@ -54,6 +55,7 @@ func (r *ChoreRepository) Create(ctx context.Context, chore *models.Chore) error
 		chore.Difficulty,
 		chore.Priority,
 		chore.AssignmentMode,
+		chore.ManualAssigneeID,
 		boolToInt(chore.NotificationsEnabled),
 		chore.ReminderHours,
 		boolToInt(chore.IsActive),
@@ -80,7 +82,7 @@ func (r *ChoreRepository) Update(ctx context.Context, chore *models.Chore) error
 	query := `
 		UPDATE chores SET
 			name = ?, description = ?, frequency = ?, custom_interval = ?, difficulty = ?, priority = ?,
-			assignment_mode = ?, notifications_enabled = ?, reminder_hours = ?, is_active = ?
+			assignment_mode = ?, manual_assignee_id = ?, notifications_enabled = ?, reminder_hours = ?, is_active = ?
 		WHERE id = ?
 	`
 
@@ -92,6 +94,7 @@ func (r *ChoreRepository) Update(ctx context.Context, chore *models.Chore) error
 		chore.Difficulty,
 		chore.Priority,
 		chore.AssignmentMode,
+		chore.ManualAssigneeID,
 		boolToInt(chore.NotificationsEnabled),
 		chore.ReminderHours,
 		boolToInt(chore.IsActive),
@@ -136,6 +139,7 @@ func rowToChore(row *ChoreRow) *models.Chore {
 		Difficulty:           row.Difficulty,
 		Priority:             row.Priority,
 		AssignmentMode:       row.AssignmentMode,
+		ManualAssigneeID:     row.ManualAssigneeID,
 		NotificationsEnabled: intToBool(row.NotificationsEnabled),
 		ReminderHours:        row.ReminderHours,
 		IsActive:             intToBool(row.IsActive),

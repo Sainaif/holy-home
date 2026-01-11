@@ -105,6 +105,24 @@ func (s *SQLiteDB) runMigrations(ctx context.Context) error {
 		log.Println("Migration: Added reminder_rate_limit_per_hour column to app_settings")
 	}
 
+	// Migration: Add manual_assignee_id column to chores if not exists
+	err = s.DB.GetContext(ctx, &count, `
+		SELECT COUNT(*) FROM pragma_table_info('chores')
+		WHERE name = 'manual_assignee_id'
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to check chores column: %w", err)
+	}
+	if count == 0 {
+		_, err = s.DB.ExecContext(ctx, `
+			ALTER TABLE chores ADD COLUMN manual_assignee_id TEXT REFERENCES users(id) ON DELETE SET NULL
+		`)
+		if err != nil {
+			return fmt.Errorf("failed to add manual_assignee_id column: %w", err)
+		}
+		log.Println("Migration: Added manual_assignee_id column to chores")
+	}
+
 	return nil
 }
 

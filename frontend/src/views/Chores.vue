@@ -475,7 +475,14 @@
                 <option value="random">{{ $t('chores.random') }}</option>
               </select>
             </div>
-            <div>
+            <div v-if="editForm.assignmentMode === 'manual'">
+              <label class="block text-sm font-medium mb-2">{{ $t('chores.assignTo') }}</label>
+              <select v-model="editForm.manualAssigneeId" required class="input">
+                <option value="">{{ $t('chores.selectUser') }}</option>
+                <option v-for="user in users" :key="user.id" :value="user.id">{{ user.name }}</option>
+              </select>
+            </div>
+            <div v-else>
               <label class="block text-sm font-medium mb-2">{{ $t('chores.reminderHours') }}</label>
               <input v-model.number="editForm.reminderHours" type="number" min="0" max="168" class="input" />
             </div>
@@ -861,6 +868,12 @@ async function loadLeaderboard() {
 }
 
 async function createChore() {
+  // Validate manual assignment mode requires a user selection
+  if (choreForm.value.assignmentMode === 'manual' && !choreForm.value.manualAssigneeId) {
+    alert(t('chores.selectUserRequired'))
+    return
+  }
+
   creatingChore.value = true
   try {
     const choreRes = await api.post('/chores', {
@@ -1043,6 +1056,7 @@ function openEditModal(chore) {
     difficulty: chore.difficulty,
     priority: chore.priority,
     assignmentMode: chore.assignmentMode,
+    manualAssigneeId: chore.manualAssigneeId || '',
     notificationsEnabled: chore.notificationsEnabled,
     reminderHours: chore.reminderHours,
     isActive: chore.isActive
@@ -1059,6 +1073,12 @@ function closeEditModal() {
 async function saveChoreEdit() {
   if (!editingChore.value) return
 
+  // Validate manual assignment mode requires a user selection
+  if (editForm.value.assignmentMode === 'manual' && !editForm.value.manualAssigneeId) {
+    alert(t('chores.selectUserRequired'))
+    return
+  }
+
   savingEdit.value = true
   try {
     await api.put(`/chores/${editingChore.value.id}`, {
@@ -1069,6 +1089,7 @@ async function saveChoreEdit() {
       difficulty: editForm.value.difficulty,
       priority: editForm.value.priority,
       assignmentMode: editForm.value.assignmentMode,
+      manualAssigneeId: editForm.value.assignmentMode === 'manual' ? editForm.value.manualAssigneeId : undefined,
       notificationsEnabled: editForm.value.notificationsEnabled,
       reminderHours: editForm.value.reminderHours || undefined,
       isActive: editForm.value.isActive

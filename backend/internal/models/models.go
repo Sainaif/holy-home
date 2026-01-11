@@ -144,11 +144,12 @@ type Chore struct {
 	ID                   string    `db:"id" json:"id"`
 	Name                 string    `db:"name" json:"name"`
 	Description          *string   `db:"description" json:"description,omitempty"`
-	Frequency            string    `db:"frequency" json:"frequency"`                      // daily, weekly, monthly, custom, irregular
-	CustomInterval       *int      `db:"custom_interval" json:"customInterval,omitempty"` // days for custom frequency
-	Difficulty           int       `db:"difficulty" json:"difficulty"`                    // 1-5 scale
-	Priority             int       `db:"priority" json:"priority"`                        // 1-5 scale
-	AssignmentMode       string    `db:"assignment_mode" json:"assignmentMode"`           // manual, round_robin, random
+	Frequency            string    `db:"frequency" json:"frequency"`                           // daily, weekly, monthly, custom, irregular
+	CustomInterval       *int      `db:"custom_interval" json:"customInterval,omitempty"`      // days for custom frequency
+	Difficulty           int       `db:"difficulty" json:"difficulty"`                         // 1-5 scale
+	Priority             int       `db:"priority" json:"priority"`                             // 1-5 scale
+	AssignmentMode       string    `db:"assignment_mode" json:"assignmentMode"`                // manual, round_robin, random
+	ManualAssigneeID     *string   `db:"manual_assignee_id" json:"manualAssigneeId,omitempty"` // User ID for manual assignment mode
 	NotificationsEnabled bool      `db:"notifications_enabled" json:"notificationsEnabled"`
 	ReminderHours        *int      `db:"reminder_hours" json:"reminderHours,omitempty"` // hours before due
 	IsActive             bool      `db:"is_active" json:"isActive"`
